@@ -1,0 +1,26 @@
+stages:
+  - build
+
+image: node:18
+
+cache:
+  key: react-node-cache
+  paths:
+    - node_modules/
+    - .npm/
+
+variables:
+  NPM_CONFIG_CACHE: .npm
+
+build-job:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 week
+ # only:
+   # - devtest
+    #- main
