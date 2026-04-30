@@ -21,7 +21,14 @@ export default function UnitList() {
   const [showUnitModal, setShowUnitModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
-  const [selectedUnit, setSelectedUnit] = useState(null); // drill-down
+  // Tek birim varsa direkt o birimi seç
+  const [selectedUnit, setSelectedUnit] = useState(() => {
+    if (!currentUser) return null;
+    const units = currentUser.role === ROLES.SYSTEM_ADMIN
+      ? state.units
+      : currentUser.unitId ? state.units.filter(u => u.id === currentUser.unitId) : [];
+    return units.length === 1 ? units[0] : null;
+  });
 
   // Which units to show
   const visibleUnits = (() => {
@@ -125,13 +132,13 @@ export default function UnitList() {
                       <div className="d-flex gap-2 mt-2">
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                          onClick={() => navigate(`/projects/${project.id}/board`)}
+                          onClick={() => navigate(`/projects/${project.id}?tab=board`)}
                         >
-                          <TbLayoutKanban size={13} /> Board
+                          <TbLayoutKanban size={13} /> Aktif İşler
                         </button>
                         <button
                           className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-                          onClick={() => navigate(`/projects/${project.id}/backlog`)}
+                          onClick={() => navigate(`/projects/${project.id}?tab=backlog`)}
                         >
                           <TbList size={13} /> Backlog
                         </button>

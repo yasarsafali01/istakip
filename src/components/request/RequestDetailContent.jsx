@@ -210,6 +210,8 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
       <div className="d-flex align-items-center gap-2 mb-2">
         {unit && <span className="text-muted small">{unit.name}</span>}
         {unit && <span className="text-muted small">/</span>}
+        {project && <span className="text-muted small">{project.name}</span>}
+        {project && <span className="text-muted small">/</span>}
         <span className="text-primary small fw-semibold">{request.number}</span>
       </div>
 

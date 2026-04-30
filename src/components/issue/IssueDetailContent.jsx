@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   TbCopy,
-  TbUser,
   TbCalendar,
   TbClock,
   TbFlag,
@@ -57,6 +56,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   const [editPriority, setEditPriority] = useState(issue.priority);
   const [editStatus, setEditStatus] = useState(issue.status);
   const [editAssigneeId, setEditAssigneeId] = useState(issue.assigneeId ?? '');
+  const [editProjectId, setEditProjectId] = useState(issue.projectId ?? '');
 
   // ── Inline field editing (non-edit-mode) ─────────────────────────────────
   const [editingStatus, setEditingStatus] = useState(false);
@@ -79,6 +79,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   const project = state.projects.find((p) => p.id === issue.projectId);
   const unit = state.units?.find((u) => u.unitCode === issue.unitCode);
   const externalUsers = state.users.filter((u) => u.role === ROLES.EXTERNAL_USER);
+  const unitProjects = state.projects.filter((p) => unit ? p.unitId === unit.id : false);
 
   const canAssign = canChangeAssignee(currentUser, issue, state.projects);
   const canEditDates =
@@ -89,11 +90,14 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   const canClone =
     issue.isRequest && (!isExternalUser || issue.reporterId === currentUser?.id);
 
-  const assignableUsers = state.users.filter(
-    (u) =>
-      u.role !== ROLES.EXTERNAL_USER &&
-      (u.unitId === project?.unitId || currentUser?.role === ROLES.SYSTEM_ADMIN)
-  );
+  const assignableUsers = state.users.filter((u) => {
+    if (u.role === ROLES.EXTERNAL_USER) return false;
+    if (currentUser?.role === ROLES.SYSTEM_ADMIN) return true;
+    if (u.role === ROLES.WORKER) return u.projectId === issue.projectId;
+    if (u.role === ROLES.PROJECT_MANAGER) return project?.managerId === u.id;
+    if (u.role === ROLES.DEPARTMENT_HEAD) return u.unitId === project?.unitId;
+    return false;
+  });
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function dispatchActivity(description, type = ACTIVITY_TYPES.FIELD_UPDATE) {
@@ -114,6 +118,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   // ── Full edit save ────────────────────────────────────────────────────────
   function handleSave() {
     if (!currentUser) return;
+    const projectChanged = issue.projectId !== editProjectId;
     const changes = [];
     if (issue.status !== editStatus)
       changes.push({ type: ACTIVITY_TYPES.STATUS_CHANGE, desc: `Durum "${issue.status}" → "${editStatus}" olarak değiştirildi` });
@@ -123,6 +128,16 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     }
     if (issue.title !== title || issue.description !== description || issue.priority !== editPriority || issue.type !== editType)
       changes.push({ type: ACTIVITY_TYPES.FIELD_UPDATE, desc: 'Alan güncellendi' });
+    if (projectChanged) {
+      const oldProj = state.projects.find((p) => p.id === issue.projectId);
+      const newProj = state.projects.find((p) => p.id === editProjectId);
+      changes.push({ type: ACTIVITY_TYPES.FIELD_UPDATE, desc: `Proje "${oldProj?.name || '?'}" → "${newProj?.name || '?'}" olarak değiştirildi` });
+    }
+
+    const newProject = state.projects.find((p) => p.id === editProjectId);
+    const newUnitCode = newProject
+      ? state.units?.find((u) => u.id === newProject.unitId)?.unitCode || issue.unitCode
+      : issue.unitCode;
 
     dispatch({
       type: ACTIONS.UPDATE_ISSUE,
@@ -134,10 +149,17 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
         priority: editPriority,
         status: editStatus,
         assigneeId: editAssigneeId || null,
+        projectId: editProjectId,
+        unitCode: newUnitCode,
       },
     });
     changes.forEach(({ type: t, desc }) => dispatchActivity(desc, t));
     setEditMode(false);
+
+    // Proje değiştiyse modal'ı kapat — eski projede tekrar düzenleme yapılmasın
+    if (projectChanged) {
+      onClose?.();
+    }
   }
 
   function handleCancelEdit() {
@@ -147,6 +169,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     setEditPriority(issue.priority);
     setEditStatus(issue.status);
     setEditAssigneeId(issue.assigneeId ?? '');
+    setEditProjectId(issue.projectId ?? '');
     setEditMode(false);
   }
 
@@ -218,6 +241,8 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
       <div className="d-flex align-items-center gap-2 mb-2">
         {unit && <span className="text-muted small">{unit.name}</span>}
         {unit && <span className="text-muted small">/</span>}
+        {project && <span className="text-muted small">{project.name}</span>}
+        {project && <span className="text-muted small">/</span>}
         <span className="text-primary small fw-semibold">{issue.number}</span>
       </div>
 
@@ -362,6 +387,54 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                   <Badge label={issue.status} type="status" />
                 )}
               </div>
+
+              {/* Project — her issue için göster, edit modunda değiştirilebilir */}
+              <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
+                📁 Proje
+              </div>
+              <div className="col-8 col-md-9">
+                {editMode ? (
+                  <select
+                    className="form-select form-select-sm"
+                    data-testid="project-select"
+                    style={{ width: 'auto', minWidth: 200 }}
+                    value={editProjectId}
+                    onChange={(e) => { setEditProjectId(e.target.value); setEditAssigneeId(''); }}
+                  >
+                    {unitProjects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="small">{project?.name || '—'}</span>
+                )}
+              </div>
+
+              {/* Project (requests only) */}
+              {issue.isRequest && (
+                <>
+                  <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
+                    📁 Proje
+                  </div>
+                  <div className="col-8 col-md-9">
+                    {editMode ? (
+                      <select
+                        className="form-select form-select-sm"
+                        data-testid="project-select"
+                        style={{ width: 'auto', minWidth: 200 }}
+                        value={editProjectId}
+                        onChange={(e) => setEditProjectId(e.target.value)}
+                      >
+                        {unitProjects.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="small">{project?.name || '—'}</span>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Resolved at */}
               <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
@@ -514,29 +587,54 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                   onChange={(e) => setEditAssigneeId(e.target.value)}
                 >
                   <option value="">— Atanmamış —</option>
-                  {state.users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  {state.users
+                    .filter((u) => {
+                      if (u.role === ROLES.EXTERNAL_USER) return false;
+                      const targetProject = state.projects.find((p) => p.id === editProjectId);
+                      if (u.role === ROLES.WORKER) return u.projectId === editProjectId;
+                      if (u.role === ROLES.PROJECT_MANAGER) return targetProject?.managerId === u.id;
+                      if (u.role === ROLES.DEPARTMENT_HEAD) return u.unitId === targetProject?.unitId;
+                      if (u.role === ROLES.SYSTEM_ADMIN) return true;
+                      return false;
+                    })
+                    .map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               ) : (
-                <div
-                  className="d-flex align-items-center gap-2"
-                  role={canAssign ? 'button' : undefined}
-                  tabIndex={canAssign ? 0 : undefined}
-                  onClick={() => canAssign && setEditingAssignee(true)}
-                  onKeyDown={(e) => e.key === 'Enter' && canAssign && setEditingAssignee(true)}
-                  style={{ cursor: canAssign ? 'pointer' : 'default' }}
-                >
+                <div className="d-flex align-items-center gap-2">
                   {assignee ? (
                     <>
                       <Avatar name={assignee.name} color={assignee.avatarColor} size={24} />
                       <div>
                         <div className="fw-medium">{assignee.name}</div>
-                        {canAssign && <div className="text-primary" style={{ fontSize: '0.75rem' }}>Kendime ata</div>}
+                        {canAssign && (
+                          <div
+                            className="text-primary"
+                            role="button"
+                            tabIndex={0}
+                            style={{ fontSize: '0.75rem', cursor: 'pointer' }}
+                            onClick={() => handleAssigneeChange(currentUser.id)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAssigneeChange(currentUser.id)}
+                          >
+                            Kendime ata
+                          </div>
+                        )}
                       </div>
                     </>
                   ) : (
                     <div>
                       <span className="text-muted">Atanmamış</span>
-                      {canAssign && <div className="text-primary" style={{ fontSize: '0.75rem', cursor: 'pointer' }}>Kendime ata</div>}
+                      {canAssign && (
+                        <div
+                          className="text-primary"
+                          role="button"
+                          tabIndex={0}
+                          style={{ fontSize: '0.75rem', cursor: 'pointer' }}
+                          onClick={() => handleAssigneeChange(currentUser.id)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAssigneeChange(currentUser.id)}
+                        >
+                          Kendime ata
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

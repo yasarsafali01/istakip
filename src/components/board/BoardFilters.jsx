@@ -1,20 +1,22 @@
 import React from 'react';
 import { TbX } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
-import { PRIORITIES } from '../../constants';
+import { PRIORITIES, ROLES } from '../../constants';
 import Avatar from '../common/Avatar';
 
 /**
  * Filter bar for the board: assignee avatars + priority dropdown.
  *
- * @param {Object}   props
- * @param {string|null} props.assigneeFilter    - Currently selected assignee ID
- * @param {string|null} props.priorityFilter    - Currently selected priority
- * @param {Function} props.setAssigneeFilter    - Setter for assignee filter
- * @param {Function} props.setPriorityFilter    - Setter for priority filter
- * @param {Function} props.clearFilters         - Clears all filters
+ * @param {Object}      props
+ * @param {string}      props.projectId          - Current project ID (to filter members)
+ * @param {string|null} props.assigneeFilter      - Currently selected assignee ID
+ * @param {string|null} props.priorityFilter      - Currently selected priority
+ * @param {Function}    props.setAssigneeFilter   - Setter for assignee filter
+ * @param {Function}    props.setPriorityFilter   - Setter for priority filter
+ * @param {Function}    props.clearFilters        - Clears all filters
  */
 function BoardFilters({
+  projectId,
   assigneeFilter,
   priorityFilter,
   setAssigneeFilter,
@@ -24,11 +26,22 @@ function BoardFilters({
   const { state } = useAppContext();
   const hasActiveFilter = assigneeFilter || priorityFilter;
 
+  // Sadece bu projenin üyeleri: PM + Worker'lar (+ birim başkanı + admin opsiyonel)
+  const project = state.projects.find((p) => p.id === projectId);
+  const projectMembers = state.users.filter((u) => {
+    if (u.role === ROLES.EXTERNAL_USER) return false;
+    if (u.role === ROLES.WORKER) return u.projectId === projectId;
+    if (u.role === ROLES.PROJECT_MANAGER) return project?.managerId === u.id;
+    if (u.role === ROLES.DEPARTMENT_HEAD) return u.unitId === project?.unitId;
+    if (u.role === ROLES.SYSTEM_ADMIN) return true;
+    return false;
+  });
+
   return (
     <div className="d-flex align-items-center gap-3 flex-wrap">
-      {/* Assignee filter: avatar buttons */}
+      {/* Assignee filter: avatar buttons — sadece proje üyeleri */}
       <div className="d-flex align-items-center gap-1" role="group" aria-label="Atanan kişiye göre filtrele">
-        {state.users.map((user) => (
+        {projectMembers.map((user) => (
           <button
             key={user.id}
             className="btn p-0 border-0"

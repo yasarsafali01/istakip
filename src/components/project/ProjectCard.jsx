@@ -24,12 +24,12 @@ function ProjectCard({ project }) {
     <div
       className="card border-0 shadow-sm h-100 project-card"
       style={{ cursor: 'pointer' }}
-      onClick={() => navigate(`/projects/${project.id}/board`)}
+      onClick={() => navigate(`/projects/${project.id}?tab=board`)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
-          navigate(`/projects/${project.id}/board`);
+          navigate(`/projects/${project.id}?tab=board`);
         }
       }}
       aria-label={`${project.name} projesine git`}
@@ -86,18 +86,18 @@ function ProjectCard({ project }) {
             className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/projects/${project.id}/board`);
+              navigate(`/projects/${project.id}?tab=board`);
             }}
             aria-label={`${project.name} board`}
           >
             <TbLayoutKanban size={14} aria-hidden="true" />
-            Board
+            Aktif İşler
           </button>
           <button
             className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/projects/${project.id}/backlog`);
+              navigate(`/projects/${project.id}?tab=backlog`);
             }}
             aria-label={`${project.name} backlog`}
           >

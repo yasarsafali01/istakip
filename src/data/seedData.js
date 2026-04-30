@@ -1,7 +1,7 @@
 // Seed data for the Jira Clone application
 // v2: 2 units, 22 users (Worker role added), 4 projects, 4 sprints, issues, requests, comments, activities
 
-export const SEED_VERSION = 3;
+export const SEED_VERSION = 4;
 
 // ─── Units ────────────────────────────────────────────────────────────────────
 export const seedUnits = [
@@ -22,6 +22,7 @@ export const seedUnits = [
 ];
 
 // ─── Users ────────────────────────────────────────────────────────────────────
+// Her projeye tam olarak 4 üye: 1 PM + 3 Worker
 export const seedUsers = [
   // System Admin
   {
@@ -43,7 +44,7 @@ export const seedUsers = [
     unitId: 'unit-bigd',
     avatarColor: '#00875A',
   },
-  // BIGD Project Manager 1 (Ağ Altyapısı Yenileme)
+  // project-bigd-1: Ağ Altyapısı Yenileme — 1 PM + 3 Worker
   {
     id: 'user-bigd-pm',
     name: 'Mehmet Demir',
@@ -54,18 +55,6 @@ export const seedUsers = [
     projectId: 'project-bigd-1',
     avatarColor: '#FF5630',
   },
-  // BIGD Project Manager 2 (Siber Güvenlik Projesi)
-  {
-    id: 'user-bigd-pm2',
-    name: 'Burak Yıldırım',
-    email: 'bigd.pm2@example.com',
-    password: 'pass123',
-    role: 'Project_Manager',
-    unitId: 'unit-bigd',
-    projectId: 'project-bigd-2',
-    avatarColor: '#8777D9',
-  },
-  // BIGD Workers (project-bigd-1)
   {
     id: 'user-bigd-w1',
     name: 'Ali Yılmaz',
@@ -96,21 +85,21 @@ export const seedUsers = [
     projectId: 'project-bigd-1',
     avatarColor: '#36B37E',
   },
+  // project-bigd-2: Siber Güvenlik Projesi — 1 PM + 3 Worker
+  {
+    id: 'user-bigd-pm2',
+    name: 'Burak Yıldırım',
+    email: 'bigd.pm2@example.com',
+    password: 'pass123',
+    role: 'Project_Manager',
+    unitId: 'unit-bigd',
+    projectId: 'project-bigd-2',
+    avatarColor: '#8777D9',
+  },
   {
     id: 'user-bigd-w4',
-    name: 'Elif Arslan',
-    email: 'bigd.worker4@example.com',
-    password: 'pass123',
-    role: 'Worker',
-    unitId: 'unit-bigd',
-    projectId: 'project-bigd-1',
-    avatarColor: '#E774BB',
-  },
-  // BIGD Workers (project-bigd-2)
-  {
-    id: 'user-bigd-w5',
     name: 'Murat Öztürk',
-    email: 'bigd.worker5@example.com',
+    email: 'bigd.worker4@example.com',
     password: 'pass123',
     role: 'Worker',
     unitId: 'unit-bigd',
@@ -118,9 +107,9 @@ export const seedUsers = [
     avatarColor: '#00B8D9',
   },
   {
-    id: 'user-bigd-w6',
+    id: 'user-bigd-w5',
     name: 'Selin Aydın',
-    email: 'bigd.worker6@example.com',
+    email: 'bigd.worker5@example.com',
     password: 'pass123',
     role: 'Worker',
     unitId: 'unit-bigd',
@@ -128,24 +117,14 @@ export const seedUsers = [
     avatarColor: '#FF7452',
   },
   {
-    id: 'user-bigd-w7',
+    id: 'user-bigd-w6',
     name: 'Kemal Doğan',
-    email: 'bigd.worker7@example.com',
+    email: 'bigd.worker6@example.com',
     password: 'pass123',
     role: 'Worker',
     unitId: 'unit-bigd',
     projectId: 'project-bigd-2',
     avatarColor: '#57D9A3',
-  },
-  {
-    id: 'user-bigd-w8',
-    name: 'Zehra Koç',
-    email: 'bigd.worker8@example.com',
-    password: 'pass123',
-    role: 'Worker',
-    unitId: 'unit-bigd',
-    projectId: 'project-bigd-2',
-    avatarColor: '#998DD9',
   },
   // ODB Department Head
   {
@@ -157,7 +136,7 @@ export const seedUsers = [
     unitId: 'unit-odb',
     avatarColor: '#FF0000',
   },
-  // ODB Project Manager 1 (Öğrenci Bilgi Sistemi)
+  // project-odb-1: Öğrenci Bilgi Sistemi — 1 PM + 3 Worker
   {
     id: 'user-odb-pm',
     name: 'Can Öztürk',
@@ -168,18 +147,6 @@ export const seedUsers = [
     projectId: 'project-odb-1',
     avatarColor: '#FFAA00',
   },
-  // ODB Project Manager 2 (Dijital Belge Yönetimi)
-  {
-    id: 'user-odb-pm2',
-    name: 'Seda Kılıç',
-    email: 'odb.pm2@example.com',
-    password: 'pass123',
-    role: 'Project_Manager',
-    unitId: 'unit-odb',
-    projectId: 'project-odb-2',
-    avatarColor: '#FF5630',
-  },
-  // ODB Workers (project-odb-1)
   {
     id: 'user-odb-w1',
     name: 'Deniz Yıldız',
@@ -210,6 +177,17 @@ export const seedUsers = [
     projectId: 'project-odb-1',
     avatarColor: '#65BA43',
   },
+  // project-odb-2: Dijital Belge Yönetimi — 1 PM + 3 Worker
+  {
+    id: 'user-odb-pm2',
+    name: 'Seda Kılıç',
+    email: 'odb.pm2@example.com',
+    password: 'pass123',
+    role: 'Project_Manager',
+    unitId: 'unit-odb',
+    projectId: 'project-odb-2',
+    avatarColor: '#FF5630',
+  },
   {
     id: 'user-odb-w4',
     name: 'Tarık Polat',
@@ -217,10 +195,9 @@ export const seedUsers = [
     password: 'pass123',
     role: 'Worker',
     unitId: 'unit-odb',
-    projectId: 'project-odb-1',
+    projectId: 'project-odb-2',
     avatarColor: '#904EE2',
   },
-  // ODB Workers (project-odb-2)
   {
     id: 'user-odb-w5',
     name: 'Gizem Yılmaz',
@@ -240,26 +217,6 @@ export const seedUsers = [
     unitId: 'unit-odb',
     projectId: 'project-odb-2',
     avatarColor: '#E5493A',
-  },
-  {
-    id: 'user-odb-w7',
-    name: 'Pınar Erdoğan',
-    email: 'odb.worker7@example.com',
-    password: 'pass123',
-    role: 'Worker',
-    unitId: 'unit-odb',
-    projectId: 'project-odb-2',
-    avatarColor: '#00C7E6',
-  },
-  {
-    id: 'user-odb-w8',
-    name: 'Emre Şimşek',
-    email: 'odb.worker8@example.com',
-    password: 'pass123',
-    role: 'Worker',
-    unitId: 'unit-odb',
-    projectId: 'project-odb-2',
-    avatarColor: '#ABF5D1',
   },
   // External User
   {
@@ -358,6 +315,7 @@ export const seedSprints = [
 ];
 
 // ─── Issues ───────────────────────────────────────────────────────────────────
+// Talepler (isRequest: true) kaldırıldı. Her projede sadece normal issue'lar var.
 export const seedIssues = [
   // ── project-bigd-1: Ağ Altyapısı Yenileme ──────────────────────────────────
   {
@@ -431,7 +389,7 @@ export const seedIssues = [
     type: 'Story',
     priority: 'Medium',
     status: 'Done',
-    assigneeId: 'user-bigd-w4',
+    assigneeId: 'user-bigd-w1',
     reporterId: 'user-bigd-head',
     isRequest: false,
     visibleTo: [],
@@ -460,27 +418,6 @@ export const seedIssues = [
     resolvedAt: null,
     timeSpent: 0,
   },
-  // BIGD-1 project request
-  {
-    id: 'issue-bigd1-req1',
-    number: 'BIGD-6',
-    unitCode: 'BIGD',
-    projectId: 'project-bigd-1',
-    sprintId: 'sprint-bigd1-apr',
-    title: 'VPN erişim talebi',
-    description: 'Uzaktan çalışma kapsamında VPN erişimi talep ediyorum.',
-    type: 'Request',
-    priority: 'Medium',
-    status: 'In Progress',
-    assigneeId: 'user-bigd-pm',
-    reporterId: 'user-external',
-    isRequest: true,
-    visibleTo: ['user-external'],
-    createdAt: '2025-04-08T10:00:00.000Z',
-    updatedAt: '2025-04-08T10:00:00.000Z',
-    resolvedAt: null,
-    timeSpent: 0,
-  },
 
   // ── project-bigd-2: Siber Güvenlik Projesi ──────────────────────────────────
   {
@@ -494,8 +431,8 @@ export const seedIssues = [
     type: 'Story',
     priority: 'Highest',
     status: 'In Progress',
-    assigneeId: 'user-bigd-w5',
-    reporterId: 'user-bigd-pm',
+    assigneeId: 'user-bigd-w4',
+    reporterId: 'user-bigd-pm2',
     isRequest: false,
     visibleTo: [],
     createdAt: '2025-04-01T09:00:00.000Z',
@@ -514,7 +451,7 @@ export const seedIssues = [
     type: 'Task',
     priority: 'High',
     status: 'To Do',
-    assigneeId: 'user-bigd-w6',
+    assigneeId: 'user-bigd-w5',
     reporterId: 'user-bigd-head',
     isRequest: false,
     visibleTo: [],
@@ -534,8 +471,8 @@ export const seedIssues = [
     type: 'Task',
     priority: 'High',
     status: 'In Review',
-    assigneeId: 'user-bigd-w7',
-    reporterId: 'user-bigd-pm',
+    assigneeId: 'user-bigd-w6',
+    reporterId: 'user-bigd-pm2',
     isRequest: false,
     visibleTo: [],
     createdAt: '2025-04-02T09:00:00.000Z',
@@ -554,7 +491,7 @@ export const seedIssues = [
     type: 'Task',
     priority: 'Medium',
     status: 'Done',
-    assigneeId: 'user-bigd-w8',
+    assigneeId: 'user-bigd-w4',
     reporterId: 'user-bigd-head',
     isRequest: false,
     visibleTo: [],
@@ -562,27 +499,6 @@ export const seedIssues = [
     updatedAt: '2025-04-09T15:00:00.000Z',
     resolvedAt: '2025-04-09T15:00:00.000Z',
     timeSpent: 90,
-  },
-  // BIGD-2 project request
-  {
-    id: 'issue-bigd2-req1',
-    number: 'BIGD2-5',
-    unitCode: 'BIGD',
-    projectId: 'project-bigd-2',
-    sprintId: 'sprint-bigd2-apr',
-    title: 'Güvenlik eğitimi talebi',
-    description: 'Personel için siber güvenlik farkındalık eğitimi düzenlenmesini talep ediyorum.',
-    type: 'Request',
-    priority: 'Low',
-    status: 'To Do',
-    assigneeId: null,
-    reporterId: 'user-external',
-    isRequest: true,
-    visibleTo: ['user-external'],
-    createdAt: '2025-04-09T11:00:00.000Z',
-    updatedAt: '2025-04-09T11:00:00.000Z',
-    resolvedAt: null,
-    timeSpent: 0,
   },
 
   // ── project-odb-1: Öğrenci Bilgi Sistemi ───────────────────────────────────
@@ -657,33 +573,12 @@ export const seedIssues = [
     type: 'Bug',
     priority: 'Highest',
     status: 'To Do',
-    assigneeId: 'user-odb-w4',
+    assigneeId: 'user-odb-w1',
     reporterId: 'user-odb-pm',
     isRequest: false,
     visibleTo: [],
     createdAt: '2025-04-03T09:00:00.000Z',
     updatedAt: '2025-04-03T09:00:00.000Z',
-    resolvedAt: null,
-    timeSpent: 0,
-  },
-  // ODB-1 project request
-  {
-    id: 'issue-odb1-req1',
-    number: 'ODB-5',
-    unitCode: 'ODB',
-    projectId: 'project-odb-1',
-    sprintId: 'sprint-odb1-apr',
-    title: 'Transkript belgesi talebi',
-    description: 'Resmi transkript belgesi talep ediyorum, onaylı PDF formatında ihtiyacım var.',
-    type: 'Request',
-    priority: 'Medium',
-    status: 'To Do',
-    assigneeId: null,
-    reporterId: 'user-external',
-    isRequest: true,
-    visibleTo: ['user-external'],
-    createdAt: '2025-04-08T11:00:00.000Z',
-    updatedAt: '2025-04-08T11:00:00.000Z',
     resolvedAt: null,
     timeSpent: 0,
   },
@@ -700,8 +595,8 @@ export const seedIssues = [
     type: 'Story',
     priority: 'High',
     status: 'In Progress',
-    assigneeId: 'user-odb-w5',
-    reporterId: 'user-odb-pm',
+    assigneeId: 'user-odb-w4',
+    reporterId: 'user-odb-pm2',
     isRequest: false,
     visibleTo: [],
     createdAt: '2025-04-01T09:00:00.000Z',
@@ -720,7 +615,7 @@ export const seedIssues = [
     type: 'Task',
     priority: 'High',
     status: 'To Do',
-    assigneeId: 'user-odb-w6',
+    assigneeId: 'user-odb-w5',
     reporterId: 'user-odb-head',
     isRequest: false,
     visibleTo: [],
@@ -740,8 +635,8 @@ export const seedIssues = [
     type: 'Task',
     priority: 'Medium',
     status: 'In Review',
-    assigneeId: 'user-odb-w7',
-    reporterId: 'user-odb-pm',
+    assigneeId: 'user-odb-w6',
+    reporterId: 'user-odb-pm2',
     isRequest: false,
     visibleTo: [],
     createdAt: '2025-04-02T09:00:00.000Z',
@@ -760,7 +655,7 @@ export const seedIssues = [
     type: 'Task',
     priority: 'Low',
     status: 'Done',
-    assigneeId: 'user-odb-w8',
+    assigneeId: 'user-odb-w4',
     reporterId: 'user-odb-head',
     isRequest: false,
     visibleTo: [],
@@ -768,27 +663,6 @@ export const seedIssues = [
     updatedAt: '2025-04-07T16:00:00.000Z',
     resolvedAt: '2025-04-07T16:00:00.000Z',
     timeSpent: 60,
-  },
-  // ODB-2 project request
-  {
-    id: 'issue-odb2-req1',
-    number: 'ODB2-5',
-    unitCode: 'ODB',
-    projectId: 'project-odb-2',
-    sprintId: 'sprint-odb2-apr',
-    title: 'Belge onay talebi',
-    description: 'Öğrenci belgesi onay sürecinin dijitalleştirilmesi talebi.',
-    type: 'Request',
-    priority: 'Low',
-    status: 'To Do',
-    assigneeId: null,
-    reporterId: 'user-external',
-    isRequest: true,
-    visibleTo: ['user-external'],
-    createdAt: '2025-04-09T09:00:00.000Z',
-    updatedAt: '2025-04-09T09:00:00.000Z',
-    resolvedAt: null,
-    timeSpent: 0,
   },
 ];
 
@@ -830,13 +704,6 @@ export const seedComments = [
     createdAt: '2025-04-06T15:00:00.000Z',
   },
   {
-    id: 'comment-6',
-    issueId: 'issue-bigd1-req1',
-    authorId: 'user-bigd-pm',
-    text: 'Talebiniz alındı, VPN hesabı oluşturulacak ve bilgi verilecektir.',
-    createdAt: '2025-04-08T13:00:00.000Z',
-  },
-  {
     id: 'comment-7',
     issueId: 'issue-bigd2-1',
     authorId: 'user-bigd-head',
@@ -846,7 +713,7 @@ export const seedComments = [
   {
     id: 'comment-8',
     issueId: 'issue-odb2-1',
-    authorId: 'user-odb-pm',
+    authorId: 'user-odb-pm2',
     text: 'Arşivleme sistemi için teknik gereksinimler dokümanı paylaşıldı.',
     createdAt: '2025-04-05T14:00:00.000Z',
   },
@@ -881,7 +748,7 @@ export const seedActivities = [
   {
     id: 'activity-4',
     issueId: 'issue-bigd1-4',
-    userId: 'user-bigd-w4',
+    userId: 'user-bigd-w1',
     type: 'status_change',
     description: 'Durum "In Review" → "Done" olarak değiştirildi',
     createdAt: '2025-04-10T16:00:00.000Z',
@@ -921,7 +788,7 @@ export const seedActivities = [
   {
     id: 'activity-9',
     issueId: 'issue-bigd2-1',
-    userId: 'user-bigd-pm',
+    userId: 'user-bigd-pm2',
     type: 'created',
     description: 'Issue oluşturuldu',
     createdAt: '2025-04-01T09:00:00.000Z',
@@ -929,31 +796,15 @@ export const seedActivities = [
   {
     id: 'activity-10',
     issueId: 'issue-bigd2-3',
-    userId: 'user-bigd-w7',
+    userId: 'user-bigd-w6',
     type: 'status_change',
     description: 'Durum "In Progress" → "In Review" olarak değiştirildi',
     createdAt: '2025-04-07T14:00:00.000Z',
   },
   {
-    id: 'activity-11',
-    issueId: 'issue-bigd1-req1',
-    userId: 'user-external',
-    type: 'created',
-    description: 'Talep oluşturuldu',
-    createdAt: '2025-04-08T10:00:00.000Z',
-  },
-  {
-    id: 'activity-12',
-    issueId: 'issue-odb1-req1',
-    userId: 'user-external',
-    type: 'created',
-    description: 'Talep oluşturuldu',
-    createdAt: '2025-04-08T11:00:00.000Z',
-  },
-  {
     id: 'activity-13',
     issueId: 'issue-odb2-1',
-    userId: 'user-odb-pm',
+    userId: 'user-odb-pm2',
     type: 'created',
     description: 'Issue oluşturuldu',
     createdAt: '2025-04-01T09:00:00.000Z',
@@ -961,7 +812,7 @@ export const seedActivities = [
   {
     id: 'activity-14',
     issueId: 'issue-odb2-4',
-    userId: 'user-odb-w8',
+    userId: 'user-odb-w4',
     type: 'status_change',
     description: 'Durum "In Review" → "Done" olarak değiştirildi',
     createdAt: '2025-04-07T16:00:00.000Z',
@@ -969,7 +820,7 @@ export const seedActivities = [
   {
     id: 'activity-15',
     issueId: 'issue-bigd2-4',
-    userId: 'user-bigd-w8',
+    userId: 'user-bigd-w4',
     type: 'status_change',
     description: 'Durum "In Review" → "Done" olarak değiştirildi',
     createdAt: '2025-04-09T15:00:00.000Z',

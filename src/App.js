@@ -6,14 +6,15 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { ROLES } from './constants';
 
 // Lazy-load pages
-const LoginPage     = lazy(() => import('./pages/LoginPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const ProjectsPage  = lazy(() => import('./pages/ProjectsPage'));
-const BoardPage     = lazy(() => import('./pages/BoardPage'));
-const BacklogPage   = lazy(() => import('./pages/BacklogPage'));
-const UnitsPage     = lazy(() => import('./pages/UnitsPage'));
-const RequestsPage  = lazy(() => import('./pages/RequestsPage'));
-const NotFoundPage  = lazy(() => import('./pages/NotFoundPage'));
+const LoginPage         = lazy(() => import('./pages/LoginPage'));
+const DashboardPage     = lazy(() => import('./pages/DashboardPage'));
+const ProjectsPage      = lazy(() => import('./pages/ProjectsPage'));
+const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
+const BoardPage         = lazy(() => import('./pages/BoardPage'));
+const BacklogPage       = lazy(() => import('./pages/BacklogPage'));
+const UnitsPage         = lazy(() => import('./pages/UnitsPage'));
+const RequestsPage      = lazy(() => import('./pages/RequestsPage'));
+const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 
 const LoadingSpinner = () => (
   <div className="d-flex justify-content-center align-items-center py-5">
@@ -76,10 +77,19 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* Project detail — Board + Aktif İşler tabs (Worker dahil) */}
+              <Route
+                path="/projects/:projectId"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
+                    <ProjectDetailPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/projects/:projectId/board"
                 element={
-                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER]}>
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
                     <BoardPage />
                   </ProtectedRoute>
                 }
@@ -87,7 +97,7 @@ function App() {
               <Route
                 path="/projects/:projectId/backlog"
                 element={
-                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER]}>
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
                     <BacklogPage />
                   </ProtectedRoute>
                 }

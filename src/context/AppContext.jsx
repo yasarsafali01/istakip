@@ -5,7 +5,7 @@ import seedData, { SEED_VERSION } from '../data/seedData';
 const STORAGE_KEY = 'jira-clone-state';
 // Bump this version whenever the data shape changes significantly.
 // A mismatch will clear localStorage and reload from seedData.
-const STATE_VERSION = '6';
+const STATE_VERSION = '8';
 const VERSION_KEY = 'jira-clone-version';
 
 /**

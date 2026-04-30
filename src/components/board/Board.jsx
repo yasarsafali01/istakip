@@ -102,6 +102,7 @@ function Board({ projectId, sprintId, readonly = false }) {
             </span>
           )}
           <BoardFilters
+            projectId={projectId}
             assigneeFilter={assigneeFilter}
             priorityFilter={priorityFilter}
             setAssigneeFilter={setAssigneeFilter}
