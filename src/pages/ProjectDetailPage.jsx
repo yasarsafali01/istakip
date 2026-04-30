@@ -148,6 +148,7 @@ function BacklogTabView({ projectId, allSprints }) {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
+  const [assigneeFilter, setAssigneeFilter] = useState('');
   const [selectedSprintId, setSelectedSprintId] = useState(() => {
     const active = allSprints.find((s) => s.status === 'Active');
     return active ? active.id : (allSprints[0]?.id ?? '');
@@ -178,6 +179,7 @@ function BacklogTabView({ projectId, allSprints }) {
   const filteredBacklog = backlogIssues
     .filter((i) => !priorityFilter || i.priority === priorityFilter)
     .filter((i) => !monthFilter || (i.createdAt && i.createdAt.startsWith(monthFilter)))
+    .filter((i) => !assigneeFilter || i.assigneeId === assigneeFilter)
     .sort((a, b) => {
       if (sortBy === 'priority_asc') return (PRIORITY_ORDER[a.priority] ?? 5) - (PRIORITY_ORDER[b.priority] ?? 5);
       if (sortBy === 'priority_desc') return (PRIORITY_ORDER[b.priority] ?? 5) - (PRIORITY_ORDER[a.priority] ?? 5);
@@ -420,6 +422,35 @@ function BacklogTabView({ projectId, allSprints }) {
               Bekleyen İşler <span className="text-muted fw-normal small ms-1">({filteredBacklog.length})</span>
             </h6>
             <div className="d-flex align-items-center gap-2 flex-wrap">
+              {/* Atanan kişi pill */}
+              <FilterPill
+                label="Atanan"
+                icon="👤"
+                active={!!assigneeFilter}
+                activeLabel={assigneeFilter ? (state.users.find(u => u.id === assigneeFilter)?.name || '') : ''}
+                onClear={() => setAssigneeFilter('')}
+              >
+                <div className="p-2" style={{ minWidth: 170 }}>
+                  <button
+                    className={`btn btn-sm w-100 text-start mb-1 ${!assigneeFilter ? 'btn-primary' : 'btn-light'}`}
+                    style={{ fontSize: '0.82rem' }}
+                    onClick={() => setAssigneeFilter('')}
+                  >
+                    Tüm Kişiler
+                  </button>
+                  {projectMembers.map((u) => (
+                    <button
+                      key={u.id}
+                      className={`btn btn-sm w-100 text-start mb-1 ${assigneeFilter === u.id ? 'btn-primary' : 'btn-light'}`}
+                      style={{ fontSize: '0.82rem' }}
+                      onClick={() => setAssigneeFilter(u.id)}
+                    >
+                      {u.name}
+                    </button>
+                  ))}
+                </div>
+              </FilterPill>
+
               {/* Öncelik pill */}
               <FilterPill
                 label="Öncelik"
@@ -506,11 +537,11 @@ function BacklogTabView({ projectId, allSprints }) {
               </FilterPill>
 
               {/* Aktif filtre temizle */}
-              {(priorityFilter || monthFilter || sortBy !== 'date_desc') && (
+              {(priorityFilter || monthFilter || sortBy !== 'date_desc' || assigneeFilter) && (
                 <button
                   className="btn btn-sm btn-link text-danger p-0 text-decoration-none"
                   style={{ fontSize: '0.8rem' }}
-                  onClick={() => { setPriorityFilter(''); setMonthFilter(''); setSortBy('date_desc'); }}
+                  onClick={() => { setPriorityFilter(''); setMonthFilter(''); setSortBy('date_desc'); setAssigneeFilter(''); }}
                 >
                   Temizle
                 </button>

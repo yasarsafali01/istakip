@@ -63,6 +63,10 @@ export function getVisibleRequests(issues, currentUser) {
         (Array.isArray(r.visibleTo) && r.visibleTo.includes(currentUser.id))
     );
   }
+  // Worker sadece kendi oluşturduğu talepleri görür
+  if (currentUser.role === ROLES.WORKER) {
+    return requests.filter(r => r.reporterId === currentUser.id);
+  }
   return requests;
 }
 

@@ -12,7 +12,7 @@ import {
 } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
 import { useAppContext } from '../../context/AppContext';
-import { ROLE_NAV_ITEMS } from '../../constants';
+import { ROLE_NAV_ITEMS, ROLES } from '../../constants';
 import { getVisibleProjects } from '../../utils/permissionUtils';
 import Avatar from './Avatar';
 
@@ -178,8 +178,8 @@ export default function Sidebar() {
             </li>
           ))}
 
-          {/* Proje linkleri — Aktif İşler + Backlog */}
-          {visibleProjects.length > 0 && (
+          {/* Proje linkleri — Aktif İşler + Backlog (Worker hariç) */}
+          {visibleProjects.length > 0 && currentUser?.role !== ROLES.WORKER && (
             <>
               <li>
                 <div

@@ -1,13 +1,17 @@
 import React from 'react';
 import {
   TbFolder, TbAlertCircle, TbCalendar, TbTicket,
-  TbCircleCheck, TbClock, TbChartBar, TbBuilding,
+  TbCircleCheck, TbClock, TbChartBar, TbBuilding, TbLock, TbPlus,
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useState } from 'react';
+import Board from '../board/Board';
 import ProjectProgress from './ProjectProgress';
 import RecentActivity from './RecentActivity';
+import Modal from '../common/Modal';
+import RequestForm from '../request/RequestForm';
 import { PRIORITY_COLORS, ROLES } from '../../constants';
 import { getVisibleProjects, getVisibleRequests } from '../../utils/permissionUtils';
 import { formatDate } from '../../utils/dateUtils';
@@ -279,11 +283,18 @@ function WorkerDashboard({ state, currentUser }) {
   const doneCount = myIssues.filter(i => i.status === 'Done').length;
   const pendingIssues = myIssues.filter(i => !i.sprintId && i.status !== 'Done').length;
 
+  // Sadece kendi talepleri
+  const myRequests = state.issues.filter(
+    i => i.isRequest && i.reporterId === currentUser.id
+  );
+  const [showRequestModal, setShowRequestModal] = useState(false);
+
   return (
     <div>
       <h4 className="fw-bold mb-1">Ana Sayfa</h4>
       {myProject && <p className="text-muted small mb-4">{myProject.name}</p>}
 
+      {/* Kartlar */}
       <div className="row g-3 mb-4">
         <div className="col-6 col-lg-2">
           <StatCard title="Bağlı Proje" value={myProject ? 1 : 0} icon={<TbFolder />}
@@ -309,9 +320,209 @@ function WorkerDashboard({ state, currentUser }) {
             bg="#FFF0F0" color="#DE350B" />
         </div>
       </div>
+
+      {myProject && (
+        <>
+          {/* Aktif İşler (Board) */}
+          <div className="mb-4">
+            <h5 className="fw-semibold mb-3 d-flex align-items-center gap-2">
+              <span className="badge" style={{ backgroundColor: '#0052CC', color: '#fff', fontSize: '0.75rem' }}>
+                {myProject.key}
+              </span>
+              Aktif İşler
+            </h5>
+            <WorkerBoardSection projectId={myProject.id} currentUserId={currentUser.id} />
+          </div>
+
+          <hr className="my-4" />
+
+          {/* Backlog */}
+          <div className="mb-4">
+            <h5 className="fw-semibold mb-3">Backlog</h5>
+            <WorkerBacklogSection projectId={myProject.id} currentUserId={currentUser.id} state={state} />
+          </div>
+
+          <hr className="my-4" />
+
+          {/* Taleplerim */}
+          <div>
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <h5 className="fw-semibold mb-0">
+                Taleplerim
+                <span className="text-muted fw-normal small ms-2">({myRequests.length})</span>
+              </h5>
+              <button
+                className="btn btn-sm btn-primary d-flex align-items-center gap-1"
+                onClick={() => setShowRequestModal(true)}
+              >
+                <TbPlus size={14} /> Talep Oluştur
+              </button>
+            </div>
+            {myRequests.length === 0 ? (
+              <p className="text-muted small">Henüz talep oluşturmadınız.</p>
+            ) : (
+              <div className="card border-0 shadow-sm">
+                <div className="card-body p-0">
+                  <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr className="text-muted" style={{ fontSize: '0.75rem' }}>
+                        <th className="fw-semibold border-0 ps-3">No</th>
+                        <th className="fw-semibold border-0">Başlık</th>
+                        <th className="fw-semibold border-0">Durum</th>
+                        <th className="fw-semibold border-0">Açılış</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myRequests.map(req => {
+                        const statusColor = {
+                          'To Do': 'secondary', 'In Progress': 'primary',
+                          'In Review': 'warning', 'Done': 'success',
+                        };
+                        return (
+                          <tr key={req.id}>
+                            <td className="ps-3 align-middle text-muted small">{req.number}</td>
+                            <td className="align-middle fw-medium">{req.title}</td>
+                            <td className="align-middle">
+                              <span className={`badge bg-${statusColor[req.status] || 'secondary'}`} style={{ fontSize: '0.65rem' }}>
+                                {req.status}
+                              </span>
+                            </td>
+                            <td className="align-middle text-muted small">
+                              {req.createdAt ? req.createdAt.substring(0, 10) : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Talep Oluştur Modal */}
+      <Modal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} title="Yeni Talep Oluştur" size="lg">
+        <RequestForm onClose={() => setShowRequestModal(false)} />
+      </Modal>
     </div>
   );
 }
+
+/* Worker için Board bölümü — Board component'ini direkt kullanır, ay seçici dahil */
+function WorkerBoardSection({ projectId, currentUserId }) {
+  const { state } = useAppContext();
+  const [boardSprintId, setBoardSprintId] = useState('active');
+
+  const allSprints = state.sprints
+    .filter(s => s.projectId === projectId)
+    .sort((a, b) => {
+      const aYear = a.year ?? new Date(a.startDate).getFullYear();
+      const bYear = b.year ?? new Date(b.startDate).getFullYear();
+      const aMonth = a.month ?? new Date(a.startDate).getMonth() + 1;
+      const bMonth = b.month ?? new Date(b.startDate).getMonth() + 1;
+      if (aYear !== bYear) return bYear - aYear;
+      return bMonth - aMonth;
+    });
+
+  const activeSprint = allSprints.find(s => s.status === 'Active');
+
+  const resolvedSprint =
+    boardSprintId === 'active'
+      ? activeSprint ?? null
+      : boardSprintId === 'all'
+      ? null
+      : allSprints.find(s => s.id === boardSprintId) ?? null;
+
+  const resolvedSprintId = resolvedSprint?.id ?? null;
+  const isReadonly = resolvedSprint?.status === 'Completed';
+
+  const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+  return (
+    <div>
+      <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
+        <label htmlFor="worker-board-sprint" className="form-label mb-0 small fw-semibold">Ay:</label>
+        <select
+          id="worker-board-sprint"
+          className="form-select form-select-sm"
+          value={boardSprintId}
+          onChange={e => setBoardSprintId(e.target.value)}
+          style={{ minWidth: 180 }}
+        >
+          <option value="active">Aktif Ay</option>
+          <option value="all">Tümü (Kanban)</option>
+          {allSprints.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.name || `${MONTH_NAMES[(s.month || 1) - 1]} ${s.year}`}
+              {s.status === 'Active' ? ' ✓' : s.status === 'Completed' ? ' 🔒' : ''}
+            </option>
+          ))}
+        </select>
+        {isReadonly && (
+          <span className="badge d-flex align-items-center gap-1"
+            style={{ background: '#DEEBFF', color: '#0747A6', fontSize: '0.75rem', padding: '5px 10px' }}>
+            <TbLock size={13} /> Kapalı Ay — Salt Okunur
+          </span>
+        )}
+      </div>
+      {/* Board component — worker'ın kendi işleri assigneeFilter ile filtrelenir */}
+      <Board
+        projectId={projectId}
+        sprintId={resolvedSprintId}
+        readonly={isReadonly}
+        defaultAssigneeFilter={currentUserId}
+      />
+    </div>
+  );
+}
+
+/* Worker için Backlog bölümü — sadece kendine atanan bekleyen işler */
+function WorkerBacklogSection({ projectId, currentUserId, state }) {
+  const myBacklog = state.issues.filter(
+    i => i.projectId === projectId && !i.sprintId && i.assigneeId === currentUserId && !i.isRequest && i.status !== 'Done'
+  );
+
+  if (myBacklog.length === 0) {
+    return <p className="text-muted small">Backlog'da bekleyen işiniz yok.</p>;
+  }
+
+  return (
+    <div className="card border-0 shadow-sm">
+      <div className="card-body p-0">
+        <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
+          <thead>
+            <tr className="text-muted" style={{ fontSize: '0.75rem' }}>
+              <th className="fw-semibold border-0 ps-3">No</th>
+              <th className="fw-semibold border-0">Başlık</th>
+              <th className="fw-semibold border-0">Öncelik</th>
+              <th className="fw-semibold border-0">Açılış</th>
+            </tr>
+          </thead>
+          <tbody>
+            {myBacklog.map(issue => (
+              <tr key={issue.id}>
+                <td className="ps-3 align-middle text-muted small">{issue.number}</td>
+                <td className="align-middle fw-medium">{issue.title}</td>
+                <td className="align-middle">
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: { Highest: '#DE350B', High: '#FF7700', Medium: '#D4A000', Low: '#2684FF', Lowest: '#00875A' }[issue.priority] || '#6B778C' }}>
+                    {issue.priority}
+                  </span>
+                </td>
+                <td className="align-middle text-muted small">
+                  {issue.createdAt ? issue.createdAt.substring(0, 10) : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* Küçük öncelik badge — artık kullanılmıyor, kaldırıldı */
 
 /* ── External User Dashboard ─────────────────────────────────────────────────── */
 function ExternalUserDashboard({ state, currentUser }) {

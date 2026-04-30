@@ -14,8 +14,8 @@ import { useState, useMemo } from 'react';
  *   clearFilters: Function
  * }}
  */
-function useIssueFilters(issues) {
-  const [assigneeFilter, setAssigneeFilter] = useState(null);
+function useIssueFilters(issues, defaultAssigneeFilter = null) {
+  const [assigneeFilter, setAssigneeFilter] = useState(defaultAssigneeFilter);
   const [priorityFilter, setPriorityFilter] = useState(null);
 
   const filteredIssues = useMemo(() => {

@@ -3,7 +3,7 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import { TbPlus, TbLock } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
-import { ACTIONS, STATUSES, ACTIVITY_TYPES } from '../../constants';
+import { ACTIONS, STATUSES, ACTIVITY_TYPES, ROLES } from '../../constants';
 import { generateId } from '../../utils/issueUtils';
 import useIssueFilters from '../../hooks/useIssueFilters';
 import BoardColumn from './BoardColumn';
@@ -18,11 +18,12 @@ import EmptyState from '../common/EmptyState';
  * Full Kanban board with drag-and-drop, filters, and issue creation.
  *
  * @param {Object}      props
- * @param {string}      props.projectId  - The project being displayed
- * @param {string|null} [props.sprintId] - Sprint filter (null = show all)
- * @param {boolean}     [props.readonly] - If true, disables drag-drop and editing
+ * @param {string}      props.projectId             - The project being displayed
+ * @param {string|null} [props.sprintId]            - Sprint filter (null = show all)
+ * @param {boolean}     [props.readonly]            - If true, disables drag-drop and editing
+ * @param {string|null} [props.defaultAssigneeFilter] - Pre-select an assignee filter (e.g. for Worker view)
  */
-function Board({ projectId, sprintId, readonly = false }) {
+function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = null }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
   const [selectedIssueId, setSelectedIssueId] = useState(null);
@@ -52,7 +53,7 @@ function Board({ projectId, sprintId, readonly = false }) {
     setAssigneeFilter,
     setPriorityFilter,
     clearFilters,
-  } = useIssueFilters(baseIssues);
+  } = useIssueFilters(baseIssues, defaultAssigneeFilter);
 
   function handleDragEnd(result) {
     // Disable drag-drop while a request detail modal is open
@@ -110,7 +111,7 @@ function Board({ projectId, sprintId, readonly = false }) {
             clearFilters={clearFilters}
           />
         </div>
-        {!readonly && (
+        {!readonly && currentUser?.role !== ROLES.WORKER && (
           <button
             className="btn btn-sm btn-primary d-flex align-items-center gap-1"
             onClick={() => setShowCreateModal(true)}
