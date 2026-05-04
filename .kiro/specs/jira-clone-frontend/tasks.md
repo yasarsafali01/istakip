@@ -154,3 +154,129 @@
     - `System_Admin` olarak atama listesini aç → Tüm non-external kullanıcılar görünmeli
     - Proje değiştirmeden başlık güncelle → `unitCode` değişmemeli
     - Düzenleme formunu iptal et → Tüm alanlar orijinal değerlerine dönmeli
+
+- [x] 5. Hata 4 — Worker Rolünün Talep Düzenleme Yetkisi
+
+  - [x] 5.1 Hata 4 Keşif Testi Yaz (Düzeltme Öncesi)
+    - **Property 6: Bug Condition** — Worker Rolü için Düzenle Butonu Gizlenmesi
+    - **CRITICAL**: Bu test düzeltilmemiş kodda BAŞARISIZ olmalı — başarısızlık hatanın var olduğunu kanıtlar
+    - **DO NOT attempt to fix the test or the code when it fails**
+    - Test: Worker rolündeki kullanıcı ile `IssueDetailContent` render et → "Düzenle" butonunun DOM'da olmadığını assert et
+    - Testi düzeltilmemiş kod üzerinde çalıştır
+    - **EXPECTED OUTCOME**: Test BAŞARISIZ olur (Worker için "Düzenle" butonu görünür — hatanın kanıtı)
+    - Bulunan karşı örneği belgele
+    - _Requirements: 2.4_
+
+  - [x] 5.2 Hata 4 Koruma Testi Yaz (Düzeltme Öncesi)
+    - **Property 7: Preservation** — Yetkili Rollerin Düzenleme Yetkisi Korunmalı
+    - Test 1: `System_Admin` rolüyle render → "Düzenle" butonunun DOM'da olduğunu assert et
+    - Test 2: `Department_Head` rolüyle render → "Düzenle" butonunun DOM'da olduğunu assert et
+    - Test 3: `Project_Manager` rolüyle render → "Düzenle" butonunun DOM'da olduğunu assert et
+    - Test 4: Worker rolüyle render → durum değiştirme butonlarının DOM'da olduğunu assert et (korunmalı)
+    - Testleri düzeltilmemiş kod üzerinde çalıştır
+    - **EXPECTED OUTCOME**: Testler GEÇER (yetkili roller etkilenmemiş, Worker durum butonları mevcut)
+    - _Requirements: 3.9, 3.10_
+
+  - [x] 5.3 `IssueDetailContent.jsx`'te `isWorker` kontrolü ve `canEdit` değişkeni ekle
+    - `usePermissions` hook'undan `isWorker` değerini destructure et:
+      ```javascript
+      const { isExternalUser, isWorker } = usePermissions();
+      ```
+    - `canEdit` türetilmiş değişkenini türetilmiş veri bölümüne ekle:
+      ```javascript
+      const canEdit = !readonly && !isExternalUser && !isWorker;
+      ```
+    - _Bug_Condition: isBugCondition_4(X) — X.user.role = "Worker" AND rendered.contains(editButton)_
+    - _Expected_Behavior: Worker için editButton render edilmemeli_
+    - _Requirements: 2.4_
+
+  - [x] 5.4 Düzenle/Kaydet/İptal butonlarını `canEdit` koşuluna bağla
+    - Action toolbar'daki `{!readonly && !isExternalUser && (` koşulunu `{canEdit && (` ile değiştir
+    - Bu değişiklik "Düzenle", "Kaydet" ve "İptal" butonlarını kapsar
+    - _Requirements: 2.4_
+
+  - [x] 5.5 Sil butonunu `canEdit` koşuluna bağla
+    - `{!readonly && !isExternalUser && !editMode && (` koşulunu `{canEdit && !editMode && (` ile değiştir
+    - _Requirements: 2.4_
+
+  - [x] 5.6 Hata 4 keşif testinin artık geçtiğini doğrula
+    - **Property 6: Expected Behavior** — Worker için Düzenle Butonu Gizlenmesi
+    - Görev 5.1'deki AYNI testi yeniden çalıştır — yeni test yazma
+    - **EXPECTED OUTCOME**: Test GEÇER (Worker için "Düzenle" butonu artık görünmüyor)
+    - _Requirements: 2.4_
+
+  - [x] 5.7 Koruma testlerinin hâlâ geçtiğini doğrula
+    - **Property 7: Preservation** — Yetkili Rollerin Düzenleme Yetkisi
+    - Görev 5.2'deki AYNI testleri yeniden çalıştır — yeni test yazma
+    - **EXPECTED OUTCOME**: Testler GEÇER (yetkili roller etkilenmemiş, Worker durum butonları mevcut)
+    - _Requirements: 3.9, 3.10_
+
+- [x] 6. Kontrol Noktası — Hata 4 Testlerinin Tamamı Geçiyor
+  - Tüm testlerin geçtiğinden emin ol
+  - Görev 5.1 (keşif testi) düzeltilmiş kodda GEÇMELI
+  - Görev 5.2 (koruma testleri) düzeltilmiş kodda GEÇMELI
+  - Ek manuel doğrulama:
+    - Worker olarak giriş yap → Talep detay modalını aç → "Düzenle" butonu görünmemeli
+    - Worker olarak giriş yap → Durum değiştirme butonları görünmeli
+    - System_Admin olarak giriş yap → "Düzenle" butonu görünmeli (korunmalı)
+    - Department_Head olarak giriş yap → "Düzenle" butonu görünmeli (korunmalı)
+    - Project_Manager olarak giriş yap → "Düzenle" butonu görünmeli (korunmalı)
+
+- [x] 7. Hata 5 — External_User'ın Kendi Açtığı Talepleri Düzenleyememesi
+
+  - [x] 7.1 Hata 5 Keşif Testi Yaz (Düzeltme Öncesi)
+    - **Property 8: Bug Condition** — External_User Kendi Talebinde Düzenle Butonu Görünmeli
+    - **CRITICAL**: Bu test düzeltilmemiş kodda BAŞARISIZ olmalı — başarısızlık hatanın var olduğunu kanıtlar
+    - **DO NOT attempt to fix the test or the code when it fails**
+    - Test: `External_User` rolündeki kullanıcı kendi açtığı talep (`reporterId === currentUser.id`) ile `IssueDetailContent` render et → "Düzenle" butonunun DOM'da olduğunu assert et
+    - Testi düzeltilmemiş kod üzerinde çalıştır
+    - **EXPECTED OUTCOME**: Test BAŞARISIZ olur (External_User için "Düzenle" butonu görünmüyor — hatanın kanıtı)
+    - Bulunan karşı örneği belgele
+    - _Requirements: 2.5_
+
+  - [x] 7.2 Hata 5 Koruma Testi Yaz (Düzeltme Öncesi)
+    - **Property 9: Preservation** — External_User Başkasının Talebinde Butonlar Görünmemeli
+    - Test 1: `External_User` rolüyle başkasının açtığı talep render → "Düzenle" butonunun DOM'da olmadığını assert et
+    - Test 2: `System_Admin` rolüyle render → "Düzenle" butonunun DOM'da olduğunu assert et (korunmalı)
+    - Test 3: `Department_Head` rolüyle render → "Düzenle" butonunun DOM'da olduğunu assert et (korunmalı)
+    - Test 4: `Project_Manager` rolüyle render → "Düzenle" butonunun DOM'da olduğunu assert et (korunmalı)
+    - Testleri düzeltilmemiş kod üzerinde çalıştır
+    - **EXPECTED OUTCOME**: Testler GEÇER (başkasının talebi için External_User etkilenmemiş, yetkili roller etkilenmemiş)
+    - _Requirements: 2.6, 3.9, 3.11_
+
+  - [x] 7.3 `IssueDetailContent.jsx`'te `isOwnRequest` ve güncellenmiş `canEdit` değişkenini ekle
+    - Türetilmiş veri bölümünde `canEdit` satırını şu şekilde güncelle:
+      ```javascript
+      const isOwnRequest = issue.isRequest && issue.reporterId === currentUser?.id;
+      const canEdit = !readonly && !isWorker && (!isExternalUser || isOwnRequest);
+      ```
+    - _Bug_Condition: isBugCondition_5(X) — X.user.role = "External_User" AND X.request.reporterId = X.user.id AND NOT rendered.contains(editButton)_
+    - _Expected_Behavior: External_User kendi talebinde editButton render edilmeli_
+    - _Preservation: External_User başkasının talebinde editButton render edilmemeli_
+    - _Requirements: 2.5, 2.6_
+
+  - [x] 7.4 Hata 5 keşif testinin artık geçtiğini doğrula
+    - **Property 8: Expected Behavior** — External_User Kendi Talebinde Düzenle Butonu Görünmeli
+    - Görev 7.1'deki AYNI testi yeniden çalıştır — yeni test yazma
+    - **EXPECTED OUTCOME**: Test GEÇER (External_User kendi talebinde "Düzenle" butonu artık görünüyor)
+    - _Requirements: 2.5_
+
+  - [x] 7.5 Koruma testlerinin hâlâ geçtiğini doğrula
+    - **Property 9: Preservation** — External_User Başkasının Talebinde Butonlar Görünmemeli
+    - Görev 7.2'deki AYNI testleri yeniden çalıştır — yeni test yazma
+    - **EXPECTED OUTCOME**: Testler GEÇER (başkasının talebi için External_User etkilenmemiş, yetkili roller etkilenmemiş)
+    - _Requirements: 2.6, 3.9, 3.11_
+
+- [x] 8. Kontrol Noktası — Hata 5 Testlerinin Tamamı Geçiyor
+  - Tüm testlerin geçtiğinden emin ol
+  - Görev 7.1 (keşif testi) düzeltilmiş kodda GEÇMELI
+  - Görev 7.2 (koruma testleri) düzeltilmiş kodda GEÇMELI
+  - Ek manuel doğrulama:
+    - External_User olarak giriş yap → Kendi açtığın talebi aç → "Düzenle" butonu görünmeli
+    - External_User olarak giriş yap → Kendi açtığın talebi düzenle → Değişiklikler kaydedilmeli
+    - External_User olarak giriş yap → Kendi açtığın talebi sil → Talep silinmeli
+    - External_User olarak giriş yap → Başkasının açtığı talebi aç → "Düzenle" butonu görünmemeli
+    - Worker olarak giriş yap → Talep detay modalını aç → "Düzenle" butonu görünmemeli (korunmalı)
+    - System_Admin olarak giriş yap → "Düzenle" butonu görünmeli (korunmalı)
+    - Department_Head olarak giriş yap → "Düzenle" butonu görünmeli (korunmalı)
+    - Project_Manager olarak giriş yap → "Düzenle" butonu görünmeli (korunmalı)

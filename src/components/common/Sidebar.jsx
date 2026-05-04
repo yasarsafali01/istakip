@@ -18,9 +18,9 @@ import Avatar from './Avatar';
 
 // "projects" key'i artık sidebar nav'dan çıkarıldı — Aktif İşler + Backlog direkt ekleniyor
 const NAV_CONFIG = {
-  dashboard: { to: '/dashboard', label: 'Ana Sayfa', Icon: TbLayoutDashboard },
-  units:     { to: '/units',     label: 'Birimler',  Icon: TbBuilding },
-  requests:  { to: '/requests',  label: 'Talepler',  Icon: TbTicket },
+  dashboard: { to: '/dashboard', label: 'Ana Sayfa',        Icon: TbLayoutDashboard },
+  units:     { to: '/units',     label: 'Birimler',         Icon: TbBuilding },
+  requests:  { to: '/requests',  label: 'Talepler',         Icon: TbTicket },
 };
 
 const ROLE_LABELS = {
@@ -57,7 +57,19 @@ export default function Sidebar() {
   const navItems = currentUser
     ? (ROLE_NAV_ITEMS[currentUser.role] || [])
         .filter((key) => key !== 'projects')
-        .map((key) => NAV_CONFIG[key])
+        .map((key) => {
+          const item = NAV_CONFIG[key];
+          if (!item) return null;
+          // Dış kullanıcı için "Talepler" → "Açtığım Talepler"
+          if (key === 'requests' && currentUser.role === ROLES.EXTERNAL_USER) {
+            return { ...item, label: 'Açtığım Talepler' };
+          }
+          // Çalışan için "Talepler" → "Açtığım Talepler"
+          if (key === 'requests' && currentUser.role === ROLES.WORKER) {
+            return { ...item, label: 'Açtığım Talepler' };
+          }
+          return item;
+        })
         .filter(Boolean)
     : [];
 

@@ -46,7 +46,7 @@ import ConfirmDialog from '../common/ConfirmDialog';
 function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
-  const { isExternalUser } = usePermissions();
+  const { isExternalUser, isWorker } = usePermissions();
 
   // ── Edit mode ─────────────────────────────────────────────────────────────
   const [editMode, setEditMode] = useState(false);
@@ -89,6 +89,9 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     );
   const canClone =
     issue.isRequest && (!isExternalUser || issue.reporterId === currentUser?.id);
+
+  const isOwnRequest = issue.isRequest && issue.reporterId === currentUser?.id;
+  const canEdit = !readonly && !isWorker && (!isExternalUser || isOwnRequest);
 
   const assignableUsers = state.users.filter((u) => {
     if (u.role === ROLES.EXTERNAL_USER) return false;
@@ -148,7 +151,8 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
         type: editType,
         priority: editPriority,
         status: editStatus,
-        assigneeId: editAssigneeId || null,
+        // Dış kullanıcı atanan kişiyi değiştiremez — mevcut değer korunur
+        assigneeId: isExternalUser ? (issue.assigneeId || null) : (editAssigneeId || null),
         projectId: editProjectId,
         unitCode: newUnitCode,
       },
@@ -284,7 +288,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
 
         <div className="ms-auto d-flex gap-2">
           {/* Edit / Save / Cancel */}
-          {!readonly && !isExternalUser && (
+          {canEdit && (
             editMode ? (
               <>
                 <button className="btn btn-sm btn-primary d-flex align-items-center gap-1" onClick={handleSave}>
@@ -323,7 +327,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
           )}
 
           {/* Delete */}
-          {!readonly && !isExternalUser && !editMode && (
+          {canEdit && !editMode && (
             <button
               className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
               onClick={() => setShowDeleteConfirm(true)}
@@ -580,7 +584,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                   <option value="">— Atanmamış —</option>
                   {assignableUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
-              ) : editMode ? (
+              ) : editMode && !isExternalUser ? (
                 <select
                   className="form-select form-select-sm"
                   value={editAssigneeId}

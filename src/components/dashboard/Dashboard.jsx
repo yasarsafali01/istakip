@@ -28,16 +28,28 @@ function sprintDateRange(sprint) {
 /* ── Modern istatistik kartı ─────────────────────────────────────────────────── */
 function StatCard({ title, value, icon, bg, color }) {
   return (
-    <div className="card border-0 shadow-sm h-100" style={{ borderLeft: `4px solid ${color}` }}>
+    <div
+      className="card border-0 shadow-sm h-100"
+      style={{ borderLeft: `4px solid ${color}`, background: `linear-gradient(135deg, ${bg} 0%, #ffffff 100%)` }}
+    >
       <div className="card-body py-3 px-4">
         <div className="d-flex align-items-center justify-content-between mb-2">
-          <span className="text-muted small fw-semibold">{title}</span>
-          <div className="d-flex align-items-center justify-content-center rounded-circle"
-            style={{ width: 36, height: 36, background: bg }}>
+          <span
+            className="fw-semibold text-muted"
+            style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+          >
+            {title}
+          </span>
+          <div
+            className="d-flex align-items-center justify-content-center rounded-circle"
+            style={{ width: 36, height: 36, background: bg, flexShrink: 0 }}
+          >
             <span style={{ color, fontSize: 18 }}>{icon}</span>
           </div>
         </div>
-        <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color }}>{value}</div>
+        <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color }}>
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -47,18 +59,28 @@ function StatCard({ title, value, icon, bg, color }) {
 function ActivePeriodCard({ sprint }) {
   const dateRange = sprintDateRange(sprint);
   return (
-    <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #00875A' }}>
+    <div
+      className="card border-0 shadow-sm h-100"
+      style={{ borderLeft: '4px solid #008DA6', background: 'linear-gradient(135deg, #E0F7FA 0%, #ffffff 100%)' }}
+    >
       <div className="card-body py-3 px-4">
         <div className="d-flex align-items-center justify-content-between mb-2">
-          <span className="text-muted small fw-semibold">Aktif Dönem</span>
-          <div className="d-flex align-items-center justify-content-center rounded-circle"
-            style={{ width: 36, height: 36, background: '#E3FCEF' }}>
-            <span style={{ color: '#00875A', fontSize: 18 }}><TbCalendar /></span>
+          <span
+            className="fw-semibold text-muted"
+            style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+          >
+            Aktif Dönem
+          </span>
+          <div
+            className="d-flex align-items-center justify-content-center rounded-circle"
+            style={{ width: 36, height: 36, background: '#E0F7FA', flexShrink: 0 }}
+          >
+            <span style={{ color: '#008DA6', fontSize: 18 }}><TbCalendar /></span>
           </div>
         </div>
         {sprint ? (
           <>
-            <div className="fw-bold" style={{ fontSize: '1rem', lineHeight: 1.3, color: '#00875A' }}>
+            <div className="fw-bold" style={{ fontSize: '1rem', lineHeight: 1.3, color: '#008DA6' }}>
               {sprint.name || 'Aktif Dönem'}
             </div>
             <div className="text-muted mt-1" style={{ fontSize: '0.75rem' }}>{dateRange}</div>
@@ -114,7 +136,7 @@ function AdminDashboard({ state }) {
         </div>
         <div className="col-6 col-lg-2">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
-            bg="#FFF0F0" color="#DE350B" />
+            bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
 
@@ -138,11 +160,13 @@ function DepartmentHeadDashboard({ state, currentUser }) {
   const activeSprint = state.sprints.find(
     s => s.status === 'Active' && visibleProjectIds.includes(s.projectId)
   );
-  const unitIssues = state.issues.filter(i => visibleProjectIds.includes(i.projectId) && !i.isRequest);
-  const requests = state.issues.filter(i => visibleProjectIds.includes(i.projectId) && i.isRequest);
-  const openRequests = requests.filter(r => r.status !== 'Done').length;
-  const resolvedRequests = requests.filter(r => r.status === 'Done').length;
-  const pendingIssues = unitIssues.filter(i => !i.sprintId && i.status !== 'Done').length;
+  const unitIssues  = state.issues.filter(i => visibleProjectIds.includes(i.projectId) && !i.isRequest);
+  const requests    = state.issues.filter(i => visibleProjectIds.includes(i.projectId) && i.isRequest);
+
+  // İş istatistikleri (talepler hariç)
+  const openIssues     = unitIssues.filter(i => i.status !== 'Done').length;
+  const resolvedIssues = unitIssues.filter(i => i.status === 'Done').length;
+  const pendingIssues  = unitIssues.filter(i => !i.sprintId && i.status !== 'Done').length;
 
   return (
     <div>
@@ -158,20 +182,20 @@ function DepartmentHeadDashboard({ state, currentUser }) {
           <ActivePeriodCard sprint={activeSprint} />
         </div>
         <div className="col-6 col-lg-2">
-          <StatCard title="Toplam Talep" value={requests.length} icon={<TbTicket />}
+          <StatCard title="Toplam İş" value={unitIssues.length} icon={<TbTicket />}
             bg="#FFF4E5" color="#FF7700" />
         </div>
         <div className="col-6 col-lg-2">
-          <StatCard title="Açık Talep" value={openRequests} icon={<TbAlertCircle />}
+          <StatCard title="Açık İşler" value={openIssues} icon={<TbAlertCircle />}
             bg="#FFF0F0" color="#DE350B" />
         </div>
         <div className="col-6 col-lg-2">
-          <StatCard title="Çözülmüş Talep" value={resolvedRequests} icon={<TbCircleCheck />}
+          <StatCard title="Tamamlanan" value={resolvedIssues} icon={<TbCircleCheck />}
             bg="#E3FCEF" color="#00875A" />
         </div>
         <div className="col-6 col-lg-2">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
-            bg="#FFF0F0" color="#DE350B" />
+            bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
 
@@ -198,9 +222,11 @@ function ProjectManagerDashboard({ state, currentUser }) {
   const activeSprint = myProject
     ? state.sprints.find(s => s.projectId === myProject.id && s.status === 'Active')
     : null;
-  const openRequests = requests.filter(r => r.status !== 'Done').length;
-  const resolvedRequests = requests.filter(r => r.status === 'Done').length;
-  const pendingIssues = projectIssues.filter(i => !i.sprintId && i.status !== 'Done').length;
+
+  // İş istatistikleri (talepler hariç)
+  const openIssues     = projectIssues.filter(i => i.status !== 'Done').length;
+  const resolvedIssues = projectIssues.filter(i => i.status === 'Done').length;
+  const pendingIssues  = projectIssues.filter(i => !i.sprintId && i.status !== 'Done').length;
 
   const assigneeMap = {};
   projectIssues.filter(i => i.assigneeId && i.status !== 'Done').forEach(issue => {
@@ -222,20 +248,20 @@ function ProjectManagerDashboard({ state, currentUser }) {
           <ActivePeriodCard sprint={activeSprint} />
         </div>
         <div className="col-6 col-lg-2">
-          <StatCard title="Toplam Talep" value={requests.length} icon={<TbTicket />}
+          <StatCard title="Toplam İş" value={projectIssues.length} icon={<TbTicket />}
             bg="#FFF4E5" color="#FF7700" />
         </div>
         <div className="col-6 col-lg-2">
-          <StatCard title="Açık Talep" value={openRequests} icon={<TbAlertCircle />}
+          <StatCard title="Açık İşler" value={openIssues} icon={<TbAlertCircle />}
             bg="#FFF0F0" color="#DE350B" />
         </div>
         <div className="col-6 col-lg-2">
-          <StatCard title="Çözülmüş Talep" value={resolvedRequests} icon={<TbCircleCheck />}
+          <StatCard title="Tamamlanan" value={resolvedIssues} icon={<TbCircleCheck />}
             bg="#E3FCEF" color="#00875A" />
         </div>
         <div className="col-6 col-lg-2">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
-            bg="#FFF0F0" color="#DE350B" />
+            bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
 
@@ -317,7 +343,7 @@ function WorkerDashboard({ state, currentUser }) {
         </div>
         <div className="col-6 col-lg-2">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
-            bg="#FFF0F0" color="#DE350B" />
+            bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
 
@@ -340,64 +366,6 @@ function WorkerDashboard({ state, currentUser }) {
           <div className="mb-4">
             <h5 className="fw-semibold mb-3">Backlog</h5>
             <WorkerBacklogSection projectId={myProject.id} currentUserId={currentUser.id} state={state} />
-          </div>
-
-          <hr className="my-4" />
-
-          {/* Taleplerim */}
-          <div>
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <h5 className="fw-semibold mb-0">
-                Taleplerim
-                <span className="text-muted fw-normal small ms-2">({myRequests.length})</span>
-              </h5>
-              <button
-                className="btn btn-sm btn-primary d-flex align-items-center gap-1"
-                onClick={() => setShowRequestModal(true)}
-              >
-                <TbPlus size={14} /> Talep Oluştur
-              </button>
-            </div>
-            {myRequests.length === 0 ? (
-              <p className="text-muted small">Henüz talep oluşturmadınız.</p>
-            ) : (
-              <div className="card border-0 shadow-sm">
-                <div className="card-body p-0">
-                  <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr className="text-muted" style={{ fontSize: '0.75rem' }}>
-                        <th className="fw-semibold border-0 ps-3">No</th>
-                        <th className="fw-semibold border-0">Başlık</th>
-                        <th className="fw-semibold border-0">Durum</th>
-                        <th className="fw-semibold border-0">Açılış</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {myRequests.map(req => {
-                        const statusColor = {
-                          'To Do': 'secondary', 'In Progress': 'primary',
-                          'In Review': 'warning', 'Done': 'success',
-                        };
-                        return (
-                          <tr key={req.id}>
-                            <td className="ps-3 align-middle text-muted small">{req.number}</td>
-                            <td className="align-middle fw-medium">{req.title}</td>
-                            <td className="align-middle">
-                              <span className={`badge bg-${statusColor[req.status] || 'secondary'}`} style={{ fontSize: '0.65rem' }}>
-                                {req.status}
-                              </span>
-                            </td>
-                            <td className="align-middle text-muted small">
-                              {req.createdAt ? req.createdAt.substring(0, 10) : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </div>
         </>
       )}
@@ -634,3 +602,4 @@ export default function Dashboard() {
     default:                    return <AdminDashboard state={state} currentUser={currentUser} />;
   }
 }
+

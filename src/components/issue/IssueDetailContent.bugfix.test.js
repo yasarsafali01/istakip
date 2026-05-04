@@ -91,13 +91,12 @@ describe('Hata 1 — Proje Alanı Eksikliği', () => {
 
     // Proje seçim alanı DOM'da olmalı
     // Düzeltilmemiş kodda bu alan render edilmediğinden test BAŞARISIZ olacak
-    const projectSelect = screen.queryByTestId('project-select') ||
-      screen.queryByLabelText(/proje/i) ||
-      document.querySelector('select[data-testid="project-select"]');
+    const projectSelects = screen.queryAllByTestId('project-select');
+    const projectSelect = projectSelects.length > 0 ? projectSelects[0] : null;
 
-    // Alternatif: "Proje" etiketli bir select veya label arayalım
-    const projectLabel = screen.queryByText(/^📁\s*Proje$/i) ||
-      screen.queryByText(/proje/i, { selector: '.text-muted' });
+    // Alternatif: "Proje" etiketli bir label arayalım
+    const projectLabels = screen.queryAllByText(/proje/i, { selector: '.text-muted' });
+    const projectLabel = projectLabels.length > 0 ? projectLabels[0] : null;
 
     expect(projectSelect || projectLabel).not.toBeNull();
   });
@@ -655,5 +654,427 @@ describe('Koruma Testleri (Preservation)', () => {
       expect(payload.status).toBe(requestBigd1.status);
       expect(payload.assigneeId).toBe(requestBigd1.assigneeId);
     });
+  });
+});
+
+
+// ─── Hata 4: Worker Rolünün Talep Düzenleme Yetkisi ──────────────────────────
+
+// Worker user (project-bigd-1'e atanmış)
+const workerUser = seedUsers.find((u) => u.id === 'user-bigd-w1');
+
+// System_Admin, Department_Head, Project_Manager kullanıcıları
+const adminUser = seedUsers.find((u) => u.id === 'user-admin');
+const deptHead = seedUsers.find((u) => u.id === 'user-bigd-head');
+const projectManager = seedUsers.find((u) => u.id === 'user-bigd-pm');
+
+/**
+ * Hata 4 Keşif Testi (Task 5.1)
+ *
+ * Validates: Bug Condition 4 — Worker Rolü için Düzenle Butonu Gizlenmesi
+ *
+ * Worker rolündeki kullanıcı için IssueDetailContent render edildiğinde
+ * "Düzenle" butonu DOM'da OLMAMALI.
+ *
+ * Düzeltilmemiş kodda (!readonly && !isExternalUser) koşulu Worker'ı dışlamadığından
+ * "Düzenle" butonu görünür — bu test BAŞARISIZ olacak.
+ *
+ * CRITICAL: Bu test düzeltilmemiş kodda BAŞARISIZ olmalı.
+ */
+describe('Hata 4 — Worker Rolünün Talep Düzenleme Yetkisi (Keşif Testi)', () => {
+  test('Worker rolündeki kullanıcı için "Düzenle" butonu DOM\'da bulunmamalı', () => {
+    const state = {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: workerUser.id, role: workerUser.role, unitId: workerUser.unitId, projectId: workerUser.projectId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // "Düzenle" butonu DOM'da OLMAMALI
+    // Düzeltilmemiş kodda (!readonly && !isExternalUser) Worker'ı dışlamadığından
+    // bu buton görünür olacak ve test BAŞARISIZ olacak
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).toBeNull();
+  });
+
+  test('Worker rolündeki kullanıcı için "Sil" butonu DOM\'da bulunmamalı', () => {
+    const state = {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: workerUser.id, role: workerUser.role, unitId: workerUser.unitId, projectId: workerUser.projectId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // Sil butonu (TbTrash ikonu içeren) DOM'da OLMAMALI
+    // Düzeltilmemiş kodda (!readonly && !isExternalUser && !editMode) Worker'ı dışlamadığından
+    // bu buton görünür olacak ve test BAŞARISIZ olacak
+    const deleteButton = document.querySelector('.btn-outline-danger');
+    expect(deleteButton).toBeNull();
+  });
+});
+
+/**
+ * Hata 4 Koruma Testleri (Task 5.2)
+ *
+ * Validates: Requirements 3.9, 3.10
+ *
+ * Bu testler düzeltilmemiş kodda GEÇMELI.
+ * Yetkili rollerin düzenleme yetkisi etkilenmemeli.
+ * Worker'ın durum değiştirme butonları korunmalı.
+ */
+describe('Hata 4 — Koruma Testleri (Preservation)', () => {
+
+  function buildStateForUser(user) {
+    return {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: user.id, role: user.role, unitId: user.unitId, projectId: user.projectId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+  }
+
+  test('System_Admin rolüyle render edildiğinde "Düzenle" butonu DOM\'da bulunmalı', () => {
+    const state = buildStateForUser(adminUser);
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // System_Admin için "Düzenle" butonu görünmeli (korunmalı)
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).not.toBeNull();
+  });
+
+  test('Department_Head rolüyle render edildiğinde "Düzenle" butonu DOM\'da bulunmalı', () => {
+    const state = buildStateForUser(deptHead);
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // Department_Head için "Düzenle" butonu görünmeli (korunmalı)
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).not.toBeNull();
+  });
+
+  test('Project_Manager rolüyle render edildiğinde "Düzenle" butonu DOM\'da bulunmalı', () => {
+    const state = buildStateForUser(projectManager);
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // Project_Manager için "Düzenle" butonu görünmeli (korunmalı)
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).not.toBeNull();
+  });
+
+  test('Worker rolüyle render edildiğinde durum değiştirme butonları DOM\'da bulunmalı', () => {
+    const state = buildStateForUser(workerUser);
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // Worker için durum değiştirme butonları görünmeli (korunmalı)
+    // Durum butonları: requestBigd1.status = 'To Do', diğer statüsler gösterilmeli
+    // (!readonly && !editMode && !isExternalUser) koşuluyla render edilen butonlar
+    const statusButtons = screen.queryAllByRole('button', { name: /in progress|in review|done/i });
+    expect(statusButtons.length).toBeGreaterThan(0);
+  });
+});
+
+
+// ─── Hata 5: External_User'ın Kendi Açtığı Talepleri Düzenleyememesi ─────────
+
+// External_User (kendi açtığı talep: reporterId === user-external)
+const externalUser = seedUsers.find((u) => u.id === 'user-external');
+
+// requestBigd1.reporterId === 'user-external' — kendi talebi
+// Başkasının açtığı talep için farklı bir issue kullanalım (reporterId !== user-external)
+const otherUserRequest = {
+  ...seedIssues.find((i) => i.id === 'issue-bigd1-req1'),
+  id: 'issue-other-req',
+  reporterId: 'user-bigd-pm', // başkasının açtığı talep
+};
+
+/**
+ * Hata 5 Keşif Testi (Task 7.1)
+ *
+ * Validates: Bug Condition 5 — External_User Kendi Talebinde Düzenle Butonu Görünmeli
+ *
+ * External_User rolündeki kullanıcı kendi açtığı talep için IssueDetailContent
+ * render edildiğinde "Düzenle" butonu DOM'da OLMALI.
+ *
+ * Düzeltilmemiş kodda (!readonly && !isExternalUser && !isWorker) koşulu
+ * External_User'ı tamamen dışladığından "Düzenle" butonu görünmez —
+ * bu test BAŞARISIZ olacak.
+ *
+ * CRITICAL: Bu test düzeltilmemiş kodda BAŞARISIZ olmalı.
+ */
+describe('Hata 5 — External_User Kendi Talebini Düzenleyemiyor (Keşif Testi)', () => {
+  test('External_User kendi açtığı talep için "Düzenle" butonu DOM\'da bulunmalı', () => {
+    const state = {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: externalUser.id, role: externalUser.role, unitId: externalUser.unitId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+    const dispatch = jest.fn();
+
+    // requestBigd1.reporterId === 'user-external' — kendi talebi
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // "Düzenle" butonu DOM'da OLMALI
+    // Düzeltilmemiş kodda (!readonly && !isExternalUser) External_User'ı dışladığından
+    // bu buton görünmez olacak ve test BAŞARISIZ olacak
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).not.toBeNull();
+  });
+
+  test('External_User kendi açtığı talep için "Sil" butonu DOM\'da bulunmalı', () => {
+    const state = {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: externalUser.id, role: externalUser.role, unitId: externalUser.unitId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // Sil butonu (btn-outline-danger) DOM'da OLMALI
+    // Düzeltilmemiş kodda bu buton görünmez olacak ve test BAŞARISIZ olacak
+    const deleteButton = document.querySelector('.btn-outline-danger');
+    expect(deleteButton).not.toBeNull();
+  });
+});
+
+/**
+ * Hata 5 Koruma Testleri (Task 7.2)
+ *
+ * Validates: Requirements 2.6, 3.9, 3.11
+ *
+ * Bu testler düzeltilmemiş kodda GEÇMELI.
+ * External_User başkasının talebinde butonları görmemeli.
+ * Yetkili rollerin düzenleme yetkisi etkilenmemeli.
+ */
+describe('Hata 5 — Koruma Testleri (Preservation)', () => {
+
+  function buildStateForExternalUser() {
+    return {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: externalUser.id, role: externalUser.role, unitId: externalUser.unitId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: [...seedIssues, otherUserRequest],
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+  }
+
+  test('External_User başkasının açtığı talep için "Düzenle" butonu DOM\'da bulunmamalı', () => {
+    const state = buildStateForExternalUser();
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={otherUserRequest}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // External_User başkasının talebinde "Düzenle" butonu OLMAMALI (korunmalı)
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).toBeNull();
+  });
+
+  test('System_Admin rolüyle render edildiğinde "Düzenle" butonu DOM\'da bulunmalı (korunmalı)', () => {
+    const state = {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: adminUser.id, role: adminUser.role, unitId: adminUser.unitId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // System_Admin için "Düzenle" butonu görünmeli (korunmalı)
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).not.toBeNull();
+  });
+
+  test('Department_Head rolüyle render edildiğinde "Düzenle" butonu DOM\'da bulunmalı (korunmalı)', () => {
+    const state = {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: deptHead.id, role: deptHead.role, unitId: deptHead.unitId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // Department_Head için "Düzenle" butonu görünmeli (korunmalı)
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).not.toBeNull();
+  });
+
+  test('Project_Manager rolüyle render edildiğinde "Düzenle" butonu DOM\'da bulunmalı (korunmalı)', () => {
+    const state = {
+      auth: {
+        isAuthenticated: true,
+        currentUser: { id: projectManager.id, role: projectManager.role, unitId: projectManager.unitId },
+      },
+      users: seedUsers,
+      projects: seedProjects,
+      units: seedUnits,
+      issues: seedIssues,
+      sprints: [],
+      comments: [],
+      activities: [],
+    };
+    const dispatch = jest.fn();
+
+    renderWithContext(
+      <IssueDetailContent
+        issue={requestBigd1}
+        onClose={jest.fn()}
+      />,
+      state,
+      dispatch
+    );
+
+    // Project_Manager için "Düzenle" butonu görünmeli (korunmalı)
+    const editButton = screen.queryByRole('button', { name: /düzenle/i });
+    expect(editButton).not.toBeNull();
   });
 });
