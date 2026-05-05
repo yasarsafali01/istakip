@@ -232,7 +232,7 @@ function IssueDetail({ issue, onClose, readonly = false }) {
                   {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               ) : (
-                <Badge label={issue.type} type="issueType" />
+                <Badge label="Talep" type="issueType" />
               )}
             </div>
 

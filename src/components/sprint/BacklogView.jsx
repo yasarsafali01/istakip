@@ -18,7 +18,7 @@ function BacklogView({ projectId }) {
   const [selectedRequestId, setSelectedRequestId] = useState(null);
 
   const backlogIssues = state.issues.filter(
-    i => i.projectId === projectId && !i.sprintId
+    i => i.projectId === projectId && !i.sprintId && i.status !== 'Geri Çevrildi'
   );
 
   const availableSprints = state.sprints.filter(
@@ -86,8 +86,17 @@ function BacklogView({ projectId }) {
                       {issue.number}
                     </span>
                     {issue.title}
+                    {/* Rejection reason (if rejected) */}
+                    {issue.status === 'Geri Çevrildi' && issue.rejectionReason && (
+                      <div className="mt-1" style={{ color: '#DE350B', fontStyle: 'italic', fontSize: '0.75rem' }}>
+                        🚫 {issue.rejectionReason}
+                      </div>
+                    )}
                   </button>
-                  <Badge label={issue.type} type="issueType" />
+                  {issue.isRequest && (
+                    <Badge label="Talep" color="#6f42c1" className="me-1" />
+                  )}
+                  <Badge label="Talep" type="issueType" />
                   {assignee && <Avatar name={assignee.name} color={assignee.avatarColor} size={22} />}
                   <select
                     className="form-select form-select-sm"

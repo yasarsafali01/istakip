@@ -81,10 +81,11 @@ export default function RequestList() {
   const hasActiveFilter = searchQuery.trim() || selectedUnitId || statusGroup !== 'all' || selectedPriority;
 
   // Stat card counts — always from all visible requests (not filtered)
-  const allVisibleRequests = getVisibleRequests(state.issues, currentUser);
+  const allVisibleRequests = getVisibleRequests(state.issues, currentUser, state.projects);
   const totalCount      = allVisibleRequests.length;
-  const inProgressCount = allVisibleRequests.filter(r => r.status !== 'To Do' && r.status !== 'Done').length;
+  const inProgressCount = allVisibleRequests.filter(r => r.status !== 'To Do' && r.status !== 'Done' && r.status !== 'Geri Çevrildi').length;
   const resolvedCount   = allVisibleRequests.filter(r => r.status === 'Done').length;
+  const rejectedCount   = allVisibleRequests.filter(r => r.status === 'Geri Çevrildi').length;
 
   return (
     <div>
@@ -92,7 +93,9 @@ export default function RequestList() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div className="d-flex align-items-center gap-2">
           <h4 className="fw-bold mb-0">
-            {isExternalUser || role === 'Worker' ? 'Açtığım Talepler' : 'Talepler'}
+            {[ROLES.EXTERNAL_USER, ROLES.WORKER, ROLES.PROJECT_MANAGER, ROLES.DEPARTMENT_HEAD].includes(currentUser?.role)
+              ? 'Açtığım Talepler'
+              : 'Talepler'}
           </h4>
           <button
             type="button"
@@ -117,7 +120,7 @@ export default function RequestList() {
       {/* Stat cards */}
       <div className="row g-3 mb-4">
         {/* Toplam Talep */}
-        <div className="col-4">
+        <div className="col-3">
           <div
             className="rounded-3 p-3 h-100"
             style={{
@@ -139,7 +142,7 @@ export default function RequestList() {
         </div>
 
         {/* Çözüm Aşamasında */}
-        <div className="col-4">
+        <div className="col-3">
           <div
             className="rounded-3 p-3 h-100"
             style={{
@@ -161,7 +164,7 @@ export default function RequestList() {
         </div>
 
         {/* Çözülmüş */}
-        <div className="col-4">
+        <div className="col-3">
           <div
             className="rounded-3 p-3 h-100"
             style={{
@@ -179,6 +182,28 @@ export default function RequestList() {
               {resolvedCount}
             </div>
             <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Tamamlanan talepler</div>
+          </div>
+        </div>
+
+        {/* Geri Çevrilmiş */}
+        <div className="col-3">
+          <div
+            className="rounded-3 p-3 h-100"
+            style={{
+              background: 'linear-gradient(135deg, #FFEBE6 0%, #ffd4cc 100%)',
+              borderLeft: '4px solid #DE350B',
+            }}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-1">
+              <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Geri Çevrilmiş
+              </span>
+              <span style={{ fontSize: '1.4rem' }}>🚫</span>
+            </div>
+            <div className="fw-bold" style={{ fontSize: '2rem', color: '#DE350B', lineHeight: 1 }}>
+              {rejectedCount}
+            </div>
+            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Geri çevrilen talepler</div>
           </div>
         </div>
       </div>
@@ -211,7 +236,7 @@ export default function RequestList() {
         {/* Durum filtresi */}
         <FilterChip
           icon={<TbCircleCheck size={14} />}
-          label={statusGroup === 'open' ? 'Açık Talepler' : statusGroup === 'closed' ? 'Kapanan Talepler' : 'Durum'}
+          label={statusGroup === 'open' ? 'Açık Talepler' : statusGroup === 'closed' ? 'Kapanan Talepler' : statusGroup === 'rejected' ? 'Geri Çevrilen Talepler' : 'Durum'}
           active={statusGroup !== 'all'}
         >
           <FilterChipOption selected={statusGroup === 'all'} onClick={() => setStatusGroup('all')}>
@@ -222,6 +247,9 @@ export default function RequestList() {
           </FilterChipOption>
           <FilterChipOption selected={statusGroup === 'closed'} onClick={() => setStatusGroup('closed')}>
             Kapanan Talepler
+          </FilterChipOption>
+          <FilterChipOption selected={statusGroup === 'rejected'} onClick={() => setStatusGroup('rejected')}>
+            Geri Çevrilen Talepler
           </FilterChipOption>
         </FilterChip>
 
@@ -366,7 +394,10 @@ export default function RequestList() {
 
       {/* New request modal */}
       <Modal isOpen={showForm} title="Yeni Talep Oluştur" onClose={() => setShowForm(false)}>
-        <RequestForm onClose={() => setShowForm(false)} />
+        <RequestForm
+          onClose={() => setShowForm(false)}
+          defaultUnitId={selectedUnitId}
+        />
       </Modal>
 
       {/* Help modal */}

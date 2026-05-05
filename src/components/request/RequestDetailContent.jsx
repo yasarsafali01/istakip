@@ -10,6 +10,7 @@ import {
   TbCheck,
   TbX,
   TbUserPlus,
+  TbTrash,
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,6 +23,7 @@ import Badge from '../common/Badge';
 import PriorityIcon from '../common/PriorityIcon';
 import CommentSection from '../issue/CommentSection';
 import ActivityFeed from '../issue/ActivityFeed';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 /**
  * Full Jira-style request detail content.
@@ -48,6 +50,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const [timeSpentError, setTimeSpentError] = useState('');
   const [cloning, setCloning] = useState(false);
   const [activeTab, setActiveTab] = useState('comments');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const assignee = state.users.find((u) => u.id === request.assigneeId);
@@ -60,10 +63,14 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const unit = state.units?.find((u) => u.unitCode === request.unitCode);
 
   const isExternalUser = currentUser?.role === ROLES.EXTERNAL_USER;
+  const isOwnRequest = request.reporterId === currentUser?.id;
   const canAssign = canChangeAssignee(currentUser, request, state.projects);
-  const canEdit = currentUser &&
-    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser.role);
-  const canEditDates = canEdit;
+  const canEdit = currentUser && (
+    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser.role) ||
+    isOwnRequest
+  );
+  const canDelete = isOwnRequest;
+  const canEditDates = canEdit && !isExternalUser;
 
   // Projects available for reassignment (same unit as the request)
   const unitProjects = state.projects.filter((p) => {
@@ -188,6 +195,42 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
     setEditingResolvedAt(false);
   }
 
+  // ── Delete ────────────────────────────────────────────────────────────────
+  function handleDelete() {
+    dispatch({ type: ACTIONS.DELETE_ISSUE, payload: { issueId: request.id } });
+    onClose();
+  }
+
+  // ── Geri çevir ────────────────────────────────────────────────────────────
+  function handleReject() {
+    if (!canReject || !rejectReason.trim()) return;
+    dispatch({
+      type: ACTIONS.UPDATE_ISSUE,
+      payload: {
+        id: request.id,
+        status: 'Geri Çevrildi',
+        assigneeId: reporter?.id || null,
+        rejectionReason: rejectReason.trim(),
+      },
+    });
+    dispatch({
+      type: ACTIONS.ADD_COMMENT,
+      payload: {
+        id: generateId(),
+        issueId: request.id,
+        authorId: currentUser.id,
+        text: `🚫 **Talep Geri Çevrildi**\n\n${rejectReason.trim()}`,
+        createdAt: new Date().toISOString(),
+      },
+    });
+    dispatchActivity(
+      `Talep geri çevrildi ve ${reporter?.name || 'açan kişiye'} atandı`,
+      ACTIVITY_TYPES.FIELD_UPDATE
+    );
+    setShowRejectModal(false);
+    setRejectReason('');
+  }
+
   // ── Clone ─────────────────────────────────────────────────────────────────
   function handleClone() {
     if (cloning) return;
@@ -202,6 +245,16 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   }
 
   const canClone = !isExternalUser || request.reporterId === currentUser?.id;
+
+  // Geri çevirme: PM/DH/Admin tüm talepleri reddedebilir
+  // Ancak zaten "Geri Çevrildi" durumundaki talepler için buton gösterilmez
+  const canReject =
+    currentUser &&
+    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser.role) &&
+    request.status !== 'Geri Çevrildi';
+
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -231,7 +284,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
       {/* Action toolbar */}
       <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
         {/* Status buttons (view mode only) */}
-        {!isExternalUser && !editMode && (
+        {!isExternalUser && !editMode && request.status !== 'Geri Çevrildi' && (
           <>
             {editingStatus ? (
               <select
@@ -245,7 +298,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                 {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             ) : (
-              STATUSES.filter((s) => s !== request.status).map((s) => (
+              STATUSES.filter((s) => s !== request.status && s !== 'Geri Çevrildi').map((s) => (
                 <button key={s} className="btn btn-sm btn-outline-secondary" onClick={() => handleStatusChange(s)}>
                   {s}
                 </button>
@@ -279,10 +332,28 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
             </button>
           )}
 
+          {/* Geri Çevir */}
+          {canReject && !editMode && (
+            <button
+              className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+              onClick={() => setShowRejectModal(true)}
+              title="Talebi geri çevir"
+            >
+              <TbX size={14} /> Geri Çevir
+            </button>
+          )}
+
           {/* Clone */}
           {canClone && !editMode && (
             <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={handleClone} disabled={cloning} title="Bu talebi klonla">
               <TbCopy size={14} /> Klonla
+            </button>
+          )}
+
+          {/* Delete — sadece talebi açan kullanıcı silebilir */}
+          {canDelete && !editMode && (
+            <button className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" onClick={() => setShowDeleteConfirm(true)} title="Talebi sil">
+              <TbTrash size={14} />
             </button>
           )}
         </div>
@@ -305,7 +376,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                 <TbTag size={13} /> Tip
               </div>
               <div className="col-8 col-md-9">
-                <Badge label={request.type} type="issueType" />
+                <Badge label="Talep" type="issueType" />
               </div>
 
               {/* Priority */}
@@ -561,6 +632,54 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Talebi Sil"
+        message={`"${request.title}" talebini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmText="Sil"
+      />
+
+      {/* Geri Çevir Modalı */}
+      {showRejectModal && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999 }}
+        >
+          <div className="bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: 500 }}>
+            <h6 className="fw-semibold mb-3">Talebi Geri Çevir</h6>
+            <p className="text-muted small mb-3">
+              Bu talep <strong>{reporter?.name || 'açan kişiye'}</strong> geri gönderilecek ve durumu <strong>"Geri Çevrildi"</strong> olarak ayarlanacak.
+            </p>
+            <div className="mb-4">
+              <label className="form-label small fw-semibold">
+                Geri Çevirme Nedeni <span className="text-danger">*</span>
+              </label>
+              <textarea
+                className="form-control"
+                rows={3}
+                placeholder="Geri çevirme nedenini açıklayın..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="d-flex gap-2 justify-content-end">
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>
+                İptal
+              </button>
+              <button
+                className="btn btn-warning btn-sm"
+                onClick={handleReject}
+                disabled={!rejectReason.trim()}
+              >
+                Geri Çevir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

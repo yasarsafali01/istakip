@@ -14,6 +14,15 @@ function AppReducer(state, action) {
       };
     }
 
+    case ACTIONS.UPDATE_PROJECT: {
+      return {
+        ...state,
+        projects: state.projects.map(p =>
+          p.id === action.payload.id ? { ...p, ...action.payload } : p
+        ),
+      };
+    }
+
     // ─── ISSUE ──────────────────────────────────────────────────────────────
     case ACTIONS.ADD_ISSUE: {
       return {

@@ -50,24 +50,35 @@ export function getVisibleIssues(issues, currentUser, visibleProjectIds) {
 
 /**
  * Kullanıcının görebileceği talepleri (isRequest: true) filtreler.
- * External_User yalnızca kendi taleplerini veya visibleTo'da olduklarını görür.
- * İç kullanıcılar tüm talepleri görür.
+ *
+ * Görünürlük kuralları:
+ * - System_Admin          → tüm talepler
+ * - Department_Head       → kendi birimine ait tüm talepler
+ * - Project_Manager       → kendi projesine ait tüm talepler
+ * - Worker                → kendi projesine ait tüm talepler
+ * - External_User         → yalnızca kendi açtığı veya visibleTo listesinde olduğu talepler
+ *
+ * Dış kullanıcı talep açtığında ilgili birimin tüm üyeleri otomatik olarak
+ * visibleTo listesine eklenir (bkz. RequestForm.jsx). Bu fonksiyon ise
+ * iç kullanıcıların proje/birim bazlı erişimini garanti altına alır.
+ *
+ * @param {Array}  issues       - Tüm issue listesi
+ * @param {Object} currentUser  - Oturum açmış kullanıcı
+ * @param {Array}  [projects]   - Tüm projeler listesi (PM/Worker filtrelemesi için)
  */
-export function getVisibleRequests(issues, currentUser) {
+export function getVisibleRequests(issues, currentUser, projects = []) {
   if (!currentUser) return [];
   const requests = issues.filter(i => i.isRequest === true);
-  if (currentUser.role === ROLES.EXTERNAL_USER) {
-    return requests.filter(
-      r =>
-        r.reporterId === currentUser.id ||
-        (Array.isArray(r.visibleTo) && r.visibleTo.includes(currentUser.id))
-    );
-  }
-  // Worker sadece kendi oluşturduğu talepleri görür
-  if (currentUser.role === ROLES.WORKER) {
-    return requests.filter(r => r.reporterId === currentUser.id);
-  }
-  return requests;
+
+  // System_Admin tüm talepleri görür
+  if (currentUser.role === ROLES.SYSTEM_ADMIN) return requests;
+
+  // Diğer tüm roller: sadece kendi açtıkları veya visibleTo listesinde oldukları talepler
+  return requests.filter(
+    r =>
+      r.reporterId === currentUser.id ||
+      (Array.isArray(r.visibleTo) && r.visibleTo.includes(currentUser.id))
+  );
 }
 
 /**
@@ -106,19 +117,21 @@ export function canCreateProject(currentUser) {
 }
 
 /**
- * Kullanıcının belirli bir talep için atanan kişiyi değiştirip değiştiremeyeceğini kontrol eder.
- * - System_Admin: tüm talepler için evet
- * - Department_Head: kendi birimine ait talepler için evet
- * - Project_Manager: kendi projesine ait talepler için evet
+ * Kullanıcının belirli bir issue için atanan kişiyi değiştirip değiştiremeyeceğini kontrol eder.
+ * - System_Admin: tüm issue'lar için evet
+ * - Department_Head: kendi birimine ait issue'lar için evet
+ * - Project_Manager: kendi projesine ait issue'lar için evet
  * - External_User: hiçbir zaman hayır
  *
  * @param {Object} user     - currentUser ({ id, role, unitId })
- * @param {Object} issue    - Talep nesnesi ({ projectId, unitCode, ... })
+ * @param {Object} issue    - Issue nesnesi ({ projectId, unitCode, ... })
  * @param {Array}  projects - Tüm projeler listesi
  * @returns {boolean}
  */
 export function canChangeAssignee(user, issue, projects = []) {
   if (!user || !issue) return false;
+  // Issue'yu açan kişi atama yapamaz
+  if (issue.reporterId === user.id) return false;
   switch (user.role) {
     case ROLES.SYSTEM_ADMIN:
       return true;

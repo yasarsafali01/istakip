@@ -1,6 +1,6 @@
 import React from 'react';
 import Modal from '../common/Modal';
-import IssueDetailContent from '../issue/IssueDetailContent';
+import RequestDetailContent from './RequestDetailContent';
 import { useAppContext } from '../../context/AppContext';
 
 /**
@@ -26,8 +26,8 @@ function RequestDetailModal({ isOpen, onClose, requestId, onCloneSuccess }) {
       size="xl"
       id="request-detail-modal-title"
     >
-      <IssueDetailContent
-        issue={request}
+      <RequestDetailContent
+        request={request}
         onClose={onClose}
         onCloneSuccess={onCloneSuccess}
       />

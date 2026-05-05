@@ -6,6 +6,7 @@ import { filterRequests } from '../components/request/RequestList';
 // Statuses considered "open" (not resolved)
 const OPEN_STATUSES = ['To Do', 'In Progress', 'In Review'];
 const CLOSED_STATUSES = ['Done'];
+const REJECTED_STATUSES = ['Geri Çevrildi'];
 
 // Priority order for sorting (lower index = higher priority)
 const PRIORITY_ORDER = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
@@ -40,23 +41,18 @@ export function useRequestFilters({ issues, currentUser, projects, units, role }
 
   // Step 1: Permission layer — must always be first
   const visibleRequests = useMemo(
-    () => getVisibleRequests(issues, currentUser),
-    [issues, currentUser]
+    () => getVisibleRequests(issues, currentUser, projects),
+    [issues, currentUser, projects]
   );
 
-  // Step 2: Role-based filtering (unchanged from original RequestList)
+  // Step 2: Role-based filtering
   const roleFilteredRequests = useMemo(() => {
     let result = visibleRequests;
 
-    if (role === ROLES.DEPARTMENT_HEAD || role === ROLES.PROJECT_MANAGER) {
-      const myUnitProjects = projects
-        .filter(p => p.unitId === currentUser?.unitId)
-        .map(p => p.id);
-      result = result.filter(r => myUnitProjects.includes(r.projectId));
-    }
-
-    // Worker: getVisibleRequests zaten sadece kendi açtığı talepleri döndürür
-    // Ek proje filtresi uygulanmaz
+    // System_Admin tüm talepleri görür
+    // Diğer tüm roller (Department_Head, Project_Manager, Worker, External_User)
+    // sadece kendi açtıkları talepleri görür — getVisibleRequests zaten bunu sağlar
+    // Department_Head ve Project_Manager için ek proje/birim filtresi uygulanmaz
 
     return result;
   }, [visibleRequests, role, projects, currentUser]);
@@ -77,8 +73,9 @@ export function useRequestFilters({ issues, currentUser, projects, units, role }
 
   // Step 4: Status group filter
   const statusFilteredRequests = useMemo(() => {
-    if (statusGroup === 'open')   return unitFilteredRequests.filter(r => OPEN_STATUSES.includes(r.status));
-    if (statusGroup === 'closed') return unitFilteredRequests.filter(r => CLOSED_STATUSES.includes(r.status));
+    if (statusGroup === 'open')     return unitFilteredRequests.filter(r => OPEN_STATUSES.includes(r.status));
+    if (statusGroup === 'closed')   return unitFilteredRequests.filter(r => CLOSED_STATUSES.includes(r.status));
+    if (statusGroup === 'rejected') return unitFilteredRequests.filter(r => REJECTED_STATUSES.includes(r.status));
     return unitFilteredRequests;
   }, [unitFilteredRequests, statusGroup]);
 

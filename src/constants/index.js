@@ -13,6 +13,7 @@ export const ACTIONS = {
 
   // Project
   ADD_PROJECT: 'ADD_PROJECT',
+  UPDATE_PROJECT: 'UPDATE_PROJECT',
 
   // Issue
   ADD_ISSUE: 'ADD_ISSUE',
@@ -39,7 +40,7 @@ export const ACTIONS = {
 
 export const PRIORITIES = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
 
-export const STATUSES = ['To Do', 'In Progress', 'In Review', 'Done'];
+export const STATUSES = ['To Do', 'In Progress', 'In Review', 'Done', 'Geri Çevrildi'];
 
 export const ISSUE_TYPES = ['Task', 'Bug', 'Story', 'Epic', 'Request'];
 
@@ -58,6 +59,7 @@ export const STATUS_COLORS = {
   'In Progress': '#0052CC',
   'In Review': '#FF991F',
   Done: '#00875A',
+  'Geri Çevrildi': '#DE350B',
 };
 
 export const ISSUE_TYPE_COLORS = {

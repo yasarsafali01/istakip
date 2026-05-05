@@ -4,19 +4,23 @@ import { ACTIONS, ROLES } from '../../constants';
 import { generateId } from '../../utils/issueUtils';
 
 /**
- * Form for creating a new project.
- * Includes unit selection and project manager assignment.
+ * Form for creating or editing a project.
  *
  * @param {Object}   props
- * @param {Function} props.onSuccess - Called after successful submission
- * @param {Function} props.onCancel  - Called when the user cancels
+ * @param {Object}   [props.project]      - Existing project to edit (omit for create mode)
+ * @param {Function} props.onSuccess      - Called after successful submission
+ * @param {Function} props.onCancel       - Called when the user cancels
+ * @param {string}   [props.defaultUnitId] - Pre-selected unit ID (create mode only)
  */
-function ProjectForm({ onSuccess, onCancel, defaultUnitId }) {
+function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
   const { state, dispatch } = useAppContext();
-  const [name, setName] = useState('');
-  const [unitId, setUnitId] = useState(defaultUnitId || '');
-  const [managerId, setManagerId] = useState('');
-  const [description, setDescription] = useState('');
+  const isEdit = Boolean(project);
+
+  const [name, setName] = useState(project?.name ?? '');
+  const [unitId, setUnitId] = useState(project?.unitId ?? defaultUnitId ?? '');
+  const [managerId, setManagerId] = useState(project?.managerId ?? '');
+  const [description, setDescription] = useState(project?.description ?? '');
+  const [hasInventory, setHasInventory] = useState(project?.hasInventory ?? false);
   const [errors, setErrors] = useState({});
 
   // If a unit is pre-selected, only show managers from that unit
@@ -40,16 +44,32 @@ function ProjectForm({ onSuccess, onCancel, defaultUnitId }) {
       return;
     }
 
-    const newProject = {
-      id: generateId(),
-      name: name.trim(),
-      unitId,
-      managerId,
-      description: description.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    dispatch({ type: ACTIONS.ADD_PROJECT, payload: newProject });
-    onSuccess?.(newProject);
+    if (isEdit) {
+      dispatch({
+        type: ACTIONS.UPDATE_PROJECT,
+        payload: {
+          id: project.id,
+          name: name.trim(),
+          unitId,
+          managerId,
+          description: description.trim(),
+          hasInventory,
+        },
+      });
+      onSuccess?.({ ...project, name: name.trim(), unitId, managerId, description: description.trim(), hasInventory });
+    } else {
+      const newProject = {
+        id: generateId(),
+        name: name.trim(),
+        unitId,
+        managerId,
+        description: description.trim(),
+        hasInventory,
+        createdAt: new Date().toISOString(),
+      };
+      dispatch({ type: ACTIONS.ADD_PROJECT, payload: newProject });
+      onSuccess?.(newProject);
+    }
   }
 
   return (
@@ -80,13 +100,12 @@ function ProjectForm({ onSuccess, onCancel, defaultUnitId }) {
         <label htmlFor="proj-unit" className="form-label fw-semibold">
           Birim <span className="text-danger" aria-hidden="true">*</span>
         </label>
-        {defaultUnitId ? (
-          // Pre-selected unit — show as read-only
+        {(defaultUnitId || isEdit) ? (
           <input
             id="proj-unit"
             type="text"
             className="form-control"
-            value={state.units.find(u => u.id === defaultUnitId)?.name || ''}
+            value={state.units.find(u => u.id === unitId)?.name || ''}
             readOnly
             style={{ backgroundColor: '#f8f9fa' }}
           />
@@ -146,6 +165,26 @@ function ProjectForm({ onSuccess, onCancel, defaultUnitId }) {
         />
       </div>
 
+      {/* Stok Takip */}
+      <div className="mb-4">
+        <div className="form-check form-switch">
+          <input
+            className="form-check-input"
+            type="checkbox"
+            role="switch"
+            id="proj-has-inventory"
+            checked={hasInventory}
+            onChange={e => setHasInventory(e.target.checked)}
+          />
+          <label className="form-check-label fw-semibold" htmlFor="proj-has-inventory">
+            Stok Takip İsteniyor mu?
+          </label>
+          <div className="form-text">
+            Etkinleştirilirse proje menüsünde "Stok Takip" bölümü görünür.
+          </div>
+        </div>
+      </div>
+
       {/* Actions */}
       <div className="d-flex justify-content-end gap-2">
         {onCancel && (
@@ -154,7 +193,7 @@ function ProjectForm({ onSuccess, onCancel, defaultUnitId }) {
           </button>
         )}
         <button type="submit" className="btn btn-primary">
-          Proje Oluştur
+          {isEdit ? 'Değişiklikleri Kaydet' : 'Proje Oluştur'}
         </button>
       </div>
     </form>

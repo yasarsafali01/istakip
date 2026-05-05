@@ -42,6 +42,7 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
   // Determine which issues to show
   const baseIssues = state.issues.filter(issue => {
     if (issue.projectId !== projectId) return false;
+    if (issue.status === 'Geri Çevrildi') return false;
     if (sprintId) return issue.sprintId === sprintId;
     return true;
   });
@@ -141,7 +142,7 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
       {(sprintId || currentSprint) && !showEmptySprintMessage && (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="d-flex gap-3 overflow-auto pb-3" style={{ alignItems: 'flex-start' }}>
-            {STATUSES.map(status => {
+            {STATUSES.filter(s => s !== 'Geri Çevrildi').map(status => {
               const columnIssues = filteredIssues.filter(i => i.status === status);
               return (
                 <BoardColumn

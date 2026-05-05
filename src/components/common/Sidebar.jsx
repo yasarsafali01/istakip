@@ -9,6 +9,7 @@ import {
   TbLogout,
   TbLayoutKanban,
   TbList,
+  TbPackage,
 } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
 import { useAppContext } from '../../context/AppContext';
@@ -60,12 +61,13 @@ export default function Sidebar() {
         .map((key) => {
           const item = NAV_CONFIG[key];
           if (!item) return null;
-          // Dış kullanıcı için "Talepler" → "Açtığım Talepler"
-          if (key === 'requests' && currentUser.role === ROLES.EXTERNAL_USER) {
-            return { ...item, label: 'Açtığım Talepler' };
-          }
-          // Çalışan için "Talepler" → "Açtığım Talepler"
-          if (key === 'requests' && currentUser.role === ROLES.WORKER) {
+          // Dış kullanıcı, Çalışan, Proje Yöneticisi, Daire Başkanı için "Talepler" → "Açtığım Talepler"
+          if (key === 'requests' && [
+            ROLES.EXTERNAL_USER,
+            ROLES.WORKER,
+            ROLES.PROJECT_MANAGER,
+            ROLES.DEPARTMENT_HEAD,
+          ].includes(currentUser.role)) {
             return { ...item, label: 'Açtığım Talepler' };
           }
           return item;
@@ -249,6 +251,38 @@ export default function Sidebar() {
                       Backlog
                     </NavLink>
                   </li>
+
+                  {/* Stok Takip — yalnızca hasInventory: true olan projeler */}
+                  {project.hasInventory && (
+                    <>
+                      <li>
+                        <div
+                          className="px-3 pt-2 pb-1"
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 600,
+                            color: '#6B778C',
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                            userSelect: 'none',
+                          }}
+                        >
+                          Stok Takip
+                        </div>
+                      </li>
+                      <li>
+                        <NavLink
+                          to={`/projects/${project.id}/inventory`}
+                          className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 rounded text-decoration-none"
+                          style={subLinkStyle}
+                          onClick={() => !isMd && setIsOpen(false)}
+                        >
+                          <TbPackage size={16} />
+                          Stok Durumu
+                        </NavLink>
+                      </li>
+                    </>
+                  )}
                 </React.Fragment>
               ))}
             </>

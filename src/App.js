@@ -15,6 +15,7 @@ const BacklogPage       = lazy(() => import('./pages/BacklogPage'));
 const UnitsPage         = lazy(() => import('./pages/UnitsPage'));
 const RequestsPage      = lazy(() => import('./pages/RequestsPage'));
 const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
+const InventoryPage     = lazy(() => import('./pages/InventoryPage'));
 
 const LoadingSpinner = () => (
   <div className="d-flex justify-content-center align-items-center py-5">
@@ -99,6 +100,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
                     <BacklogPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:projectId/inventory"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
+                    <InventoryPage />
                   </ProtectedRoute>
                 }
               />

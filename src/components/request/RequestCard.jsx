@@ -83,8 +83,24 @@ export default function RequestCard({ request, searchQuery = '' }) {
             </div>
           </div>
 
-          {/* Status badge */}
-          <Badge label={request.status} type="status" />
+          {/* Status badge + rejection reason */}
+          <div className="d-flex flex-column align-items-end gap-1" style={{ flexShrink: 0 }}>
+            <Badge label={request.status} type="status" />
+            {request.status === 'Geri Çevrildi' && request.rejectionReason && (
+              <div
+                style={{
+                  color: '#7B1A0A',
+                  fontStyle: 'italic',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  maxWidth: 220,
+                  textAlign: 'right',
+                }}
+              >
+                🚫 {request.rejectionReason}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -10,10 +10,11 @@ import Avatar from '../components/common/Avatar';
 import PriorityIcon from '../components/common/PriorityIcon';
 import Badge from '../components/common/Badge';
 import IssueModal from '../components/issue/IssueModal';
+import RequestDetailModal from '../components/request/RequestDetailModal';
 import Modal from '../components/common/Modal';
 import IssueForm from '../components/issue/IssueForm';
 import EmptyState from '../components/common/EmptyState';
-import { PRIORITIES, ROLES } from '../constants';
+import { PRIORITIES, ROLES, ACTIONS } from '../constants';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -100,6 +101,8 @@ function ProjectDetailPage() {
 
 /* ── Board view ─────────────────────────────────────────────────────────────── */
 function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoardSprintId }) {
+  const { state } = useAppContext();
+
   const resolvedSprint =
     boardSprintId === 'active'
       ? activeSprint ?? null
@@ -110,8 +113,83 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
   const resolvedSprintId = resolvedSprint?.id ?? null;
   const isReadonly = resolvedSprint?.status === 'Completed';
 
+  // İstatistikler — seçili sprint veya tüm proje
+  const sprintIssues = resolvedSprintId
+    ? state.issues.filter(i => i.projectId === projectId && i.sprintId === resolvedSprintId && !i.isRequest && i.status !== 'Geri Çevrildi')
+    : state.issues.filter(i => i.projectId === projectId && !i.isRequest && i.status !== 'Geri Çevrildi');
+
+  const totalCount    = sprintIssues.length;
+  const todoCount     = sprintIssues.filter(i => i.status === 'To Do').length;
+  const inProgCount   = sprintIssues.filter(i => i.status === 'In Progress' || i.status === 'In Review').length;
+  const doneCount     = sprintIssues.filter(i => i.status === 'Done').length;
+
   return (
     <div>
+      {/* İstatistik kartları */}
+      <div className="row g-3 mb-4">
+        <div className="col-6 col-lg-3">
+          <div className="card border-0 shadow-sm h-100"
+            style={{ borderLeft: '4px solid #0052CC', background: 'linear-gradient(135deg, #EAF0FB 0%, #ffffff 100%)' }}>
+            <div className="card-body py-3 px-4">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Toplam İş</span>
+                <div className="d-flex align-items-center justify-content-center rounded-circle"
+                  style={{ width: 36, height: 36, background: '#EAF0FB', flexShrink: 0 }}>
+                  <span style={{ color: '#0052CC', fontSize: 18 }}>📋</span>
+                </div>
+              </div>
+              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#0052CC' }}>{totalCount}</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-lg-3">
+          <div className="card border-0 shadow-sm h-100"
+            style={{ borderLeft: '4px solid #DFE1E6', background: 'linear-gradient(135deg, #F4F5F7 0%, #ffffff 100%)' }}>
+            <div className="card-body py-3 px-4">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Yapılacak</span>
+                <div className="d-flex align-items-center justify-content-center rounded-circle"
+                  style={{ width: 36, height: 36, background: '#F4F5F7', flexShrink: 0 }}>
+                  <span style={{ color: '#6B778C', fontSize: 18 }}>⏳</span>
+                </div>
+              </div>
+              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#6B778C' }}>{todoCount}</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-lg-3">
+          <div className="card border-0 shadow-sm h-100"
+            style={{ borderLeft: '4px solid #FF991F', background: 'linear-gradient(135deg, #FFF4E5 0%, #ffffff 100%)' }}>
+            <div className="card-body py-3 px-4">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Devam Eden</span>
+                <div className="d-flex align-items-center justify-content-center rounded-circle"
+                  style={{ width: 36, height: 36, background: '#FFF4E5', flexShrink: 0 }}>
+                  <span style={{ color: '#FF991F', fontSize: 18 }}>⚙️</span>
+                </div>
+              </div>
+              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#FF991F' }}>{inProgCount}</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-lg-3">
+          <div className="card border-0 shadow-sm h-100"
+            style={{ borderLeft: '4px solid #00875A', background: 'linear-gradient(135deg, #E3FCEF 0%, #ffffff 100%)' }}>
+            <div className="card-body py-3 px-4">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tamamlanan</span>
+                <div className="d-flex align-items-center justify-content-center rounded-circle"
+                  style={{ width: 36, height: 36, background: '#E3FCEF', flexShrink: 0 }}>
+                  <span style={{ color: '#00875A', fontSize: 18 }}>✅</span>
+                </div>
+              </div>
+              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#00875A' }}>{doneCount}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Ay seçici */}
       <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <label htmlFor="board-sprint-select" className="form-label mb-0 small fw-semibold">Ay:</label>
         <select
@@ -144,7 +222,7 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
 
 /* ── Backlog tab view ────────────────────────────────────────────────────────── */
 function BacklogTabView({ projectId, allSprints }) {
-  const { state } = useAppContext();
+  const { state, dispatch } = useAppContext();
   const [priorityFilter, setPriorityFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
@@ -154,6 +232,10 @@ function BacklogTabView({ projectId, allSprints }) {
     return active ? active.id : (allSprints[0]?.id ?? '');
   });
   const [selectedIssueId, setSelectedIssueId] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  // Aktif aya atama — atanmamış ise önce kişi seçimi
+  const [assignToSprintModal, setAssignToSprintModal] = useState(null); // issue objesi
+  const [pendingAssigneeId, setPendingAssigneeId] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Aktif sprint değişirse (proje değişimi vb.) default'u güncelle
@@ -164,8 +246,34 @@ function BacklogTabView({ projectId, allSprints }) {
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Veri ─────────────────────────────────────────────────────────────────
-  const allProjectIssues = state.issues.filter((i) => i.projectId === projectId && !i.isRequest);
+  const allProjectIssues = state.issues.filter((i) => i.projectId === projectId && i.status !== 'Geri Çevrildi');
   const backlogIssues = allProjectIssues.filter((i) => !i.sprintId);
+
+  const activeSprint = allSprints.find((s) => s.status === 'Active') ?? null;
+
+  // Aktif aya atama işlemi
+  function handleAssignToActiveSprint(issue) {
+    if (!activeSprint) return;
+    if (!issue.assigneeId) {
+      // Atanmamış — önce kişi seçimi modalı aç
+      setPendingAssigneeId('');
+      setAssignToSprintModal(issue);
+    } else {
+      // Atanmış — direkt ata
+      dispatch({ type: ACTIONS.ASSIGN_ISSUE_TO_SPRINT, payload: { issueId: issue.id, sprintId: activeSprint.id } });
+    }
+  }
+
+  function confirmAssignToSprint() {
+    if (!assignToSprintModal || !activeSprint) return;
+    if (!pendingAssigneeId) return;
+    // Önce kişiyi ata
+    dispatch({ type: ACTIONS.UPDATE_REQUEST_ASSIGNEE, payload: { issueId: assignToSprintModal.id, assigneeId: pendingAssigneeId } });
+    // Sonra sprinte ata
+    dispatch({ type: ACTIONS.ASSIGN_ISSUE_TO_SPRINT, payload: { issueId: assignToSprintModal.id, sprintId: activeSprint.id } });
+    setAssignToSprintModal(null);
+    setPendingAssigneeId('');
+  }
 
   // Backlog'daki benzersiz aylar (açılış tarihine göre)
   const backlogMonths = [...new Set(
@@ -589,6 +697,7 @@ function BacklogTabView({ projectId, allSprints }) {
                     <th className="fw-semibold border-0">Öncelik</th>
                     <th className="fw-semibold border-0">Atanan</th>
                     <th className="fw-semibold border-0">Açılış Tarihi</th>
+                    {activeSprint && <th className="fw-semibold border-0"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -597,9 +706,10 @@ function BacklogTabView({ projectId, allSprints }) {
                     return (
                       <tr key={issue.id}>
                         <td className="ps-0 align-middle">
-                          <button className="btn btn-link p-0 text-start text-decoration-none" style={{ fontSize: '0.85rem' }} onClick={() => setSelectedIssueId(issue.id)}>
+                          <button className="btn btn-link p-0 text-start text-decoration-none" style={{ fontSize: '0.85rem' }} onClick={() => issue.isRequest ? setSelectedRequestId(issue.id) : setSelectedIssueId(issue.id)}>
                             <span className="text-muted me-1" style={{ fontSize: '0.72rem' }}>{issue.number}</span>
                             <span className="fw-medium">{issue.title}</span>
+                            {issue.isRequest && <span className="ms-2 badge" style={{ backgroundColor: '#6f42c1', color: '#fff', fontSize: '0.65rem' }}>Talep</span>}
                           </button>
                         </td>
                         <td className="align-middle"><PriorityIcon priority={issue.priority} showLabel size={13} /></td>
@@ -609,6 +719,18 @@ function BacklogTabView({ projectId, allSprints }) {
                           ) : <span className="text-muted fst-italic">Atanmamış</span>}
                         </td>
                         <td className="align-middle text-muted"><span title={formatDate(issue.createdAt)}>{timeAgo(issue.createdAt)}</span></td>
+                        {activeSprint && (
+                          <td className="align-middle text-end">
+                            <button
+                              className="btn btn-sm btn-outline-primary"
+                              style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                              onClick={() => handleAssignToActiveSprint(issue)}
+                              title={`${activeSprint.name} aktif ayına ata`}
+                            >
+                              + Aktif Aya Ata
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -630,9 +752,57 @@ function BacklogTabView({ projectId, allSprints }) {
       )}
 
       <IssueModal isOpen={Boolean(selectedIssueId)} onClose={() => setSelectedIssueId(null)} issueId={selectedIssueId} />
+      <RequestDetailModal isOpen={Boolean(selectedRequestId)} onClose={() => setSelectedRequestId(null)} requestId={selectedRequestId} />
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Yeni Issue Oluştur" size="lg">
         <IssueForm projectId={projectId} onSuccess={() => setShowCreateModal(false)} onCancel={() => setShowCreateModal(false)} />
       </Modal>
+
+      {/* Aktif aya atama — atanmamış ise kişi seçimi */}
+      {assignToSprintModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setAssignToSprintModal(null); setPendingAssigneeId(''); }}
+          title="Aktif Aya Ata"
+        >
+          <div>
+            <p className="text-muted small mb-3">
+              <strong>{assignToSprintModal.number}</strong> — {assignToSprintModal.title}
+            </p>
+            <p className="small mb-3">
+              Bu iş atanmamış. <strong>{activeSprint?.name}</strong> aktif ayına atamadan önce bir kişi seçin.
+            </p>
+            <div className="mb-4">
+              <label className="form-label fw-semibold small">Atanacak Kişi <span className="text-danger">*</span></label>
+              <select
+                className="form-select"
+                value={pendingAssigneeId}
+                onChange={(e) => setPendingAssigneeId(e.target.value)}
+                autoFocus
+              >
+                <option value="">— Kişi seçin —</option>
+                {state.users
+                  .filter((u) => u.role !== ROLES.EXTERNAL_USER && (u.projectId === projectId || state.projects.find((p) => p.id === projectId)?.managerId === u.id))
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))
+                }
+              </select>
+            </div>
+            <div className="d-flex gap-2 justify-content-end">
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => { setAssignToSprintModal(null); setPendingAssigneeId(''); }}>
+                İptal
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={confirmAssignToSprint}
+                disabled={!pendingAssigneeId}
+              >
+                Ata ve Aktif Aya Ekle
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

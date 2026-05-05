@@ -50,7 +50,7 @@ function ProjectProgress({ unitId, projectId }) {
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <button
                       className="btn btn-link p-0 text-decoration-none fw-semibold small"
-                      onClick={() => navigate(`/projects/${project.id}/board`)}
+                      onClick={() => navigate(`/projects/${project.id}?tab=board`)}
                     >
                       {project.name}
                     </button>

@@ -18,8 +18,16 @@ function Badge({ label, type = 'custom', color, className = '' }) {
     bgColor = STATUS_COLORS[label];
     // Use dark text for light backgrounds
     if (label === 'To Do') textColor = '#42526E';
+    // Use white text for dark backgrounds
+    if (label === 'Geri Çevrildi') textColor = '#ffffff';
   } else if (type === 'issueType' && ISSUE_TYPE_COLORS[label]) {
     bgColor = ISSUE_TYPE_COLORS[label];
+  }
+
+  // "Talep" için özel renk - mavi ton
+  if (label === 'Talep') {
+    bgColor = '#0052CC';
+    textColor = '#ffffff';
   }
 
   const style = {
@@ -27,8 +35,8 @@ function Badge({ label, type = 'custom', color, className = '' }) {
     color: textColor,
     fontSize: '0.7rem',
     fontWeight: 600,
-    padding: '2px 8px',
-    borderRadius: '3px',
+    padding: '4px 12px',
+    borderRadius: '12px', // Daha oval
     display: 'inline-block',
     whiteSpace: 'nowrap',
     letterSpacing: '0.02em',

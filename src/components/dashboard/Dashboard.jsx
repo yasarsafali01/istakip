@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   TbFolder, TbAlertCircle, TbCalendar, TbTicket,
-  TbCircleCheck, TbClock, TbChartBar, TbBuilding, TbLock, TbPlus,
+  TbCircleCheck, TbClock, TbChartBar, TbBuilding, TbLock,
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,8 +10,6 @@ import { useState } from 'react';
 import Board from '../board/Board';
 import ProjectProgress from './ProjectProgress';
 import RecentActivity from './RecentActivity';
-import Modal from '../common/Modal';
-import RequestForm from '../request/RequestForm';
 import { PRIORITY_COLORS, ROLES } from '../../constants';
 import { getVisibleProjects, getVisibleRequests } from '../../utils/permissionUtils';
 import { formatDate } from '../../utils/dateUtils';
@@ -292,6 +290,15 @@ function ProjectManagerDashboard({ state, currentUser }) {
           </div>
         </div>
       )}
+
+      {/* Son Aktiviteler */}
+      {myProject && (
+        <div className="row g-3 mt-1">
+          <div className="col-12">
+            <RecentActivity projectId={myProject.id} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -308,12 +315,6 @@ function WorkerDashboard({ state, currentUser }) {
   const openCount = myIssues.filter(i => i.status !== 'Done').length;
   const doneCount = myIssues.filter(i => i.status === 'Done').length;
   const pendingIssues = myIssues.filter(i => !i.sprintId && i.status !== 'Done').length;
-
-  // Sadece kendi talepleri
-  const myRequests = state.issues.filter(
-    i => i.isRequest && i.reporterId === currentUser.id
-  );
-  const [showRequestModal, setShowRequestModal] = useState(false);
 
   return (
     <div>
@@ -369,11 +370,6 @@ function WorkerDashboard({ state, currentUser }) {
           </div>
         </>
       )}
-
-      {/* Talep Oluştur Modal */}
-      <Modal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} title="Yeni Talep Oluştur" size="lg">
-        <RequestForm onClose={() => setShowRequestModal(false)} />
-      </Modal>
     </div>
   );
 }

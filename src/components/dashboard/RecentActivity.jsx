@@ -4,13 +4,20 @@ import Avatar from '../common/Avatar';
 import { timeAgo } from '../../utils/dateUtils';
 
 /**
- * Shows the 10 most recent activities across all projects.
+ * Shows the 10 most recent activities.
+ * @param {string} [projectId] - If provided, filters activities to this project only.
  */
-function RecentActivity() {
+function RecentActivity({ projectId }) {
   const { state } = useAppContext();
 
-  // Activities are stored newest-first in the reducer
-  const recent = state.activities.slice(0, 10);
+  // Filter by project if provided, then take the 10 most recent
+  const recent = (projectId
+    ? state.activities.filter(a => {
+        const issue = state.issues.find(i => i.id === a.issueId);
+        return issue?.projectId === projectId;
+      })
+    : state.activities
+  ).slice(0, 10);
 
   function getUser(userId) {
     return state.users.find((u) => u.id === userId);

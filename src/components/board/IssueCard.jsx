@@ -68,13 +68,30 @@ function IssueCard({ issue, index, onClick, readonly = false }) {
               {issue.title}
             </p>
 
+            {/* Rejection reason (if rejected) */}
+            {issue.status === 'Geri Çevrildi' && issue.rejectionReason && (
+              <div
+                className="mb-2 small"
+                style={{
+                  color: '#DE350B',
+                  fontStyle: 'italic',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                🚫 {issue.rejectionReason}
+              </div>
+            )}
+
             {/* Footer: key, type badge, priority icon, avatar */}
             <div className="d-flex align-items-center justify-content-between gap-1">
               <div className="d-flex align-items-center gap-1 flex-wrap">
                 <span className="text-muted" style={{ fontSize: '0.65rem' }}>
                   {issueKey}
                 </span>
-                <Badge label={issue.type} type="issueType" />
+                <Badge label="Talep" type="issueType" />
               </div>
 
               <div className="d-flex align-items-center gap-1 flex-shrink-0">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TbPlus, TbArrowLeft, TbLayoutKanban, TbList } from 'react-icons/tb';
+import { TbPlus, TbArrowLeft, TbLayoutKanban, TbList, TbEdit } from 'react-icons/tb';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,6 +21,7 @@ export default function UnitList() {
   const [showUnitModal, setShowUnitModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
+  const [editingProject, setEditingProject] = useState(null);
   // Tek birim varsa direkt o birimi seç
   const [selectedUnit, setSelectedUnit] = useState(() => {
     if (!currentUser) return null;
@@ -112,7 +113,18 @@ export default function UnitList() {
                 <div key={project.id} className="col-12 col-md-6 col-lg-4">
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body">
-                      <h6 className="fw-semibold mb-1">{project.name}</h6>
+                      <div className="d-flex align-items-start justify-content-between mb-1">
+                        <h6 className="fw-semibold mb-0">{project.name}</h6>
+                        {canCreateProject && (
+                          <button
+                            className="btn btn-sm btn-link p-0 text-muted"
+                            title="Projeyi düzenle"
+                            onClick={() => setEditingProject(project)}
+                          >
+                            <TbEdit size={16} />
+                          </button>
+                        )}
+                      </div>
                       {project.description && (
                         <p className="text-muted small mb-2" style={{
                           display: '-webkit-box', WebkitLineClamp: 2,
@@ -157,6 +169,17 @@ export default function UnitList() {
             onSuccess={() => setShowProjectModal(false)}
             onCancel={() => setShowProjectModal(false)}
           />
+        </Modal>
+
+        {/* Proje düzenleme modalı */}
+        <Modal isOpen={!!editingProject} title="Projeyi Düzenle" onClose={() => setEditingProject(null)} size="lg">
+          {editingProject && (
+            <ProjectForm
+              project={editingProject}
+              onSuccess={() => setEditingProject(null)}
+              onCancel={() => setEditingProject(null)}
+            />
+          )}
         </Modal>
       </div>
     );

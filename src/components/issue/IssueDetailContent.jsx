@@ -57,6 +57,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   const [editStatus, setEditStatus] = useState(issue.status);
   const [editAssigneeId, setEditAssigneeId] = useState(issue.assigneeId ?? '');
   const [editProjectId, setEditProjectId] = useState(issue.projectId ?? '');
+  const [editUnitId, setEditUnitId] = useState('');
 
   // ── Inline field editing (non-edit-mode) ─────────────────────────────────
   const [editingStatus, setEditingStatus] = useState(false);
@@ -72,6 +73,13 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   const [activeTab, setActiveTab] = useState('comments');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [newVisibleUserId, setNewVisibleUserId] = useState('');
+  // Atama modalı (talep + PM/DH için yorum ile birlikte)
+  const [assignModal, setAssignModal] = useState(false);
+  const [pendingAssigneeId, setPendingAssigneeId] = useState('');
+  const [assignComment, setAssignComment] = useState('');
+  // Talebi geri çevirme modalı
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const assignee = state.users.find((u) => u.id === issue.assigneeId);
@@ -79,7 +87,10 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   const project = state.projects.find((p) => p.id === issue.projectId);
   const unit = state.units?.find((u) => u.unitCode === issue.unitCode);
   const externalUsers = state.users.filter((u) => u.role === ROLES.EXTERNAL_USER);
-  const unitProjects = state.projects.filter((p) => unit ? p.unitId === unit.id : false);
+  const unitProjects = state.projects.filter((p) => {
+    const targetUnitId = editMode ? editUnitId : (unit?.id ?? '');
+    return targetUnitId ? p.unitId === targetUnitId : false;
+  });
 
   const canAssign = canChangeAssignee(currentUser, issue, state.projects);
   const canEditDates =
@@ -87,11 +98,21 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(
       currentUser.role
     );
-  const canClone =
-    issue.isRequest && (!isExternalUser || issue.reporterId === currentUser?.id);
+  const canClone = !isExternalUser || issue.reporterId === currentUser?.id;
 
-  const isOwnRequest = issue.isRequest && issue.reporterId === currentUser?.id;
-  const canEdit = !readonly && !isWorker && (!isExternalUser || isOwnRequest);
+  const isOwnIssue = issue.reporterId === currentUser?.id;
+  const canEdit = !readonly && !isWorker && (!isExternalUser || isOwnIssue);
+  // Silme: sadece reporter silebilir
+  const canDelete = !readonly && issue.reporterId === currentUser?.id;
+  // Geri çevirme: PM/DH/Admin tüm talepleri reddedebilir (backlog ve sprint içindeki işler dahil)
+  // Ancak zaten "Geri Çevrildi" durumundaki işler için buton gösterilmez
+  const canReject =
+    !readonly &&
+    currentUser &&
+    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(
+      currentUser.role
+    ) &&
+    issue.status !== 'Geri Çevrildi';
 
   const assignableUsers = state.users.filter((u) => {
     if (u.role === ROLES.EXTERNAL_USER) return false;
@@ -141,7 +162,6 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     const newUnitCode = newProject
       ? state.units?.find((u) => u.id === newProject.unitId)?.unitCode || issue.unitCode
       : issue.unitCode;
-
     dispatch({
       type: ACTIONS.UPDATE_ISSUE,
       payload: {
@@ -174,6 +194,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     setEditStatus(issue.status);
     setEditAssigneeId(issue.assigneeId ?? '');
     setEditProjectId(issue.projectId ?? '');
+    setEditUnitId(unit?.id ?? '');
     setEditMode(false);
   }
 
@@ -192,8 +213,48 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   }
 
   // ── Inline assignee change ────────────────────────────────────────────────
+  // PM ve DH için yorum ile birlikte atama modalı açılır
+  const canAssignWithComment =
+    canAssign &&
+    [ROLES.PROJECT_MANAGER, ROLES.DEPARTMENT_HEAD, ROLES.SYSTEM_ADMIN].includes(currentUser?.role);
+
+  function openAssignModal(newAssigneeId) {
+    setPendingAssigneeId(newAssigneeId);
+    setAssignComment('');
+    setAssignModal(true);
+    setEditingAssignee(false);
+  }
+
+  function confirmAssign() {
+    if (!canAssign) return;
+    const oldName = assignee?.name ?? 'Atanmamış';
+    const newUser = state.users.find((u) => u.id === pendingAssigneeId);
+    dispatch({ type: ACTIONS.UPDATE_REQUEST_ASSIGNEE, payload: { issueId: issue.id, assigneeId: pendingAssigneeId || null } });
+    dispatchActivity(`Atama değiştirildi: ${oldName} → ${newUser?.name ?? 'Atanmamış'}`, ACTIVITY_TYPES.ASSIGNMENT);
+    if (assignComment.trim()) {
+      dispatch({
+        type: ACTIONS.ADD_COMMENT,
+        payload: {
+          id: generateId(),
+          issueId: issue.id,
+          authorId: currentUser.id,
+          text: assignComment.trim(),
+          createdAt: new Date().toISOString(),
+        },
+      });
+      dispatchActivity('Yorum ekledi', ACTIVITY_TYPES.COMMENT);
+    }
+    setAssignModal(false);
+    setPendingAssigneeId('');
+    setAssignComment('');
+  }
+
   function handleAssigneeChange(newAssigneeId) {
     if (!canAssign) return;
+    if (canAssignWithComment) {
+      openAssignModal(newAssigneeId);
+      return;
+    }
     const oldName = assignee?.name ?? 'Atanmamış';
     const newUser = state.users.find((u) => u.id === newAssigneeId);
     dispatch({ type: ACTIONS.UPDATE_REQUEST_ASSIGNEE, payload: { issueId: issue.id, assigneeId: newAssigneeId || null } });
@@ -238,6 +299,38 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     setNewVisibleUserId('');
   }
 
+  // ── Geri çevir ────────────────────────────────────────────────────────────
+  function handleReject() {
+    if (!canReject || !rejectReason.trim()) return;
+    // "Geri Çevrildi" durumuna al ve açana geri ata
+    dispatch({
+      type: ACTIONS.UPDATE_ISSUE,
+      payload: {
+        id: issue.id,
+        status: 'Geri Çevrildi',
+        assigneeId: reporter?.id || null,
+        rejectionReason: rejectReason.trim(), // Geri çevirme nedenini kaydet
+      },
+    });
+    // Ret açıklamasını yorum olarak ekle
+    dispatch({
+      type: ACTIONS.ADD_COMMENT,
+      payload: {
+        id: generateId(),
+        issueId: issue.id,
+        authorId: currentUser.id,
+        text: `🚫 **Issue Geri Çevrildi**\n\n${rejectReason.trim()}`,
+        createdAt: new Date().toISOString(),
+      },
+    });
+    dispatchActivity(
+      `Issue geri çevrildi ve ${reporter?.name || 'açan kişiye'} atandı`,
+      ACTIVITY_TYPES.FIELD_UPDATE
+    );
+    setShowRejectModal(false);
+    setRejectReason('');
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div>
@@ -275,10 +368,10 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
               onBlur={() => setEditingStatus(false)}
               autoFocus
             >
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUSES.filter((s) => s !== 'Geri Çevrildi').map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           ) : (
-            STATUSES.filter((s) => s !== issue.status).map((s) => (
+            STATUSES.filter((s) => s !== issue.status && s !== 'Geri Çevrildi').map((s) => (
               <button key={s} className="btn btn-sm btn-outline-secondary" onClick={() => handleStatusChange(s)}>
                 {s}
               </button>
@@ -299,7 +392,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                 </button>
               </>
             ) : (
-              <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setEditMode(true)}>
+              <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => { setEditUnitId(unit?.id ?? ''); setEditMode(true); }}>
                 <TbEdit size={14} /> Düzenle
               </button>
             )
@@ -315,7 +408,18 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
             </button>
           )}
 
-          {/* Clone (requests only) */}
+          {/* Geri Çevir (PM/DH/Admin, not own issue) */}
+          {canReject && !editMode && (
+            <button
+              className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+              onClick={() => setShowRejectModal(true)}
+              title="Issue'yu geri çevir"
+            >
+              <TbX size={14} /> Geri Çevir
+            </button>
+          )}
+
+          {/* Clone */}
           {canClone && !editMode && (
             <button
               className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
@@ -327,7 +431,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
           )}
 
           {/* Delete */}
-          {canEdit && !editMode && (
+          {canDelete && !editMode && (
             <button
               className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
               onClick={() => setShowDeleteConfirm(true)}
@@ -360,7 +464,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                     {ISSUE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 ) : (
-                  <Badge label={issue.type} type="issueType" />
+                  <Badge label="Talep" type="issueType" />
                 )}
               </div>
 
@@ -392,7 +496,27 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                 )}
               </div>
 
-              {/* Project — her issue için göster, edit modunda değiştirilebilir */}
+              {/* Project — edit modunda değiştirilebilir */}
+              {editMode && (
+                <>
+                  <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
+                    🏢 Birim
+                  </div>
+                  <div className="col-8 col-md-9">
+                    <select
+                      className="form-select form-select-sm"
+                      style={{ width: 'auto', minWidth: 200 }}
+                      value={editUnitId}
+                      onChange={(e) => { setEditUnitId(e.target.value); setEditProjectId(''); setEditAssigneeId(''); }}
+                    >
+                      <option value="">— Birim seçin —</option>
+                      {state.units.map((u) => (
+                        <option key={u.id} value={u.id}>{u.name} ({u.unitCode})</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
               <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
                 📁 Proje
               </div>
@@ -405,6 +529,7 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                     value={editProjectId}
                     onChange={(e) => { setEditProjectId(e.target.value); setEditAssigneeId(''); }}
                   >
+                    <option value="">— Proje seçin —</option>
                     {unitProjects.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
@@ -413,32 +538,6 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
                   <span className="small">{project?.name || '—'}</span>
                 )}
               </div>
-
-              {/* Project (requests only) */}
-              {issue.isRequest && (
-                <>
-                  <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                    📁 Proje
-                  </div>
-                  <div className="col-8 col-md-9">
-                    {editMode ? (
-                      <select
-                        className="form-select form-select-sm"
-                        data-testid="project-select"
-                        style={{ width: 'auto', minWidth: 200 }}
-                        value={editProjectId}
-                        onChange={(e) => setEditProjectId(e.target.value)}
-                      >
-                        {unitProjects.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="small">{project?.name || '—'}</span>
-                    )}
-                  </div>
-                </>
-              )}
 
               {/* Resolved at */}
               <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
@@ -660,8 +759,8 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
               </div>
             </div>
 
-            {/* Visible-to (requests only, non-external, non-edit-mode) */}
-            {issue.isRequest && !isExternalUser && !editMode && (
+            {/* Visible-to (non-external, non-edit-mode) */}
+            {!isExternalUser && !editMode && (
               <div className="mt-3">
                 <p className="text-muted mb-1 small fw-semibold">Görünür Kullanıcılar</p>
                 <div className="d-flex gap-2 mb-2">
@@ -717,6 +816,107 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
         message={`"${issue.title}" issue'sunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
         confirmText="Sil"
       />
+
+      {/* Atama + yorum modalı (PM / DH / Admin için) */}
+      {assignModal && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ background: 'rgba(0,0,0,0.45)', zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setAssignModal(false); }}
+        >
+          <div className="bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: 460 }}>
+            <h6 className="fw-semibold mb-3">Issue'yu Ata</h6>
+            <p className="text-muted small mb-3">
+              <strong>{state.users.find(u => u.id === pendingAssigneeId)?.name ?? 'Atanmamış'}</strong> kişisine atanacak.
+            </p>
+
+            {/* Kişi değiştir */}
+            <div className="mb-3">
+              <label className="form-label small fw-semibold">Atanan Kişi</label>
+              <select
+                className="form-select form-select-sm"
+                value={pendingAssigneeId}
+                onChange={e => setPendingAssigneeId(e.target.value)}
+              >
+                <option value="">— Atanmamış —</option>
+                {assignableUsers.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* İsteğe bağlı yorum */}
+            <div className="mb-4">
+              <label className="form-label small fw-semibold">
+                Yorum <span className="text-muted fw-normal">(isteğe bağlı)</span>
+              </label>
+              <textarea
+                className="form-control form-control-sm"
+                rows={3}
+                placeholder="Atama hakkında bir not ekleyin..."
+                value={assignComment}
+                onChange={e => setAssignComment(e.target.value)}
+              />
+            </div>
+
+            <div className="d-flex justify-content-end gap-2">
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => setAssignModal(false)}>
+                İptal
+              </button>
+              <button className="btn btn-sm btn-primary" onClick={confirmAssign}>
+                Ata{assignComment.trim() ? ' ve Yorum Gönder' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Talebi Geri Çevir modalı */}
+      {showRejectModal && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ background: 'rgba(0,0,0,0.45)', zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowRejectModal(false); setRejectReason(''); } }}
+        >
+          <div className="bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: 500 }}>
+            <h6 className="fw-semibold mb-3">Issue'yu Geri Çevir</h6>
+            <p className="text-muted small mb-3">
+              Bu issue <strong>{reporter?.name || 'açan kişiye'}</strong> geri gönderilecek ve durumu <strong>"Geri Çevrildi"</strong> olarak ayarlanacak.
+            </p>
+
+            <div className="mb-4">
+              <label className="form-label small fw-semibold">
+                Geri Çevirme Nedeni <span className="text-danger">*</span>
+              </label>
+              <textarea
+                className="form-control"
+                rows={4}
+                placeholder="Issue'nun neden geri çevrildiğini açıklayın (örn: Yanlış ekibe yönlendirildi, eksik bilgi, vb.)"
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                autoFocus
+              />
+              <small className="text-muted">Bu açıklama issue'ya yorum olarak eklenecektir.</small>
+            </div>
+
+            <div className="d-flex justify-content-end gap-2">
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => { setShowRejectModal(false); setRejectReason(''); }}
+              >
+                İptal
+              </button>
+              <button
+                className="btn btn-sm btn-warning"
+                onClick={handleReject}
+                disabled={!rejectReason.trim()}
+              >
+                Geri Çevir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

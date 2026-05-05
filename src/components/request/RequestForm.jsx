@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { ACTIONS } from '../../constants';
@@ -8,17 +8,18 @@ function getNextRequestNumber(issues, unitCode) {
   const unitIssues = issues.filter(i => i.unitCode === unitCode);
   if (unitIssues.length === 0) return `${unitCode}-1`;
   const maxSeq = Math.max(...unitIssues.map(i => {
-    const parts = i.number.split('-');
+    const num = String(i.number ?? '');
+    const parts = num.split('-');
     return parseInt(parts[parts.length - 1], 10) || 0;
   }));
   return `${unitCode}-${maxSeq + 1}`;
 }
 
-export default function RequestForm({ onClose }) {
+export default function RequestForm({ onClose, defaultUnitId = '' }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
 
-  const [unitId, setUnitId] = useState('');
+  const [unitId, setUnitId] = useState(defaultUnitId || currentUser?.unitId || '');
   const [projectId, setProjectId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,9 +31,23 @@ export default function RequestForm({ onClose }) {
     ? state.projects.filter(p => p.unitId === unitId)
     : [];
 
+  // Auto-select project when unit is pre-filled and has exactly one project
+  useEffect(() => {
+    if (defaultUnitId && unitProjects.length === 1) {
+      setProjectId(unitProjects[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultUnitId, unitProjects.length]);
+
   function handleUnitChange(e) {
-    setUnitId(e.target.value);
+    const newUnitId = e.target.value;
+    setUnitId(newUnitId);
     setProjectId(''); // reset project when unit changes
+    // Auto-select if the new unit has exactly one project
+    const projects = state.projects.filter(p => p.unitId === newUnitId);
+    if (projects.length === 1) {
+      setProjectId(projects[0].id);
+    }
   }
 
   function validate() {
