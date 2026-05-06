@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ROLES, PRIORITIES } from '../constants';
 import { getVisibleRequests } from '../utils/permissionUtils';
 import { filterRequests } from '../components/request/RequestList';
 

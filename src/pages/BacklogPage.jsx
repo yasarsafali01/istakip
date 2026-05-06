@@ -7,6 +7,8 @@ import { canAccessProject } from '../utils/permissionUtils';
 import SprintList from '../components/sprint/SprintList';
 import BacklogView from '../components/sprint/BacklogView';
 import EmptyState from '../components/common/EmptyState';
+import HelpGuide from '../components/common/HelpGuide';
+import { ROLES } from '../constants';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -61,7 +63,22 @@ function BacklogPage() {
   return (
     <div>
       <div className="mb-3">
-        <h4 className="fw-bold mb-0">{project.name}</h4>
+        <div className="d-flex align-items-center gap-2 mb-0">
+          <h4 className="fw-bold mb-0">{project.name}</h4>
+          <HelpGuide
+            title="Backlog & Aylık Dönemler — Yardım Kılavuzu"
+            sections={
+              currentUser?.role === ROLES.PROJECT_MANAGER ? [
+                { icon: '📅', title: 'Aylık Dönem Yönetimi', items: ['Sol tarafta aylık dönemleri (sprint) oluşturabilir ve yönetebilirsiniz.', 'Dönem başlatabilir, tamamlayabilirsiniz.', 'Tamamlanan dönemler salt okunur modda görüntülenir.'] },
+                { icon: '📋', title: 'Backlog Yönetimi', items: ['Sağ tarafta backlog\'daki bekleyen işleri görürsünüz.', 'İşleri aylık dönemlere atayabilirsiniz.', 'Ay filtresi ile belirli bir döneme ait işleri görüntüleyebilirsiniz.'] },
+                { icon: '🔒', title: 'Kapalı Dönemler', items: ['Tamamlanan dönemler kilit ikonu ile işaretlenir.', 'Kapalı dönemlerdeki işler değiştirilemez.'] },
+              ] : [
+                { icon: '📅', title: 'Aylık Dönemler', items: ['Projenin aylık dönemlerini (sprint) görüntüleyebilirsiniz.', 'Ay filtresi ile belirli bir döneme ait işleri görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Backlog', items: ['Henüz bir aya atanmamış bekleyen işleri görürsünüz.'] },
+              ]
+            }
+          />
+        </div>
         <p className="text-muted small mb-0">Backlog & Aylık Dönemler</p>
       </div>
 

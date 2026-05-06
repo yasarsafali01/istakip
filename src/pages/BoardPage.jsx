@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { canAccessProject } from '../utils/permissionUtils';
 import Board from '../components/board/Board';
 import EmptyState from '../components/common/EmptyState';
+import HelpGuide from '../components/common/HelpGuide';
+import { ROLES } from '../constants';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -67,7 +69,22 @@ function BoardPage() {
       {/* Page header */}
       <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
-          <h4 className="fw-bold mb-0">{project.name}</h4>
+          <div className="d-flex align-items-center gap-2">
+            <h4 className="fw-bold mb-0">{project.name}</h4>
+            <HelpGuide
+              title="Board — Yardım Kılavuzu"
+              sections={
+                currentUser?.role === ROLES.PROJECT_MANAGER ? [
+                  { icon: '📌', title: 'Board Görünümü', items: ['İşleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.', '"Aktif Ay" seçeneği mevcut aktif dönemi gösterir.'] },
+                  { icon: '➕', title: 'Issue Yönetimi', items: ['Sütun başlıklarındaki "+" butonuyla yeni issue oluşturabilirsiniz.', 'Issue kartına tıklayarak detayları görüntüleyebilir ve düzenleyebilirsiniz.'] },
+                  { icon: '🔒', title: 'Kapalı Dönemler', items: ['Tamamlanan dönemler salt okunur modda görüntülenir, değişiklik yapılamaz.'] },
+                ] : [
+                  { icon: '📌', title: 'Board Görünümü', items: ['İşlerin durumlarını sütunlar arasında sürükleyerek güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.'] },
+                  { icon: '🔒', title: 'Kapalı Dönemler', items: ['Tamamlanan dönemler salt okunur modda görüntülenir.'] },
+                ]
+              }
+            />
+          </div>
           <p className="text-muted small mb-0">Board</p>
         </div>
 

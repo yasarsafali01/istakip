@@ -9,6 +9,7 @@ import ProjectCard from './ProjectCard';
 import ProjectForm from './ProjectForm';
 import Modal from '../common/Modal';
 import EmptyState from '../common/EmptyState';
+import HelpGuide from '../common/HelpGuide';
 
 /**
  * Renders the list of projects visible to the current user,
@@ -33,7 +34,28 @@ function ProjectList() {
     <div>
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-bold mb-0">Projeler</h4>
+        <div className="d-flex align-items-center gap-2">
+          <h4 className="fw-bold mb-0">Projeler</h4>
+          <HelpGuide
+            title="Projeler Sayfası — Yardım Kılavuzu"
+            sections={
+              role === ROLES.SYSTEM_ADMIN ? [
+                { icon: '📁', title: 'Proje Listesi', items: ['Sistemdeki tüm projeleri birim bazında gruplandırılmış olarak görürsünüz.', 'Her proje kartında açık issue sayısı ve aktif sprint bilgisi yer alır.'] },
+                { icon: '➕', title: 'Proje Oluşturma', items: ['"Proje Oluştur" butonuyla yeni proje ekleyebilirsiniz.', 'Projeye birim, yönetici ve açıklama atayabilirsiniz.', 'Stok takibi gereken projeler için "Stok Takip" seçeneğini aktif edebilirsiniz.'] },
+                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.'] },
+              ] : role === ROLES.DEPARTMENT_HEAD ? [
+                { icon: '📁', title: 'Proje Listesi', items: ['Biriminize bağlı projeleri görürsünüz.', 'Her proje kartında açık issue sayısı ve aktif sprint bilgisi yer alır.'] },
+                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.'] },
+              ] : role === ROLES.PROJECT_MANAGER ? [
+                { icon: '📁', title: 'Proje Listesi', items: ['Yönettiğiniz projeyi burada görürsünüz.'] },
+                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.', 'Issue oluşturabilir, sprint yönetebilirsiniz.'] },
+              ] : [
+                { icon: '📁', title: 'Proje Listesi', items: ['Atandığınız projeyi burada görürsünüz.'] },
+                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.'] },
+              ]
+            }
+          />
+        </div>
         {canCreateProject && (
           <button
             className="btn btn-primary d-flex align-items-center gap-1"

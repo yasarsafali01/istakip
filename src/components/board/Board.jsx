@@ -10,6 +10,7 @@ import BoardColumn from './BoardColumn';
 import BoardFilters from './BoardFilters';
 import IssueModal from '../issue/IssueModal';
 import RequestDetailModal from '../request/RequestDetailModal';
+import TaskDoneModal from '../common/TaskDoneModal';
 import Modal from '../common/Modal';
 import IssueForm from '../issue/IssueForm';
 import EmptyState from '../common/EmptyState';
@@ -29,6 +30,8 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
   const [selectedIssueId, setSelectedIssueId] = useState(null);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  // Done modal için sürüklenen issue'yu tut
+  const [pendingDoneIssue, setPendingDoneIssue] = useState(null);
 
   // Route card clicks: requests → RequestDetailModal, others → IssueModal
   function handleIssueClick(issue) {
@@ -66,6 +69,12 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
     const newStatus = destination.droppableId;
     const issue = state.issues.find(i => i.id === draggableId);
     if (!issue || issue.status === newStatus) return;
+
+    // Done sütununa sürüklenince modal aç
+    if (newStatus === 'Done') {
+      setPendingDoneIssue(issue);
+      return;
+    }
 
     dispatch({ type: ACTIONS.MOVE_ISSUE, payload: { issueId: draggableId, newStatus } });
     dispatch({
@@ -193,6 +202,14 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
           />
         </Modal>
       )}
+
+      {/* Done modal — drag & drop ile Done'a taşıma */}
+      <TaskDoneModal
+        isOpen={Boolean(pendingDoneIssue)}
+        issue={pendingDoneIssue}
+        onConfirm={() => setPendingDoneIssue(null)}
+        onCancel={() => setPendingDoneIssue(null)}
+      />
     </div>
   );
 }

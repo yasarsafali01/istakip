@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  TbCopy,
   TbCalendar,
   TbClock,
   TbFlag,
@@ -16,7 +15,7 @@ import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { ACTIONS, ACTIVITY_TYPES, STATUSES, PRIORITIES, ROLES } from '../../constants';
 import { canChangeAssignee } from '../../utils/permissionUtils';
-import { generateId, getNextIssueNumber } from '../../utils/issueUtils';
+import { generateId } from '../../utils/issueUtils';
 import { formatDate, timeAgo, formatTimeSpent } from '../../utils/dateUtils';
 import Avatar from '../common/Avatar';
 import Badge from '../common/Badge';
@@ -24,12 +23,13 @@ import PriorityIcon from '../common/PriorityIcon';
 import CommentSection from '../issue/CommentSection';
 import ActivityFeed from '../issue/ActivityFeed';
 import ConfirmDialog from '../common/ConfirmDialog';
+import TaskDoneModal from '../common/TaskDoneModal';
 
 /**
  * Full Jira-style request detail content.
  * Rendered inside RequestDetailModal.
  */
-function RequestDetailContent({ request, onClose, onCloneSuccess }) {
+function RequestDetailContent({ request, onClose }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
 
@@ -48,9 +48,9 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const [timeSpentInput, setTimeSpentInput] = useState('');
   const [resolvedAtInput, setResolvedAtInput] = useState('');
   const [timeSpentError, setTimeSpentError] = useState('');
-  const [cloning, setCloning] = useState(false);
   const [activeTab, setActiveTab] = useState('comments');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDoneModal, setShowDoneModal] = useState(false);
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const assignee = state.users.find((u) => u.id === request.assigneeId);
@@ -161,6 +161,11 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   // ── Status change ─────────────────────────────────────────────────────────
   function handleStatusChange(newStatus) {
     if (newStatus === request.status) { setEditingStatus(false); return; }
+    if (newStatus === 'Done') {
+      setShowDoneModal(true);
+      setEditingStatus(false);
+      return;
+    }
     dispatch({ type: ACTIONS.MOVE_ISSUE, payload: { issueId: request.id, newStatus } });
     dispatchActivity(`Durum "${request.status}" → "${newStatus}" olarak değiştirildi`, ACTIVITY_TYPES.STATUS_CHANGE);
     setEditingStatus(false);
@@ -231,23 +236,6 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
     setRejectReason('');
   }
 
-  // ── Clone ─────────────────────────────────────────────────────────────────
-  function handleClone() {
-    if (cloning) return;
-    setCloning(true);
-    const newId = generateId();
-    const newNumber = getNextIssueNumber(state.issues, request.unitCode);
-    const clonedAt = new Date().toISOString();
-    dispatch({ type: ACTIONS.CLONE_REQUEST, payload: { sourceIssueId: request.id, newId, newNumber, clonedAt } });
-    setCloning(false);
-    onClose();
-    if (onCloneSuccess) onCloneSuccess(newId);
-  }
-
-  const canClone = !isExternalUser || request.reporterId === currentUser?.id;
-
-  // Geri çevirme: PM/DH/Admin tüm talepleri reddedebilir
-  // Ancak zaten "Geri Çevrildi" durumundaki talepler için buton gösterilmez
   const canReject =
     currentUser &&
     [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser.role) &&
@@ -343,15 +331,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
             </button>
           )}
 
-          {/* Clone */}
-          {canClone && !editMode && (
-            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={handleClone} disabled={cloning} title="Bu talebi klonla">
-              <TbCopy size={14} /> Klonla
-            </button>
-          )}
-
-          {/* Delete — sadece talebi açan kullanıcı silebilir */}
-          {canDelete && !editMode && (
+          {/* Delete — sadece talebi açan kullanıcı silebilir */}          {canDelete && !editMode && (
             <button className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" onClick={() => setShowDeleteConfirm(true)} title="Talebi sil">
               <TbTrash size={14} />
             </button>
@@ -680,6 +660,14 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
           </div>
         </div>
       )}
+
+      {/* Task Done Modal */}
+      <TaskDoneModal
+        isOpen={showDoneModal}
+        issue={request}
+        onConfirm={() => setShowDoneModal(false)}
+        onCancel={() => setShowDoneModal(false)}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import seedData, { SEED_VERSION } from '../data/seedData';
 const STORAGE_KEY = 'jira-clone-state';
 // Bump this version whenever the data shape changes significantly.
 // A mismatch will clear localStorage and reload from seedData.
-const STATE_VERSION = '9';
+const STATE_VERSION = '10';
 const VERSION_KEY = 'jira-clone-version';
 
 /**
@@ -55,6 +55,11 @@ function init(initialState) {
       }
       // Guard: if issue count is less than seed data, data is stale → reset
       if (!parsed.issues || parsed.issues.length < initialState.issues.length) {
+        localStorage.removeItem(STORAGE_KEY);
+        return initialState;
+      }
+      // Guard: if inventory is missing, data is stale → reset
+      if (!parsed.inventory) {
         localStorage.removeItem(STORAGE_KEY);
         return initialState;
       }

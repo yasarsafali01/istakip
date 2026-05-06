@@ -14,6 +14,7 @@ import RequestDetailModal from '../components/request/RequestDetailModal';
 import Modal from '../components/common/Modal';
 import IssueForm from '../components/issue/IssueForm';
 import EmptyState from '../components/common/EmptyState';
+import HelpGuide from '../components/common/HelpGuide';
 import { PRIORITIES, ROLES, ACTIONS } from '../constants';
 
 const MONTH_NAMES = [
@@ -78,6 +79,25 @@ function ProjectDetailPage() {
           </span>
           <h4 className="fw-bold mb-0">{project.name}</h4>
           <span className="text-muted small">/ {pageTitle}</span>
+          <HelpGuide
+            title={`${pageTitle} — Yardım Kılavuzu`}
+            sections={
+              currentUser?.role === ROLES.PROJECT_MANAGER ? [
+                { icon: '📊', title: 'İstatistikler', items: ['Sayfanın üstünde toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                { icon: '📌', title: 'Board Görünümü', items: ['İşleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Backlog', items: ['Bekleyen işleri öncelik, atanan kişi ve tarihe göre filtreleyebilirsiniz.', 'İşleri aktif aya atayabilirsiniz.', 'CSV dışa aktarma ve yazdırma özelliklerini kullanabilirsiniz.'] },
+                { icon: '➕', title: 'Issue Oluşturma', items: ['Backlog görünümünde "Issue Oluştur" butonuyla yeni iş ekleyebilirsiniz.'] },
+              ] : currentUser?.role === ROLES.WORKER ? [
+                { icon: '📊', title: 'İstatistikler', items: ['Projedeki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                { icon: '📌', title: 'Board Görünümü', items: ['Size atanan işleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemleri görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Backlog', items: ['Bekleyen işleri görüntüleyebilirsiniz.'] },
+              ] : [
+                { icon: '📊', title: 'İstatistikler', items: ['Projedeki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                { icon: '📌', title: 'Board Görünümü', items: ['Projenin aktif dönemindeki işleri görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Backlog', items: ['Bekleyen işleri görüntüleyebilirsiniz.'] },
+              ]
+            }
+          />
         </div>
         {project.description && <p className="text-muted small mb-0">{project.description}</p>}
       </div>

@@ -193,6 +193,19 @@ function AppReducer(state, action) {
       };
     }
 
+    // ─── INVENTORY ──────────────────────────────────────────────────────────
+    case ACTIONS.UPDATE_INVENTORY: {
+      const { inventoryId, quantityChange } = action.payload;
+      return {
+        ...state,
+        inventory: state.inventory.map((item) =>
+          item.id === inventoryId
+            ? { ...item, quantity: item.quantity + quantityChange }
+            : item
+        ),
+      };
+    }
+
     // ─── AUTH ────────────────────────────────────────────────────────────────
     case ACTIONS.LOGIN: {
       return {

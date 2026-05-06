@@ -100,7 +100,11 @@ function CommentSection({ issueId }) {
                   </div>
                   <p
                     className="mb-0 small p-2 rounded"
-                    style={{ backgroundColor: '#F4F5F7', whiteSpace: 'pre-wrap' }}
+                    style={{
+                      backgroundColor: comment.text.startsWith('✅') ? '#E3FCEF' : '#F4F5F7',
+                      whiteSpace: 'pre-wrap',
+                      borderLeft: comment.text.startsWith('✅') ? '3px solid #00875A' : 'none',
+                    }}
                   >
                     {comment.text}
                   </p>

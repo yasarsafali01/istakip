@@ -11,6 +11,7 @@ import UnitForm from './UnitForm';
 import ProjectForm from '../project/ProjectForm';
 import Modal from '../common/Modal';
 import EmptyState from '../common/EmptyState';
+import HelpGuide from '../common/HelpGuide';
 
 export default function UnitList() {
   const { state } = useAppContext();
@@ -189,7 +190,23 @@ export default function UnitList() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-bold mb-0">Birimler</h4>
+        <div className="d-flex align-items-center gap-2">
+          <h4 className="fw-bold mb-0">Birimler</h4>
+          <HelpGuide
+            title="Birimler Sayfası — Yardım Kılavuzu"
+            sections={
+              canManageUnits ? [
+                { icon: '🏢', title: 'Birim Listesi', items: ['Sistemdeki tüm birimleri görürsünüz.', 'Her birim kartında birim kodu ve daire başkanı bilgisi yer alır.'] },
+                { icon: '➕', title: 'Birim Oluşturma', items: ['"Yeni Birim" butonuyla yeni birim ekleyebilirsiniz.', 'Birime daire başkanı atayabilirsiniz.'] },
+                { icon: '✏️', title: 'Birim Düzenleme', items: ['Birim kartındaki düzenle ikonuyla birim bilgilerini güncelleyebilirsiniz.'] },
+                { icon: '📁', title: 'Birim Projeleri', items: ['Birim kartına tıklayarak o birime ait projeleri görüntüleyebilirsiniz.', 'Birim içinden yeni proje oluşturabilirsiniz.'] },
+              ] : [
+                { icon: '🏢', title: 'Birim Listesi', items: ['Bağlı olduğunuz birimi görürsünüz.'] },
+                { icon: '📁', title: 'Birim Projeleri', items: ['Birim kartına tıklayarak birime ait projeleri görüntüleyebilirsiniz.'] },
+              ]
+            }
+          />
+        </div>
         {canManageUnits && (
           <button className="btn btn-primary d-flex align-items-center gap-1" onClick={() => setShowUnitModal(true)}>
             <TbPlus size={18} />

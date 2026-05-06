@@ -239,6 +239,7 @@ export const seedProjects = [
     description: 'Kurumun ağ altyapısının modernizasyonu ve güvenlik iyileştirmeleri',
     unitId: 'unit-bigd',
     managerId: 'user-bigd-pm',
+    hasInventory: true,
     createdAt: '2025-01-15T09:00:00.000Z',
   },
   {
@@ -1660,7 +1661,17 @@ export const seedActivities = [
     type: 'assignment',
     description: 'Deniz Yıldız\'a atandı',
     createdAt: '2025-04-01T09:30:00.000Z',
-  },];
+  },
+];
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+export const seedInventory = [
+  { id: 'inv-1', projectId: 'project-bigd-1', name: 'Ethernet Kablosu', quantity: 100, unit: 'metre' },
+  { id: 'inv-2', projectId: 'project-bigd-1', name: 'RJ45 Konnektör',   quantity: 200, unit: 'adet'  },
+  { id: 'inv-3', projectId: 'project-bigd-1', name: 'Patch Panel',       quantity: 10,  unit: 'adet'  },
+  { id: 'inv-4', projectId: 'project-bigd-1', name: 'Fiber Optik Kablo', quantity: 50,  unit: 'metre' },
+  { id: 'inv-5', projectId: 'project-bigd-1', name: 'Network Switch',    quantity: 5,   unit: 'adet'  },
+];
 
 // ─── Default export ───────────────────────────────────────────────────────────
 const seedData = {
@@ -1675,6 +1686,7 @@ const seedData = {
   sprints: seedSprints,
   comments: seedComments,
   activities: seedActivities,
+  inventory: seedInventory,
   seedVersion: SEED_VERSION,
 };
 

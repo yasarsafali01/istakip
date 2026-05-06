@@ -73,7 +73,26 @@ export function getVisibleRequests(issues, currentUser, projects = []) {
   // System_Admin tüm talepleri görür
   if (currentUser.role === ROLES.SYSTEM_ADMIN) return requests;
 
-  // Diğer tüm roller: sadece kendi açtıkları veya visibleTo listesinde oldukları talepler
+  // Department_Head: kendi birimine ait tüm talepler
+  if (currentUser.role === ROLES.DEPARTMENT_HEAD) {
+    const unitProjects = projects.filter(p => p.unitId === currentUser.unitId);
+    const unitProjectIds = unitProjects.map(p => p.id);
+    return requests.filter(r => unitProjectIds.includes(r.projectId));
+  }
+
+  // Project_Manager: kendi projesine ait tüm talepler
+  if (currentUser.role === ROLES.PROJECT_MANAGER) {
+    const myProject = projects.find(p => p.managerId === currentUser.id);
+    if (!myProject) return [];
+    return requests.filter(r => r.projectId === myProject.id);
+  }
+
+  // Worker: kendi projesine ait tüm talepler
+  if (currentUser.role === ROLES.WORKER) {
+    return requests.filter(r => r.projectId === currentUser.projectId);
+  }
+
+  // External_User: yalnızca kendi açtığı veya visibleTo listesinde olduğu talepler
   return requests.filter(
     r =>
       r.reporterId === currentUser.id ||

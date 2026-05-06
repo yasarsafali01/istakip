@@ -13,6 +13,7 @@ import RecentActivity from './RecentActivity';
 import { PRIORITY_COLORS, ROLES } from '../../constants';
 import { getVisibleProjects, getVisibleRequests } from '../../utils/permissionUtils';
 import { formatDate } from '../../utils/dateUtils';
+import HelpGuide from '../common/HelpGuide';
 
 /* ── Sprint tarih aralığı formatla ──────────────────────────────────────────── */
 function sprintDateRange(sprint) {
@@ -105,7 +106,18 @@ function AdminDashboard({ state }) {
 
   return (
     <div>
-      <h4 className="fw-bold mb-1">Ana Sayfa</h4>
+      <div className="d-flex align-items-center gap-2 mb-1">
+        <h4 className="fw-bold mb-0">Ana Sayfa</h4>
+        <HelpGuide
+          title="Ana Sayfa — Sistem Yöneticisi Kılavuzu"
+          sections={[
+            { icon: '📊', title: 'Genel Bakış', items: ['Sistemdeki tüm birim, proje ve issue istatistiklerini görürsünüz.', 'Toplam talep, aktif sprint ve tamamlanan işleri takip edebilirsiniz.'] },
+            { icon: '🏢', title: 'Birim Yönetimi', items: ['"Birimler" menüsünden yeni birim oluşturabilir ve düzenleyebilirsiniz.', 'Her birime daire başkanı atayabilirsiniz.'] },
+            { icon: '📁', title: 'Proje Yönetimi', items: ['"Projeler" menüsünden tüm projeleri görüntüleyebilirsiniz.', 'Yeni proje oluşturabilir, proje yöneticisi atayabilirsiniz.', 'Stok takibi gereken projelerde "Stok Takip" özelliğini aktif edebilirsiniz.'] },
+            { icon: '✅', title: 'Talep Yönetimi', items: ['Tüm talepleri görüntüleyebilir, atayabilir ve geri çevirebilirsiniz.', '"Talepler" menüsünden talepleri filtreleyebilirsiniz.'] },
+          ]}
+        />
+      </div>
       <p className="text-muted small mb-4">Sistem geneli özet</p>
 
       <div className="row g-3 mb-4">
@@ -168,7 +180,17 @@ function DepartmentHeadDashboard({ state, currentUser }) {
 
   return (
     <div>
-      <h4 className="fw-bold mb-1">Ana Sayfa</h4>
+      <div className="d-flex align-items-center gap-2 mb-1">
+        <h4 className="fw-bold mb-0">Ana Sayfa</h4>
+        <HelpGuide
+          title="Ana Sayfa — Daire Başkanı Kılavuzu"
+          sections={[
+            { icon: '📊', title: 'Genel Bakış', items: ['Biriminize ait tüm proje ve issue istatistiklerini görürsünüz.', 'Toplam iş, açık işler, tamamlanan işler ve bekleyen işleri takip edebilirsiniz.'] },
+            { icon: '📁', title: 'Proje Yönetimi', items: ['"Projeler" menüsünden biriminize ait projeleri görüntüleyebilirsiniz.', 'Proje ilerlemesini ve ekip performansını takip edebilirsiniz.'] },
+            { icon: '✅', title: 'İş Takibi', items: ['Öncelik dağılımı grafiğinden işlerin öncelik durumunu görebilirsiniz.', 'Son aktiviteler bölümünden güncel değişiklikleri takip edebilirsiniz.'] },
+          ]}
+        />
+      </div>
       {unit && <p className="text-muted small mb-4">{unit.name}</p>}
 
       <div className="row g-3 mb-4">
@@ -233,7 +255,18 @@ function ProjectManagerDashboard({ state, currentUser }) {
 
   return (
     <div>
-      <h4 className="fw-bold mb-1">Ana Sayfa</h4>
+      <div className="d-flex align-items-center gap-2 mb-1">
+        <h4 className="fw-bold mb-0">Ana Sayfa</h4>
+        <HelpGuide
+          title="Ana Sayfa — Proje Yöneticisi Kılavuzu"
+          sections={[
+            { icon: '📊', title: 'Genel Bakış', items: ['Yönettiğiniz projeye ait tüm istatistikleri görürsünüz.', 'Toplam iş, açık işler, tamamlanan işler ve bekleyen işleri takip edebilirsiniz.'] },
+            { icon: '👥', title: 'Ekip Yönetimi', items: ['Ekip iş yükü kartından ekip üyelerinin açık issue sayılarını görebilirsiniz.', 'İş dağılımını dengeli tutabilirsiniz.'] },
+            { icon: '📅', title: 'Sprint Yönetimi', items: ['Aktif dönem bilgisini takip edebilirsiniz.', '"Backlog" sayfasından sprint oluşturabilir ve yönetebilirsiniz.'] },
+            { icon: '✅', title: 'İş Takibi', items: ['Proje ilerlemesi grafiğinden tamamlanma oranını görebilirsiniz.', 'Son aktiviteler bölümünden güncel değişiklikleri takip edebilirsiniz.'] },
+          ]}
+        />
+      </div>
       {myProject && <p className="text-muted small mb-4">{myProject.name}</p>}
       {!myProject && <p className="text-muted small mb-4">Henüz atanmış proje yok.</p>}
 
@@ -318,7 +351,17 @@ function WorkerDashboard({ state, currentUser }) {
 
   return (
     <div>
-      <h4 className="fw-bold mb-1">Ana Sayfa</h4>
+      <div className="d-flex align-items-center gap-2 mb-1">
+        <h4 className="fw-bold mb-0">Ana Sayfa</h4>
+        <HelpGuide
+          title="Ana Sayfa — Çalışan Kılavuzu"
+          sections={[
+            { icon: '📊', title: 'Genel Bakış', items: ['Size atanan tüm işleri ve istatistikleri görürsünüz.', 'Açık işler, tamamlanan işler ve bekleyen işleri takip edebilirsiniz.'] },
+            { icon: '📌', title: 'Aktif İşler', items: ['Board görünümünde aktif dönemdeki işlerinizi görürsünüz.', 'İşleri sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile geçmiş dönemlerdeki işlerinizi görüntüleyebilirsiniz.'] },
+            { icon: '📋', title: 'Backlog', items: ['Henüz bir aya atanmamış bekleyen işlerinizi görürsünüz.'] },
+          ]}
+        />
+      </div>
       {myProject && <p className="text-muted small mb-4">{myProject.name}</p>}
 
       {/* Kartlar */}
@@ -500,7 +543,16 @@ function ExternalUserDashboard({ state, currentUser }) {
 
   return (
     <div>
-      <h4 className="fw-bold mb-4">Ana Sayfa</h4>
+      <div className="d-flex align-items-center gap-2 mb-4">
+        <h4 className="fw-bold mb-0">Ana Sayfa</h4>
+        <HelpGuide
+          title="Ana Sayfa — Dış Kullanıcı Kılavuzu"
+          sections={[
+            { icon: '📋', title: 'Taleplerim', items: ['Oluşturduğunuz tüm talepleri ve durumlarını buradan takip edebilirsiniz.', 'Açık ve çözülmüş talep sayılarınızı görürsünüz.'] },
+            { icon: '➕', title: 'Yeni Talep', items: ['"Talepler" menüsünden yeni talep oluşturabilirsiniz.', 'Talebinizin durumunu bu sayfadan takip edebilirsiniz.'] },
+          ]}
+        />
+      </div>
       <div className="row g-3 mb-4">
         <div className="col-6 col-lg-3">
           <StatCard title="Toplam Talep" value={myRequests.length} icon={<TbTicket />}

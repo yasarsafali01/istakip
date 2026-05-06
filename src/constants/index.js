@@ -36,6 +36,9 @@ export const ACTIONS = {
 
   // Activity
   ADD_ACTIVITY: 'ADD_ACTIVITY',
+
+  // Inventory
+  UPDATE_INVENTORY: 'UPDATE_INVENTORY',
 };
 
 export const PRIORITIES = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];

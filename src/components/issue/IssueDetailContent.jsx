@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  TbCopy,
   TbCalendar,
   TbClock,
   TbFlag,
@@ -24,7 +23,7 @@ import {
   ROLES,
 } from '../../constants';
 import { canChangeAssignee } from '../../utils/permissionUtils';
-import { generateId, getNextIssueNumber } from '../../utils/issueUtils';
+import { generateId } from '../../utils/issueUtils';
 import { formatDate, timeAgo, formatTimeSpent } from '../../utils/dateUtils';
 import Avatar from '../common/Avatar';
 import Badge from '../common/Badge';
@@ -32,6 +31,7 @@ import PriorityIcon from '../common/PriorityIcon';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import ConfirmDialog from '../common/ConfirmDialog';
+import TaskDoneModal from '../common/TaskDoneModal';
 
 /**
  * Unified Jira-style detail content for ALL issue types (Task, Bug, Story, Epic, Request).
@@ -41,9 +41,8 @@ import ConfirmDialog from '../common/ConfirmDialog';
  * @param {Object}   props.issue            - The issue object
  * @param {Function} props.onClose          - Close the parent modal
  * @param {boolean}  [props.readonly]       - Disable editing
- * @param {Function} [props.onCloneSuccess] - Called with newId after clone (requests only)
  */
-function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }) {
+function IssueDetailContent({ issue, onClose, readonly = false }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
   const { isExternalUser, isWorker } = usePermissions();
@@ -69,9 +68,9 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   const [timeSpentError, setTimeSpentError] = useState('');
 
   // ── Other state ───────────────────────────────────────────────────────────
-  const [cloning, setCloning] = useState(false);
   const [activeTab, setActiveTab] = useState('comments');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDoneModal, setShowDoneModal] = useState(false);
   const [newVisibleUserId, setNewVisibleUserId] = useState('');
   // Atama modalı (talep + PM/DH için yorum ile birlikte)
   const [assignModal, setAssignModal] = useState(false);
@@ -98,7 +97,6 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(
       currentUser.role
     );
-  const canClone = !isExternalUser || issue.reporterId === currentUser?.id;
 
   const isOwnIssue = issue.reporterId === currentUser?.id;
   const canEdit = !readonly && !isWorker && (!isExternalUser || isOwnIssue);
@@ -207,6 +205,11 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
   // ── Inline status change ──────────────────────────────────────────────────
   function handleStatusChange(newStatus) {
     if (newStatus === issue.status) { setEditingStatus(false); return; }
+    if (newStatus === 'Done') {
+      setShowDoneModal(true);
+      setEditingStatus(false);
+      return;
+    }
     dispatch({ type: ACTIONS.MOVE_ISSUE, payload: { issueId: issue.id, newStatus } });
     dispatchActivity(`Durum "${issue.status}" → "${newStatus}" olarak değiştirildi`, ACTIVITY_TYPES.STATUS_CHANGE);
     setEditingStatus(false);
@@ -278,18 +281,6 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
     dispatch({ type: ACTIONS.UPDATE_REQUEST_DATES, payload: { issueId: issue.id, resolvedAt: iso, timeSpent: issue.timeSpent } });
     dispatchActivity(`Çözülüş tarihi güncellendi: ${iso ? formatDate(iso) : '—'}`);
     setEditingResolvedAt(false);
-  }
-
-  // ── Clone (requests only) ─────────────────────────────────────────────────
-  function handleClone() {
-    if (cloning) return;
-    setCloning(true);
-    const newId = generateId();
-    const newNumber = getNextIssueNumber(state.issues, issue.unitCode);
-    dispatch({ type: ACTIONS.CLONE_REQUEST, payload: { sourceIssueId: issue.id, newId, newNumber, clonedAt: new Date().toISOString() } });
-    setCloning(false);
-    onClose();
-    if (onCloneSuccess) onCloneSuccess(newId);
   }
 
   // ── Visible-to ────────────────────────────────────────────────────────────
@@ -416,17 +407,6 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
               title="Issue'yu geri çevir"
             >
               <TbX size={14} /> Geri Çevir
-            </button>
-          )}
-
-          {/* Clone */}
-          {canClone && !editMode && (
-            <button
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-              onClick={handleClone}
-              disabled={cloning}
-            >
-              <TbCopy size={14} /> Klonla
             </button>
           )}
 
@@ -917,6 +897,14 @@ function IssueDetailContent({ issue, onClose, readonly = false, onCloneSuccess }
           </div>
         </div>
       )}
+
+      {/* Task Done Modal */}
+      <TaskDoneModal
+        isOpen={showDoneModal}
+        issue={issue}
+        onConfirm={() => setShowDoneModal(false)}
+        onCancel={() => setShowDoneModal(false)}
+      />
     </div>
   );
 }

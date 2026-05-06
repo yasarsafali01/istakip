@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TbPlus, TbEye, TbHelp, TbFlag, TbCircleCheck, TbArrowsSort, TbBuilding, TbUpload, TbFileSpreadsheet, TbPrinter } from 'react-icons/tb';
+import { TbPlus, TbEye, TbFlag, TbCircleCheck, TbArrowsSort, TbBuilding, TbUpload, TbFileSpreadsheet, TbPrinter } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -13,6 +13,7 @@ import ModernSearchBar from './ModernSearchBar';
 import FilterChip, { FilterChipOption } from './FilterChip';
 import Modal from '../common/Modal';
 import EmptyState from '../common/EmptyState';
+import HelpGuide from '../common/HelpGuide';
 import { requestsToCsv, downloadCsv, printRequests } from '../../utils/exportUtils';
 
 /**
@@ -42,7 +43,6 @@ export default function RequestList() {
   const [visibleToModal, setVisibleToModal] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRequestId, setSelectedRequestId] = useState(null);
-  const [showHelp, setShowHelp] = useState(false);
 
   // All filtering logic delegated to the hook
   const {
@@ -83,6 +83,7 @@ export default function RequestList() {
   // Stat card counts — always from all visible requests (not filtered)
   const allVisibleRequests = getVisibleRequests(state.issues, currentUser, state.projects);
   const totalCount      = allVisibleRequests.length;
+  const pendingCount    = allVisibleRequests.filter(r => r.status === 'To Do').length;
   const inProgressCount = allVisibleRequests.filter(r => r.status !== 'To Do' && r.status !== 'Done' && r.status !== 'Geri Çevrildi').length;
   const resolvedCount   = allVisibleRequests.filter(r => r.status === 'Done').length;
   const rejectedCount   = allVisibleRequests.filter(r => r.status === 'Geri Çevrildi').length;
@@ -93,20 +94,35 @@ export default function RequestList() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div className="d-flex align-items-center gap-2">
           <h4 className="fw-bold mb-0">
-            {[ROLES.EXTERNAL_USER, ROLES.WORKER, ROLES.PROJECT_MANAGER, ROLES.DEPARTMENT_HEAD].includes(currentUser?.role)
+            {[ROLES.EXTERNAL_USER, ROLES.WORKER].includes(currentUser?.role)
               ? 'Açtığım Talepler'
               : 'Talepler'}
           </h4>
-          <button
-            type="button"
-            className="btn btn-link p-0 text-muted d-flex align-items-center"
-            style={{ lineHeight: 1 }}
-            onClick={() => setShowHelp(true)}
-            title="Bu sayfa hakkında bilgi al"
-            aria-label="Yardım"
-          >
-            <TbHelp size={20} />
-          </button>
+          <HelpGuide
+            title="Talepler Sayfası — Yardım Kılavuzu"
+            sections={currentUser?.role === ROLES.EXTERNAL_USER ? [
+              { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz ve size görünür yapılan talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.', 'Geri çevrilen talepler kırmızı, tamamlananlar yeşil ile işaretlenir.'] },
+              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı birimlere açılan taleplerin doğru birime tekrar açılması gerekmektedir.'] },
+              { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep başlığı, açıklaması veya numarasına göre filtreleyin.', 'Durum filtresinden açık, kapanan veya geri çevrilen talepleri görüntüleyin.'] },
+              { icon: '📄', title: 'Talep Detayı', items: ['Bir talep kartına tıklayarak detaylarını görüntüleyin.', 'Kendi oluşturduğunuz talepleri düzenleyebilir veya silebilirsiniz.'] },
+            ] : currentUser?.role === ROLES.WORKER ? [
+              { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.'] },
+              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı birimlere açılan taleplerin doğru birime tekrar açılması gerekmektedir.'] },
+              { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep arayabilirsiniz.', 'Durum, öncelik ve birim filtrelerini kullanabilirsiniz.'] },
+            ] : currentUser?.role === ROLES.PROJECT_MANAGER ? [
+              { icon: '📋', title: 'Talep Yönetimi', items: ['Projenize gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve birime göre filtreleyebilirsiniz.'] },
+              { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevirme sırasında neden belirtmeniz gerekir.'] },
+              { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
+            ] : currentUser?.role === ROLES.DEPARTMENT_HEAD ? [
+              { icon: '📋', title: 'Talep Yönetimi', items: ['Biriminize gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve birime göre filtreleyebilirsiniz.'] },
+              { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri proje yöneticilerine atayabilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevrilen talepler açan kişiye geri gönderilir.'] },
+              { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.'] },
+            ] : [
+              { icon: '📋', title: 'Tüm Talepleri Yönetme', items: ['Sistemdeki tüm talepler listelenir.', 'Birim, durum, öncelik filtrelerini kullanabilirsiniz.'] },
+              { icon: '✅', title: 'Talep İşlemleri', items: ['Tüm talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.'] },
+              { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
+            ]}
+          />
         </div>
         <button
           className="btn btn-primary d-flex align-items-center gap-1"
@@ -120,7 +136,7 @@ export default function RequestList() {
       {/* Stat cards */}
       <div className="row g-3 mb-4">
         {/* Toplam Talep */}
-        <div className="col-3">
+        <div className="col-6 col-md">
           <div
             className="rounded-3 p-3 h-100"
             style={{
@@ -141,8 +157,30 @@ export default function RequestList() {
           </div>
         </div>
 
+        {/* Bekleyen */}
+        <div className="col-6 col-md">
+          <div
+            className="rounded-3 p-3 h-100"
+            style={{
+              background: 'linear-gradient(135deg, #FFF8E1 0%, #fff0b3 100%)',
+              borderLeft: '4px solid #D4A000',
+            }}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-1">
+              <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Bekleyen
+              </span>
+              <span style={{ fontSize: '1.4rem' }}>⏳</span>
+            </div>
+            <div className="fw-bold" style={{ fontSize: '2rem', color: '#D4A000', lineHeight: 1 }}>
+              {pendingCount}
+            </div>
+            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Henüz işleme alınmadı</div>
+          </div>
+        </div>
+
         {/* Çözüm Aşamasında */}
-        <div className="col-3">
+        <div className="col-6 col-md">
           <div
             className="rounded-3 p-3 h-100"
             style={{
@@ -164,7 +202,7 @@ export default function RequestList() {
         </div>
 
         {/* Çözülmüş */}
-        <div className="col-3">
+        <div className="col-6 col-md">
           <div
             className="rounded-3 p-3 h-100"
             style={{
@@ -186,7 +224,7 @@ export default function RequestList() {
         </div>
 
         {/* Geri Çevrilmiş */}
-        <div className="col-3">
+        <div className="col-6 col-md">
           <div
             className="rounded-3 p-3 h-100"
             style={{
@@ -401,66 +439,6 @@ export default function RequestList() {
       </Modal>
 
       {/* Help modal */}
-      <Modal isOpen={showHelp} title="Talepler Sayfası — Yardım" onClose={() => setShowHelp(false)}>
-        <div style={{ fontSize: '0.9rem' }}>
-          <p className="text-muted mb-3">Bu sayfada taleplerinizi yönetebilirsiniz. Aşağıda yapabilecekleriniz özetlenmiştir.</p>
-
-          <div className="mb-3">
-            <h6 className="fw-semibold mb-2">📋 Talep Listeleme</h6>
-            <ul className="mb-0 ps-3 text-muted">
-              <li>Kendi oluşturduğunuz ve size görünür yapılan talepler listelenir.</li>
-              <li>Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.</li>
-            </ul>
-          </div>
-
-          <div className="mb-3">
-            <h6 className="fw-semibold mb-2">🔍 Arama</h6>
-            <ul className="mb-0 ps-3 text-muted">
-              <li>Arama kutusuna yazarak talep başlığı, açıklaması veya numarasına göre filtreleyin.</li>
-              <li>Eşleşen metinler sarı ile vurgulanır.</li>
-              <li>Aramayı temizlemek için sağdaki × butonuna tıklayın.</li>
-            </ul>
-          </div>
-
-          <div className="mb-3">
-            <h6 className="fw-semibold mb-2">🏢 Birim Filtresi</h6>
-            <ul className="mb-0 ps-3 text-muted">
-              <li>Açılır listeden bir birim seçerek yalnızca o birime ait talepleri görüntüleyin.</li>
-              <li>"Tüm Birimler" seçeneği filtreyi kaldırır.</li>
-            </ul>
-          </div>
-
-          <div className="mb-3">
-            <h6 className="fw-semibold mb-2">🔽 Durum, Öncelik ve Sıralama</h6>
-            <ul className="mb-0 ps-3 text-muted">
-              <li><strong>Durum:</strong> Tüm talepler, yalnızca açık (To Do / In Progress / In Review) veya kapanan (Done) talepler arasında seçim yapın.</li>
-              <li><strong>Öncelik:</strong> Belirli bir öncelik seviyesine göre filtreleyin (Highest, High, Medium, Low, Lowest).</li>
-              <li><strong>Sıralama:</strong> Talepleri tarihe (en yeni / en eski) veya önceliğe göre sıralayın.</li>
-            </ul>
-          </div>
-
-          <div className="mb-3">
-            <h6 className="fw-semibold mb-2">➕ Yeni Talep</h6>
-            <ul className="mb-0 ps-3 text-muted">
-              <li>Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.</li>
-            </ul>
-          </div>
-
-          <div className="mb-3">
-            <h6 className="fw-semibold mb-2">✏️ Talep Düzenleme ve Silme</h6>
-            <ul className="mb-0 ps-3 text-muted">
-              <li>Bir talep kartına tıklayarak detaylarını görüntüleyin.</li>
-              <li>Kendi oluşturduğunuz talepleri düzenleyebilir veya silebilirsiniz.</li>
-            </ul>
-          </div>
-
-          <div className="d-flex justify-content-end mt-4">
-            <button className="btn btn-primary btn-sm" onClick={() => setShowHelp(false)}>
-              Anladım
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Add visible user modal */}
       <Modal
