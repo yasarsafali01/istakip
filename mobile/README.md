@@ -34,7 +34,7 @@ src/
 
 ## Kapsam
 
-**Faz 1 — Çekirdek:** Giriş, rol bazlı sekme navigasyonu, Panel (özet istatistikler, tıklanabilir proje/iş kartları), Proje listesi, Board (aktif ay, sütun bazlı), Talepler listesi + arama, ortak issue/talep detay ekranı (durum değiştirme, yorum, aktivite akışı, "Görevi Tamamla" akışı).
+**Faz 1 — Çekirdek:** Giriş, rol bazlı sekme navigasyonu, her ekranın üstünde çıkış butonu, Panel (aktif dönem bilgisi, önceliğe göre dağılım, bekleyen/çözülen talep sayıları, proje yöneticisi için ekip iş yükü), Proje listesi, Board (aktif ay, sütun bazlı), Talepler listesi + arama + tüm roller için "Yeni Talep Oluştur" (FAB), ortak issue/talep detay ekranı (durum değiştirme, yorum, aktivite akışı, "Görevi Tamamla" akışı).
 
 **Faz 2 — Sprint/Backlog:** Backlog görünümü (bir aya atama), Aylık dönem (sprint) listesi + oluşturma/başlatma/kapatma, atanan kişi değiştirme, issue oluşturma. Board'da native sürükle-bırak yerine **karta uzun basarak durum seçme** kullanılır (React Native'de cross-column drag-and-drop, gesture kütüphanesi gerektiren ayrı bir iş; bu, aynı sonucu (durum değiştirme) veren daha basit ve güvenilir bir mobil desendir).
 

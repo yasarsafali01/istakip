@@ -2,20 +2,23 @@ import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TextInput, ActivityIndicator, RefreshControl, TouchableOpacity, ScrollView,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { issuesApi, usersApi, projectsApi, unitsApi } from '../../../src/api/resources';
 import { StatusBadge, PriorityBadge } from '../../../src/components/Badge';
+import CreateRequestSheet from '../../../src/components/CreateRequestSheet';
 import { PRIORITIES } from '../../../src/utils/constants';
 import type { Issue } from '../../../src/api/types';
 
 export default function RequestsScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [unitFilter, setUnitFilter] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const requestsQuery = useQuery({
     queryKey: ['issues', { isRequest: true }],
@@ -131,6 +134,19 @@ export default function RequestsScreen() {
           }
         />
       )}
+
+      <TouchableOpacity style={styles.fab} onPress={() => setCreateOpen(true)}>
+        <Ionicons name="add" size={26} color="#fff" />
+      </TouchableOpacity>
+
+      <CreateRequestSheet
+        visible={createOpen}
+        onCreated={() => {
+          setCreateOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['issues'] });
+        }}
+        onCancel={() => setCreateOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -159,4 +175,9 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14, fontWeight: '600', color: '#172B4D', marginBottom: 8 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   assignee: { fontSize: 12, color: '#6B7280' },
+  fab: {
+    position: 'absolute', right: 20, bottom: 20, width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#0052CC', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
+  },
 });

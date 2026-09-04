@@ -19,6 +19,10 @@ export default function AppTabsLayout() {
 
   return (
     <Tabs
+      // External_User has no "dashboard" tab (it's hidden via href below), so
+      // their landing tab must be "requests" or they'd briefly hit a hidden,
+      // empty dashboard on cold start.
+      initialRouteName={isExternalUser ? 'requests/index' : 'dashboard'}
       screenOptions={{
         headerShown: true,
         tabBarActiveTintColor: '#0052CC',
