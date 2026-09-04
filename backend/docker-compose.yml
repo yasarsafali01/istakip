@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: istakip
+      POSTGRES_PASSWORD: istakip
+      POSTGRES_DB: istakip
+    ports:
+      - "5433:5432"
+    volumes:
+      - istakip_pg_data:/var/lib/postgresql/data
+
+volumes:
+  istakip_pg_data:

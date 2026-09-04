@@ -1,0 +1,14 @@
+DROP TABLE IF EXISTS inventory;
+DROP TABLE IF EXISTS activities;
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS issue_visible_users;
+DROP TABLE IF EXISTS issues;
+DROP TABLE IF EXISTS sprints;
+DROP TABLE IF EXISTS refresh_tokens;
+
+ALTER TABLE users DROP CONSTRAINT IF EXISTS fk_users_project;
+DROP TABLE IF EXISTS projects;
+
+ALTER TABLE units DROP CONSTRAINT IF EXISTS fk_units_department_head;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS units;
