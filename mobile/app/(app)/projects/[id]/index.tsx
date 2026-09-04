@@ -12,6 +12,7 @@ import PickerSheet from '../../../../src/components/PickerSheet';
 import CompleteIssueModal from '../../../../src/components/CompleteIssueModal';
 import CreateIssueSheet from '../../../../src/components/CreateIssueSheet';
 import CreateSprintSheet from '../../../../src/components/CreateSprintSheet';
+import CreateProjectSheet from '../../../../src/components/CreateProjectSheet';
 import { usePermissions } from '../../../../src/hooks/usePermissions';
 import { STATUSES } from '../../../../src/utils/constants';
 import type { Issue, Sprint } from '../../../../src/api/types';
@@ -22,7 +23,7 @@ export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { canManageIssues } = usePermissions();
+  const { canManageIssues, canCreateProject } = usePermissions();
 
   const [view, setView] = useState<ViewMode>('board');
   const [statusPickerIssue, setStatusPickerIssue] = useState<Issue | null>(null);
@@ -30,6 +31,7 @@ export default function ProjectDetailScreen() {
   const [doneModalIssueId, setDoneModalIssueId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createSprintOpen, setCreateSprintOpen] = useState(false);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
 
   const projectQuery = useQuery({ queryKey: ['project', id], queryFn: () => projectsApi.get(id!) });
   const sprintsQuery = useQuery({ queryKey: ['sprints', id], queryFn: () => sprintsApi.listByProject(id!) });
@@ -136,7 +138,18 @@ export default function ProjectDetailScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-      <Stack.Screen options={{ title: projectQuery.data?.key || 'Proje' }} />
+      <Stack.Screen
+        options={{
+          title: projectQuery.data?.key || 'Proje',
+          headerRight: canCreateProject
+            ? () => (
+                <TouchableOpacity onPress={() => setEditProjectOpen(true)} style={{ padding: 4 }}>
+                  <Ionicons name="create-outline" size={22} color="#0052CC" />
+                </TouchableOpacity>
+              )
+            : undefined,
+        }}
+      />
 
       <View style={styles.segmentRow}>
         {(['board', 'backlog', 'sprints'] as ViewMode[]).map((v) => (
@@ -276,6 +289,19 @@ export default function ProjectDetailScreen() {
         }}
         onCancel={() => setCreateSprintOpen(false)}
       />
+
+      {projectQuery.data && (
+        <CreateProjectSheet
+          visible={editProjectOpen}
+          project={projectQuery.data}
+          onCreated={() => {
+            setEditProjectOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['project', id] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+          }}
+          onCancel={() => setEditProjectOpen(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }

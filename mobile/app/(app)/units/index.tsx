@@ -19,6 +19,7 @@ export default function UnitsScreen() {
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: usersApi.list });
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [name, setName] = useState('');
   const [unitCode, setUnitCode] = useState('');
   const [departmentHeadId, setDepartmentHeadId] = useState('');
@@ -26,22 +27,41 @@ export default function UnitsScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const departmentHeads = (usersQuery.data || []).filter((u) => u.role === ROLES.DEPARTMENT_HEAD);
+  const isEdit = !!editingUnit;
 
   function resetForm() {
     setName('');
     setUnitCode('');
     setDepartmentHeadId('');
     setSubmitting(false);
+    setEditingUnit(null);
+  }
+
+  function openCreateForm() {
+    resetForm();
+    setFormOpen(true);
+  }
+
+  function openEditForm(unit: Unit) {
+    setEditingUnit(unit);
+    setName(unit.name);
+    setUnitCode(unit.unitCode);
+    setDepartmentHeadId(unit.departmentHeadId || '');
+    setFormOpen(true);
   }
 
   async function handleSubmit() {
-    if (!name.trim() || !unitCode.trim() || !departmentHeadId) {
+    if (!name.trim() || (!isEdit && !unitCode.trim()) || !departmentHeadId) {
       Alert.alert('Uyarı', 'Ad, kod ve daire başkanı zorunludur.');
       return;
     }
     setSubmitting(true);
     try {
-      await unitsApi.create({ name: name.trim(), unitCode: unitCode.trim().toUpperCase(), departmentHeadId });
+      if (isEdit && editingUnit) {
+        await unitsApi.update(editingUnit.id, { name: name.trim(), departmentHeadId });
+      } else {
+        await unitsApi.create({ name: name.trim(), unitCode: unitCode.trim().toUpperCase(), departmentHeadId });
+      }
       queryClient.invalidateQueries({ queryKey: ['units'] });
       setFormOpen(false);
       resetForm();
@@ -57,13 +77,18 @@ export default function UnitsScreen() {
 
   function renderItem({ item }: { item: Unit }) {
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        disabled={!isSystemAdmin}
+        onPress={() => openEditForm(item)}
+      >
         <View style={styles.keyBadge}><Text style={styles.keyText}>{item.unitCode}</Text></View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.head}>{getHeadName(item.departmentHeadId) || 'Daire başkanı atanmamış'}</Text>
         </View>
-      </View>
+        {isSystemAdmin && <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />}
+      </TouchableOpacity>
     );
   }
 
@@ -83,28 +108,30 @@ export default function UnitsScreen() {
       )}
 
       {isSystemAdmin && (
-        <TouchableOpacity style={styles.fab} onPress={() => setFormOpen(true)}>
+        <TouchableOpacity style={styles.fab} onPress={openCreateForm}>
           <Ionicons name="add" size={26} color="#fff" />
         </TouchableOpacity>
       )}
 
-      <Modal visible={formOpen} animationType="slide" transparent onRequestClose={() => setFormOpen(false)}>
+      <Modal visible={formOpen} animationType="slide" transparent onRequestClose={() => { setFormOpen(false); resetForm(); }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Yeni Birim</Text>
+            <Text style={styles.formTitle}>{isEdit ? 'Birimi Düzenle' : 'Yeni Birim'}</Text>
 
             <Text style={styles.label}>Birim Adı *</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Bilgi İşlem Daire Başkanlığı" />
 
             <Text style={styles.label}>Birim Kodu *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isEdit && styles.inputDisabled]}
               value={unitCode}
               onChangeText={(t) => setUnitCode(t.toUpperCase())}
               placeholder="BIGD"
               maxLength={10}
               autoCapitalize="characters"
+              editable={!isEdit}
             />
+            {isEdit && <Text style={styles.hint}>Birim kodu oluşturulduktan sonra değiştirilemez.</Text>}
 
             <Text style={styles.label}>Daire Başkanı *</Text>
             <TouchableOpacity style={styles.selectInput} onPress={() => setHeadPickerOpen(true)}>
@@ -118,7 +145,7 @@ export default function UnitsScreen() {
                 <Text style={styles.cancelText}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmBtn} onPress={handleSubmit} disabled={submitting}>
-                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmText}>Oluştur</Text>}
+                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmText}>{isEdit ? 'Kaydet' : 'Oluştur'}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -158,6 +185,8 @@ const styles = StyleSheet.create({
   formTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
   label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 10 },
   input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 10, fontSize: 14 },
+  inputDisabled: { backgroundColor: '#F3F4F6', color: '#9CA3AF' },
+  hint: { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
   selectInput: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 10 },
   selectValue: { fontSize: 14, color: '#172B4D' },
   selectPlaceholder: { fontSize: 14, color: '#9CA3AF' },

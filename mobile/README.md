@@ -38,9 +38,9 @@ src/
 
 **Faz 2 — Sprint/Backlog:** Backlog görünümü (bir aya atama), Aylık dönem (sprint) listesi + oluşturma/başlatma/kapatma, atanan kişi değiştirme, issue oluşturma. Board'da native sürükle-bırak yerine **karta uzun basarak durum seçme** kullanılır (React Native'de cross-column drag-and-drop, gesture kütüphanesi gerektiren ayrı bir iş; bu, aynı sonucu (durum değiştirme) veren daha basit ve güvenilir bir mobil desendir).
 
-**Faz 3 — Yönetim:** "Görevi Tamamla" akışında envanter/teçhizat seçimi + stok düşümü (stok yetersizse uyarı, işlem engellenmez), Birimler ekranı (System_Admin oluşturabilir), Proje oluşturma formu, talep klonlama, dış kullanıcı görünürlük (visibleTo) yönetimi.
+**Faz 3 — Yönetim:** "Görevi Tamamla" akışında envanter/teçhizat seçimi + stok düşümü (stok yetersizse uyarı, işlem engellenmez), Birimler ekranı (oluşturma + düzenleme, System_Admin), Proje oluşturma + düzenleme formu, talep klonlama, dış kullanıcı görünürlük (visibleTo) yönetimi, talepler listesinde birim + öncelik filtre çipleri.
 
-**Basitleştirilenler / yapılmadı:** Birim ve proje **düzenleme** formları yok (yalnızca oluşturma); talepler listesinde birim/öncelik filtre çipleri yok (yalnızca metin araması var); envanter için ayrı bir liste/CRUD ekranı yok (yalnızca Done akışındaki seçim).
+**Basitleştirilenler / yapılmadı:** Envanter için ayrı bir liste/CRUD ekranı yok (yalnızca Done akışındaki seçim); board'da native sürükle-bırak yerine uzun-basma kullanılıyor (yukarı bakın).
 
 ## Çalıştırma
 

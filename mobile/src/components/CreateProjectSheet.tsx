@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView, Switch,
@@ -9,17 +9,20 @@ import PickerSheet from './PickerSheet';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { ROLES } from '../utils/constants';
+import type { Project } from '../api/types';
 
 interface Props {
   visible: boolean;
+  project?: Project | null; // when set, edits this project instead of creating one
   onCreated: () => void;
   onCancel: () => void;
 }
 
-export default function CreateProjectSheet({ visible, onCreated, onCancel }: Props) {
+export default function CreateProjectSheet({ visible, project, onCreated, onCancel }: Props) {
   const { currentUser } = useAuth();
   const { isSystemAdmin } = usePermissions();
-  const unitsQuery = useQuery({ queryKey: ['units'], queryFn: unitsApi.list, enabled: visible && isSystemAdmin });
+  const isEdit = !!project;
+  const unitsQuery = useQuery({ queryKey: ['units'], queryFn: unitsApi.list, enabled: visible && isSystemAdmin && !isEdit });
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: usersApi.list, enabled: visible });
 
   const [name, setName] = useState('');
@@ -35,6 +38,16 @@ export default function CreateProjectSheet({ visible, onCreated, onCancel }: Pro
     (u) => u.role === ROLES.PROJECT_MANAGER && (!unitId || u.unitId === unitId)
   );
 
+  useEffect(() => {
+    if (visible && project) {
+      setName(project.name);
+      setDescription(project.description || '');
+      setUnitId(project.unitId);
+      setManagerId(project.managerId);
+      setHasInventory(project.hasInventory);
+    }
+  }, [visible, project]);
+
   function reset() {
     setName('');
     setDescription('');
@@ -45,13 +58,17 @@ export default function CreateProjectSheet({ visible, onCreated, onCancel }: Pro
   }
 
   async function handleSubmit() {
-    if (!name.trim() || !unitId || !managerId) {
+    if (!name.trim() || (!isEdit && !unitId) || !managerId) {
       Alert.alert('Uyarı', 'Proje adı, birim ve yönetici zorunludur.');
       return;
     }
     setSubmitting(true);
     try {
-      await projectsApi.create({ name: name.trim(), description: description.trim(), unitId, managerId, hasInventory });
+      if (isEdit && project) {
+        await projectsApi.update(project.id, { name: name.trim(), description: description.trim(), managerId, hasInventory });
+      } else {
+        await projectsApi.create({ name: name.trim(), description: description.trim(), unitId, managerId, hasInventory });
+      }
       reset();
       onCreated();
     } catch (err: any) {
@@ -71,12 +88,12 @@ export default function CreateProjectSheet({ visible, onCreated, onCancel }: Pro
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <ScrollView style={styles.card} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Yeni Proje</Text>
+          <Text style={styles.title}>{isEdit ? 'Projeyi Düzenle' : 'Yeni Proje'}</Text>
 
           <Text style={styles.label}>Proje Adı *</Text>
           <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Proje adı..." />
 
-          {isSystemAdmin && (
+          {isSystemAdmin && !isEdit && (
             <>
               <Text style={styles.label}>Birim *</Text>
               <TouchableOpacity style={styles.selectInput} onPress={() => setUnitPickerOpen(true)}>
@@ -107,7 +124,7 @@ export default function CreateProjectSheet({ visible, onCreated, onCancel }: Pro
               <Text style={styles.cancelText}>İptal</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBtn} onPress={handleSubmit} disabled={submitting}>
-              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmText}>Oluştur</Text>}
+              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmText}>{isEdit ? 'Kaydet' : 'Oluştur'}</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>
