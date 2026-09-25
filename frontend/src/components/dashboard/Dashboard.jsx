@@ -27,26 +27,23 @@ function sprintDateRange(sprint) {
 /* ── Modern istatistik kartı ─────────────────────────────────────────────────── */
 function StatCard({ title, value, icon, bg, color }) {
   return (
-    <div
-      className="card border-0 shadow-sm h-100"
-      style={{ borderLeft: `4px solid ${color}`, background: `linear-gradient(135deg, ${bg} 0%, #ffffff 100%)` }}
-    >
-      <div className="card-body py-3 px-4">
+    <div className="card border-0 h-100">
+      <div className="card-body py-3 px-3">
         <div className="d-flex align-items-center justify-content-between mb-2">
           <span
-            className="fw-semibold text-muted"
-            style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            className="fw-semibold"
+            style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b' }}
           >
             {title}
           </span>
           <div
-            className="d-flex align-items-center justify-content-center rounded-circle"
-            style={{ width: 36, height: 36, background: bg, flexShrink: 0 }}
+            className="d-flex align-items-center justify-content-center"
+            style={{ width: 34, height: 34, borderRadius: 10, background: bg, flexShrink: 0 }}
           >
-            <span style={{ color, fontSize: 18 }}>{icon}</span>
+            <span style={{ color, fontSize: 18, display: 'flex' }}>{icon}</span>
           </div>
         </div>
-        <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color }}>
+        <div className="fw-bold" style={{ fontSize: '1.9rem', lineHeight: 1.1, color: '#0f172a' }}>
           {value}
         </div>
       </div>
@@ -121,30 +118,30 @@ function AdminDashboard({ state }) {
       <p className="text-muted small mb-4">Sistem geneli özet</p>
 
       <div className="row g-3 mb-4">
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Birim Sayısı" value={totalUnits} icon={<TbBuilding />}
             bg="#EAF0FF" color="#6554C0" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bağlı Proje" value={totalProjects} icon={<TbFolder />}
-            bg="#E6F0FF" color="#0052CC" />
+            bg="#E6F0FF" color="#2563eb" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <ActivePeriodCard sprint={activeSprint} />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Toplam Talep" value={requests.length} icon={<TbTicket />}
             bg="#FFF4E5" color="#FF7700" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Açık Talep" value={openRequests} icon={<TbAlertCircle />}
             bg="#FFF0F0" color="#DE350B" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Çözülmüş Talep" value={resolvedRequests} icon={<TbCircleCheck />}
             bg="#E3FCEF" color="#00875A" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
@@ -194,26 +191,26 @@ function DepartmentHeadDashboard({ state, currentUser }) {
       {unit && <p className="text-muted small mb-4">{unit.name}</p>}
 
       <div className="row g-3 mb-4">
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bağlı Proje" value={visibleProjects.length} icon={<TbFolder />}
-            bg="#E6F0FF" color="#0052CC" />
+            bg="#E6F0FF" color="#2563eb" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <ActivePeriodCard sprint={activeSprint} />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Toplam İş" value={unitIssues.length} icon={<TbTicket />}
             bg="#FFF4E5" color="#FF7700" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Açık İşler" value={openIssues} icon={<TbAlertCircle />}
             bg="#FFF0F0" color="#DE350B" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Tamamlanan" value={resolvedIssues} icon={<TbCircleCheck />}
             bg="#E3FCEF" color="#00875A" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
@@ -271,26 +268,26 @@ function ProjectManagerDashboard({ state, currentUser }) {
       {!myProject && <p className="text-muted small mb-4">Henüz atanmış proje yok.</p>}
 
       <div className="row g-3 mb-4">
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bağlı Proje" value={myProject ? 1 : 0} icon={<TbFolder />}
-            bg="#E6F0FF" color="#0052CC" />
+            bg="#E6F0FF" color="#2563eb" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <ActivePeriodCard sprint={activeSprint} />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Toplam İş" value={projectIssues.length} icon={<TbTicket />}
             bg="#FFF4E5" color="#FF7700" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Açık İşler" value={openIssues} icon={<TbAlertCircle />}
             bg="#FFF0F0" color="#DE350B" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Tamamlanan" value={resolvedIssues} icon={<TbCircleCheck />}
             bg="#E3FCEF" color="#00875A" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
@@ -366,26 +363,26 @@ function WorkerDashboard({ state, currentUser }) {
 
       {/* Kartlar */}
       <div className="row g-3 mb-4">
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bağlı Proje" value={myProject ? 1 : 0} icon={<TbFolder />}
-            bg="#E6F0FF" color="#0052CC" />
+            bg="#E6F0FF" color="#2563eb" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <ActivePeriodCard sprint={activeSprint} />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bana Atanan" value={myIssues.length} icon={<TbTicket />}
             bg="#FFF4E5" color="#FF7700" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Açık İşler" value={openCount} icon={<TbAlertCircle />}
             bg="#FFF0F0" color="#DE350B" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Tamamlanan" value={doneCount} icon={<TbCircleCheck />}
             bg="#E3FCEF" color="#00875A" />
         </div>
-        <div className="col-6 col-lg-2">
+        <div className="col-6 col-md-4 col-xl">
           <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
@@ -396,7 +393,7 @@ function WorkerDashboard({ state, currentUser }) {
           {/* Aktif İşler (Board) */}
           <div className="mb-4">
             <h5 className="fw-semibold mb-3 d-flex align-items-center gap-2">
-              <span className="badge" style={{ backgroundColor: '#0052CC', color: '#fff', fontSize: '0.75rem' }}>
+              <span className="badge" style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.75rem' }}>
                 {myProject.key}
               </span>
               Aktif İşler
@@ -556,7 +553,7 @@ function ExternalUserDashboard({ state, currentUser }) {
       <div className="row g-3 mb-4">
         <div className="col-6 col-lg-3">
           <StatCard title="Toplam Talep" value={myRequests.length} icon={<TbTicket />}
-            bg="#E6F0FF" color="#0052CC" />
+            bg="#E6F0FF" color="#2563eb" />
         </div>
         <div className="col-6 col-lg-3">
           <StatCard title="Açık Talep" value={openCount} icon={<TbAlertCircle />}

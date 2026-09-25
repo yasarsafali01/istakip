@@ -32,10 +32,10 @@ export default function FilterChip({ icon, label, active = false, children }) {
         onClick={() => setOpen(o => !o)}
         className="d-flex align-items-center gap-1 px-3 py-1"
         style={{
-          border: `1.5px solid ${active ? '#0052CC' : '#dee2e6'}`,
+          border: `1.5px solid ${active ? '#2563eb' : '#dee2e6'}`,
           borderRadius: '999px',
           background: active ? '#EAF0FB' : '#fff',
-          color: active ? '#0052CC' : '#495057',
+          color: active ? '#2563eb' : '#495057',
           fontSize: '0.85rem',
           fontWeight: 500,
           cursor: 'pointer',
@@ -107,7 +107,7 @@ export function FilterChipOption({ selected, onClick, onSelect, children }) {
       className="d-flex align-items-center gap-2 w-100 px-3 py-2 text-start"
       style={{
         background: selected ? '#EAF0FB' : 'transparent',
-        color: selected ? '#0052CC' : '#212529',
+        color: selected ? '#2563eb' : '#212529',
         border: 'none',
         fontSize: '0.85rem',
         fontWeight: selected ? 600 : 400,
@@ -118,7 +118,7 @@ export function FilterChipOption({ selected, onClick, onSelect, children }) {
       onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
     >
       {selected && (
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0052CC', flexShrink: 0 }} />
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', flexShrink: 0 }} />
       )}
       {!selected && <span style={{ width: 8, flexShrink: 0 }} />}
       {children}

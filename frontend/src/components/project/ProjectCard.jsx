@@ -52,7 +52,7 @@ function ProjectCard({ project }) {
             <div>
               <span
                 className="badge me-2"
-                style={{ backgroundColor: '#0052CC', color: '#fff', fontSize: '0.7rem' }}
+                style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.7rem' }}
               >
                 {project.key}
               </span>

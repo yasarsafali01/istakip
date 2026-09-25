@@ -74,7 +74,7 @@ function ProjectProgress({ unitId, projectId }) {
                     />
                     <div
                       className="progress-bar"
-                      style={{ width: `${inProgressPercent}%`, backgroundColor: '#0052CC' }}
+                      style={{ width: `${inProgressPercent}%`, backgroundColor: '#2563eb' }}
                       title={`In Progress: ${inProgress}`}
                     />
                     <div
@@ -99,7 +99,7 @@ function ProjectProgress({ unitId, projectId }) {
                     <span className="text-muted" style={{ fontSize: '0.7rem' }}>
                       <span
                         className="d-inline-block rounded-circle me-1"
-                        style={{ width: 8, height: 8, backgroundColor: '#0052CC' }}
+                        style={{ width: 8, height: 8, backgroundColor: '#2563eb' }}
                         aria-hidden="true"
                       />
                       In Progress {inProgress}

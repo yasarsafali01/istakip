@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TbPlus, TbEye, TbFlag, TbCircleCheck, TbArrowsSort, TbBuilding, TbUpload, TbFileSpreadsheet, TbPrinter } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -41,7 +42,16 @@ export default function RequestList() {
   const { currentUser } = useAuth();
   const { isExternalUser, role } = usePermissions();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
+
+  // The top bar's "Yeni Talep" button links here with ?yeni=1 — open the form once, then drop the param
+  useEffect(() => {
+    if (searchParams.get('yeni') === '1') {
+      setShowForm(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [visibleToModal, setVisibleToModal] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRequestId, setSelectedRequestId] = useState(null);
@@ -150,7 +160,7 @@ export default function RequestList() {
             className="rounded-3 p-3 h-100"
             style={{
               background: 'linear-gradient(135deg, #EAF0FB 0%, #dce8ff 100%)',
-              borderLeft: '4px solid #0052CC',
+              borderLeft: '4px solid #2563eb',
             }}
           >
             <div className="d-flex align-items-center justify-content-between mb-1">
@@ -159,7 +169,7 @@ export default function RequestList() {
               </span>
               <span style={{ fontSize: '1.4rem' }}>📋</span>
             </div>
-            <div className="fw-bold" style={{ fontSize: '2rem', color: '#0052CC', lineHeight: 1 }}>
+            <div className="fw-bold" style={{ fontSize: '2rem', color: '#2563eb', lineHeight: 1 }}>
               {totalCount}
             </div>
             <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Tüm talepleriniz</div>
@@ -415,7 +425,7 @@ export default function RequestList() {
               {!isExternalUser && (
                 <button
                   className="btn btn-sm btn-outline-secondary position-absolute"
-                  style={{ top: 8, right: 8 }}
+                  style={{ bottom: 8, right: 8 }}
                   title="Dış kullanıcıya görünür yap"
                   onClick={e => {
                     e.stopPropagation();

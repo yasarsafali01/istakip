@@ -48,7 +48,7 @@ export const PRIORITY_COLORS = {
 
 export const STATUS_COLORS = {
   'To Do': '#DFE1E6',
-  'In Progress': '#0052CC',
+  'In Progress': '#2563eb',
   'In Review': '#FF991F',
   Done: '#00875A',
   'Geri Çevrildi': '#DE350B',

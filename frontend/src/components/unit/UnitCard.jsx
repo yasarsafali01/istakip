@@ -19,8 +19,8 @@ export default function UnitCard({ unit, onEdit, onClick }) {
         <div className="d-flex align-items-start justify-content-between mb-2">
           <div className="d-flex align-items-center gap-2">
             <div className="d-flex align-items-center justify-content-center rounded-2"
-              style={{ width: 36, height: 36, background: '#0052CC1A', flexShrink: 0 }}>
-              <TbBuilding size={18} color="#0052CC" />
+              style={{ width: 36, height: 36, background: '#2563eb1A', flexShrink: 0 }}>
+              <TbBuilding size={18} color="#2563eb" />
             </div>
             <div>
               <h6 className="mb-0 fw-semibold">{unit.name}</h6>

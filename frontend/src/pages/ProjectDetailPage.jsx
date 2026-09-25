@@ -76,7 +76,7 @@ function ProjectDetailPage() {
     <div>
       <div className="mb-4">
         <div className="d-flex align-items-center gap-2 mb-1">
-          <span className="badge" style={{ backgroundColor: '#0052CC', color: '#fff', fontSize: '0.75rem' }}>
+          <span className="badge" style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.75rem' }}>
             {project.key}
           </span>
           <h4 className="fw-bold mb-0">{project.name}</h4>
@@ -151,16 +151,16 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
       <div className="row g-3 mb-4">
         <div className="col-6 col-lg-3">
           <div className="card border-0 shadow-sm h-100"
-            style={{ borderLeft: '4px solid #0052CC', background: 'linear-gradient(135deg, #EAF0FB 0%, #ffffff 100%)' }}>
+            style={{ borderLeft: '4px solid #2563eb', background: 'linear-gradient(135deg, #EAF0FB 0%, #ffffff 100%)' }}>
             <div className="card-body py-3 px-4">
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Toplam İş</span>
                 <div className="d-flex align-items-center justify-content-center rounded-circle"
                   style={{ width: 36, height: 36, background: '#EAF0FB', flexShrink: 0 }}>
-                  <span style={{ color: '#0052CC', fontSize: 18 }}>📋</span>
+                  <span style={{ color: '#2563eb', fontSize: 18 }}>📋</span>
                 </div>
               </div>
-              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#0052CC' }}>{totalCount}</div>
+              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#2563eb' }}>{totalCount}</div>
             </div>
           </div>
         </div>
@@ -424,7 +424,7 @@ function BacklogTabView({ projectId, allSprints }) {
 
         {/* Toplam Çalışan */}
         <div className="col-12 col-md-2">
-          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #0052CC' }}>
+          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #2563eb' }}>
             <div className="card-body d-flex flex-column align-items-center justify-content-center py-3 text-center">
               <TbUsers size={28} className="text-primary mb-2 opacity-75" />
               <div className="fw-bold fs-2 lh-1">{projectMembers.length}</div>
@@ -935,13 +935,13 @@ function FilterPill({ label, icon, active, activeLabel, onClear, children }) {
       <button
         className="btn btn-sm d-flex align-items-center gap-1"
         style={{
-          border: active ? '1.5px solid #0052CC' : '1.5px solid #DFE1E6',
+          border: active ? '1.5px solid #2563eb' : '1.5px solid #DFE1E6',
           borderRadius: 20,
           padding: '4px 12px',
           fontSize: '0.82rem',
           fontWeight: active ? 600 : 400,
           background: active ? '#EAF2FF' : '#fff',
-          color: active ? '#0052CC' : '#42526E',
+          color: active ? '#2563eb' : '#42526E',
           whiteSpace: 'nowrap',
         }}
         onClick={() => setOpen((v) => !v)}

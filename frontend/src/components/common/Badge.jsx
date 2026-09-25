@@ -26,7 +26,7 @@ function Badge({ label, type = 'custom', color, className = '' }) {
 
   // "Talep" için özel renk - mavi ton
   if (label === 'Talep') {
-    bgColor = '#0052CC';
+    bgColor = '#2563eb';
     textColor = '#ffffff';
   }
 

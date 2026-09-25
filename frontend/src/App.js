@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import Sidebar from './components/common/Sidebar';
+import Topbar from './components/common/Topbar';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { ROLES } from './constants';
 
@@ -30,11 +31,14 @@ const LoadingSpinner = () => (
  */
 function Layout() {
   return (
-    <div className="d-flex" style={{ minHeight: '100vh' }}>
+    <div className="app-shell d-flex" style={{ minHeight: '100vh' }}>
       <Sidebar />
-      <main className="flex-grow-1 p-4 overflow-auto" style={{ background: '#F4F5F7' }}>
-        <Outlet />
-      </main>
+      <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
+        <Topbar />
+        <main className="flex-grow-1 p-3 p-md-4 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

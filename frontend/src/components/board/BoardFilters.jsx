@@ -39,7 +39,7 @@ function BoardFilters({
               key={user.id}
               className="btn p-0 border-0"
               style={{
-                outline: assigneeFilter === user.id ? `2px solid #0052CC` : 'none',
+                outline: assigneeFilter === user.id ? `2px solid #2563eb` : 'none',
                 outlineOffset: 2,
                 borderRadius: '50%',
                 opacity: assigneeFilter && assigneeFilter !== user.id ? 0.4 : 1,
@@ -61,13 +61,13 @@ function BoardFilters({
         <button
           className="btn btn-sm d-flex align-items-center gap-1"
           style={{
-            border: priorityFilter ? '1.5px solid #0052CC' : '1.5px solid #DFE1E6',
+            border: priorityFilter ? '1.5px solid #2563eb' : '1.5px solid #DFE1E6',
             borderRadius: 20,
             padding: '4px 12px',
             fontSize: '0.82rem',
             fontWeight: priorityFilter ? 600 : 400,
             background: priorityFilter ? '#EAF2FF' : '#fff',
-            color: priorityFilter ? '#0052CC' : '#42526E',
+            color: priorityFilter ? '#2563eb' : '#42526E',
             whiteSpace: 'nowrap',
           }}
           onClick={() => setPriorityOpen(v => !v)}

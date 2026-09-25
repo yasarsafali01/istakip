@@ -52,7 +52,7 @@ export default function RequestCard({ request, searchQuery = '' }) {
                 className="badge rounded-pill fw-semibold"
                 style={{
                   backgroundColor: '#EAF0FB',
-                  color: '#0052CC',
+                  color: '#2563eb',
                   fontSize: '0.7rem',
                   letterSpacing: '0.02em',
                   padding: '2px 8px',

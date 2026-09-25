@@ -10,7 +10,7 @@ import React from 'react';
  * @param {string}  [props.className]  - Additional CSS classes
  * @param {string}  [props.title]      - Tooltip text (defaults to name)
  */
-function Avatar({ name = '', color = '#0052CC', size = 32, className = '', title }) {
+function Avatar({ name = '', color = '#2563eb', size = 32, className = '', title }) {
   const initials = name
     .split(' ')
     .filter(Boolean)

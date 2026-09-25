@@ -29,7 +29,7 @@ function InventoryPage() {
         <div className="d-flex align-items-center gap-2 mb-1">
           <span
             className="badge"
-            style={{ backgroundColor: '#0052CC', color: '#fff', fontSize: '0.75rem' }}
+            style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.75rem' }}
           >
             {project.key}
           </span>
