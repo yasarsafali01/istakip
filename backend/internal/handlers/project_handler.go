@@ -43,6 +43,9 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		filter.ManagerID = &uid
 	case models.RoleWorker:
 		filter.OnlyID = claims.ProjectID
+	case models.RoleExternalUser:
+		// no filter — an external user picks unit → project when opening a
+		// request (issue Create already lets them target any project)
 	default:
 		filter.None = true
 	}

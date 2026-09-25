@@ -38,8 +38,8 @@ func (h *UnitHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		onlyID = claims.UnitID
 	default:
-		response.JSON(w, http.StatusOK, []models.Unit{})
-		return
+		// Project_Manager / Worker / External_User: the request form needs the
+		// full unit list to pick a target (unit names/codes are not sensitive).
 	}
 
 	units, err := h.units.List(r.Context(), onlyID)
