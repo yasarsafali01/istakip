@@ -39,7 +39,11 @@ export function AppProvider({ children }) {
       issuesApi.list(),
     ]);
 
-    const sprintLists = await Promise.all(projects.map((p) => sprintsApi.listByProject(p.id)));
+    // A project can be listed without its sprints being readable (e.g. External_User
+    // sees every project to file a request but gets 403 on sprints) — treat as empty.
+    const sprintLists = await Promise.all(
+      projects.map((p) => sprintsApi.listByProject(p.id).catch(() => []))
+    );
     const sprints = sprintLists.flat();
 
     const unitCodeByProjectId = buildUnitCodeByProjectId(projects, units);
