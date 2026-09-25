@@ -16,6 +16,20 @@ export interface User {
   projectId?: string | null;
   avatarColor: string;
   createdAt: string;
+  /** Real role key (a custom role's key); `role` holds the built-in role with the same scope. */
+  roleKey?: string;
+  scope?: string;
+  permissions?: string[];
+}
+
+export interface RoleDef {
+  key: string;
+  name: string;
+  description: string;
+  scope: 'all' | 'unit' | 'manager' | 'project' | 'own';
+  isSystem: boolean;
+  permissions: string[];
+  userCount: number;
 }
 
 export interface Unit {

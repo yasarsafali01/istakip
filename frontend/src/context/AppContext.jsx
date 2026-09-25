@@ -2,7 +2,8 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import AppReducer from './AppReducer';
 import { ACTIONS } from '../constants';
 import { restoreSession } from '../api/auth';
-import { usersApi, unitsApi, projectsApi, issuesApi, sprintsApi } from '../api/resources';
+import { usersApi, unitsApi, projectsApi, issuesApi, sprintsApi, rolesApi } from '../api/resources';
+import { withBaseRole } from '../api/roles';
 import { buildUnitCodeByProjectId, mapIssues } from '../api/mappers';
 
 const initialState = {
@@ -10,6 +11,7 @@ const initialState = {
   loading: true,
   units: [],
   users: [],
+  roles: [],
   projects: [],
   issues: [],
   sprints: [],
@@ -32,12 +34,15 @@ export function AppProvider({ children }) {
   // replaces them in state. Comments/activities/inventory are loaded on
   // demand per issue/project (see SET_COMMENTS_FOR_ISSUE etc.).
   const hydrateAll = useCallback(async () => {
-    const [units, users, projects, issues] = await Promise.all([
+    const [units, users, projects, issues, roles, me] = await Promise.all([
       unitsApi.list(),
       usersApi.list(),
       projectsApi.list(),
       issuesApi.list(),
+      rolesApi.list(),
+      usersApi.me(),
     ]);
+    const rolesByKey = Object.fromEntries(roles.map((r) => [r.key, r]));
 
     // A project can be listed without its sprints being readable (e.g. External_User
     // sees every project to file a request but gets 403 on sprints) — treat as empty.
@@ -52,7 +57,10 @@ export function AppProvider({ children }) {
       type: ACTIONS.HYDRATE,
       payload: {
         units,
-        users,
+        users: users.map((u) => withBaseRole(u, rolesByKey)),
+        roles,
+        // refreshed on every hydrate so role/permission edits reach the session
+        auth: { isAuthenticated: true, currentUser: withBaseRole(me, rolesByKey) },
         projects,
         sprints,
         issues: mapIssues(issues, unitCodeByProjectId),
@@ -68,7 +76,7 @@ export function AppProvider({ children }) {
         const user = await restoreSession();
         if (cancelled) return;
         if (user) {
-          dispatch({ type: ACTIONS.LOGIN, payload: user });
+          dispatch({ type: ACTIONS.LOGIN, payload: withBaseRole(user) });
           await hydrateAll();
         }
       } catch (err) {

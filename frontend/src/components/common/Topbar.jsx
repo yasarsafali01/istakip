@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { TbPlus, TbLogout } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/usePermissions';
 import Avatar from './Avatar';
 
 // Route prefix → page title shown in the top bar. First match wins.
@@ -10,6 +11,7 @@ const PAGE_TITLES = [
   ['/units', 'Birimler'],
   ['/projects', 'Projeler'],
   ['/requests', 'Talepler'],
+  ['/roles', 'Roller ve İzinler'],
 ];
 
 function titleFor(pathname) {
@@ -19,6 +21,7 @@ function titleFor(pathname) {
 
 export default function Topbar() {
   const { currentUser, logout } = useAuth();
+  const { can } = usePermissions();
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -38,7 +41,7 @@ export default function Topbar() {
 
       <div className="d-flex align-items-center gap-2">
         {/* The requests page already has its own "Yeni Talep" button */}
-        {!pathname.startsWith('/requests') && (
+        {can('request.create') && !pathname.startsWith('/requests') && (
           <Link to="/requests?yeni=1" className="topbar-cta" title="Yeni talep oluştur">
             <TbPlus size={16} aria-hidden="true" />
             <span className="d-none d-sm-inline">Yeni Talep</span>

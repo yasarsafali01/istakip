@@ -23,7 +23,7 @@ export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { canManageIssues, canCreateProject } = usePermissions();
+  const { can } = usePermissions();
 
   const [view, setView] = useState<ViewMode>('board');
   const [statusPickerIssue, setStatusPickerIssue] = useState<Issue | null>(null);
@@ -119,14 +119,14 @@ export default function ProjectDetailScreen() {
       <TouchableOpacity
         style={styles.issueCard}
         onPress={() => router.push(`/(app)/issues/${issue.id}`)}
-        onLongPress={() => canManageIssues && setStatusPickerIssue(issue)}
+        onLongPress={() => can('issue.status') && setStatusPickerIssue(issue)}
       >
         <Text style={styles.issueKey}>{issue.key}</Text>
         <Text style={styles.issueTitle} numberOfLines={2}>{issue.title}</Text>
         <View style={styles.issueFooter}>
           <PriorityBadge priority={issue.priority} />
           {issue.isRequest && <StatusBadge status="Talep" />}
-          {showSprintAction && canManageIssues && (
+          {showSprintAction && can('issue.sprint') && (
             <TouchableOpacity style={styles.assignChip} onPress={() => setSprintPickerIssue(issue)}>
               <Text style={styles.assignChipText}>Aya Ata</Text>
             </TouchableOpacity>
@@ -141,7 +141,7 @@ export default function ProjectDetailScreen() {
       <Stack.Screen
         options={{
           title: projectQuery.data?.key || 'Proje',
-          headerRight: canCreateProject
+          headerRight: can('project.edit')
             ? () => (
                 <TouchableOpacity onPress={() => setEditProjectOpen(true)} style={{ padding: 4 }}>
                   <Ionicons name="create-outline" size={22} color="#0052CC" />
@@ -221,12 +221,12 @@ export default function ProjectDetailScreen() {
                   <Text style={styles.sprintName}>{sprint.name}</Text>
                   <Text style={styles.sprintStatus}>{sprint.status}</Text>
                 </View>
-                {canManageIssues && sprint.status === 'Planned' && (
+                {can('sprint.manage') && sprint.status === 'Planned' && (
                   <TouchableOpacity style={styles.sprintActionBtn} onPress={() => handleStartSprint(sprint)}>
                     <Text style={styles.sprintActionText}>Başlat</Text>
                   </TouchableOpacity>
                 )}
-                {canManageIssues && sprint.status === 'Active' && (
+                {can('sprint.manage') && sprint.status === 'Active' && (
                   <TouchableOpacity style={[styles.sprintActionBtn, styles.sprintActionDanger]} onPress={() => handleCompleteSprint(sprint)}>
                     <Text style={[styles.sprintActionText, styles.sprintActionDangerText]}>Kapat</Text>
                   </TouchableOpacity>
@@ -237,12 +237,12 @@ export default function ProjectDetailScreen() {
         </ScrollView>
       )}
 
-      {canManageIssues && view !== 'sprints' && (
+      {can('issue.create') && view !== 'sprints' && (
         <TouchableOpacity style={styles.fab} onPress={() => setCreateOpen(true)}>
           <Ionicons name="add" size={26} color="#fff" />
         </TouchableOpacity>
       )}
-      {canManageIssues && view === 'sprints' && (
+      {can('sprint.manage') && view === 'sprints' && (
         <TouchableOpacity style={styles.fab} onPress={() => setCreateSprintOpen(true)}>
           <Ionicons name="add" size={26} color="#fff" />
         </TouchableOpacity>

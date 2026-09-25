@@ -19,7 +19,7 @@ export default function IssueDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { canManageIssues, isWorker, isExternalUser, isSystemAdmin } = usePermissions();
+  const { can, canManageIssues, isExternalUser, isSystemAdmin } = usePermissions();
   const queryClient = useQueryClient();
 
   const [commentText, setCommentText] = useState('');
@@ -45,15 +45,15 @@ export default function IssueDetailScreen() {
 
   const issue = issueQuery.data;
   const project = projectQuery.data;
-  const canChangeStatus = issue && (canManageIssues || isWorker);
+  const canChangeStatus = issue && can('issue.status');
 
-  // Mirrors backend CanChangeAssignee: External_User never; reporter can't
-  // assign their own issue; System_Admin always; DeptHead/PM within scope.
+  // Mirrors backend CanChangeAssignee: needs the issue.assign permission and
+  // the reporter can't assign their own issue (the server also checks scope).
   const canAssign =
-    issue && currentUser && !isExternalUser && issue.reporterId !== currentUser.id &&
-    (isSystemAdmin || canManageIssues);
+    issue && currentUser && !isExternalUser && issue.reporterId !== currentUser.id && can('issue.assign');
 
-  const canClone = issue?.isRequest && (canManageIssues || issue.reporterId === currentUser?.id);
+  const canClone =
+    issue?.isRequest && can('issue.clone') && (!isExternalUser || issue.reporterId === currentUser?.id);
 
   async function handleStatusChange(newStatus: string) {
     if (!issue) return;

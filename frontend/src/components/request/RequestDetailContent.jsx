@@ -14,6 +14,7 @@ import {
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/usePermissions';
 import { ACTIONS, STATUSES, PRIORITIES, ROLES } from '../../constants';
 import { canChangeAssignee } from '../../utils/permissionUtils';
 import { issuesApi, commentsApi, activitiesApi } from '../../api/resources';
@@ -34,6 +35,7 @@ import TaskDoneModal from '../common/TaskDoneModal';
 function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
+  const { can } = usePermissions();
 
   // ── Edit mode state ───────────────────────────────────────────────────────
   const [editMode, setEditMode] = useState(false);
@@ -67,13 +69,11 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const isExternalUser = currentUser?.role === ROLES.EXTERNAL_USER;
   const isOwnRequest = request.reporterId === currentUser?.id;
   const canAssign = canChangeAssignee(currentUser, request, state.projects);
-  const canEdit = currentUser && (
-    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser.role) ||
-    isOwnRequest
-  );
-  // Silme: canEdit ile aynı kural (bkz. .kiro/specs/jira-clone-frontend bugfix — Hata 4/5)
-  const canDelete = canEdit;
-  const canEditDates = canEdit && !isExternalUser;
+  // Dış kullanıcı yalnızca kendi talebi üzerinde işlem yapabilir; diğer roller izinlerine göre
+  const ownsIfExternal = !isExternalUser || isOwnRequest;
+  const canEdit = !!currentUser && can('issue.edit') && ownsIfExternal;
+  const canDelete = !!currentUser && can('issue.delete') && ownsIfExternal;
+  const canEditDates = !!currentUser && can('issue.dates');
 
   // Projects available for reassignment (same unit as the request)
   const unitProjects = state.projects.filter((p) => {
@@ -197,7 +197,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   // ── Klonla ────────────────────────────────────────────────────────────────
   // Requirement 18: yetkili kullanıcılar (ve External_User kendi talebini)
   // "Klonla" ile aynı içerikte yeni bir talep oluşturabilir.
-  const canClone = canEdit;
+  const canClone = !!currentUser && can('issue.clone') && ownsIfExternal;
   async function handleClone() {
     try {
       const cloned = await issuesApi.clone(request.id);
@@ -270,7 +270,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
       {/* Action toolbar */}
       <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
         {/* Status buttons (view mode only) */}
-        {!isExternalUser && !editMode && request.status !== 'Geri Çevrildi' && (
+        {!isExternalUser && !editMode && can('issue.status') && request.status !== 'Geri Çevrildi' && (
           <>
             {editingStatus ? (
               <select

@@ -1,4 +1,4 @@
-import { ROLES } from '../constants';
+import { ROLES, DEFAULT_ROLE_PERMISSIONS } from '../constants';
 
 /**
  * Kullanıcının rolüne göre görebileceği projeleri filtreler.
@@ -149,9 +149,14 @@ export function canCreateProject(currentUser) {
  */
 export function canChangeAssignee(user, issue, projects = []) {
   if (!user || !issue) return false;
+  // Rolün atama izni yoksa hiçbir issue için yapamaz
+  const permissions = user.scope ? user.permissions || [] : user.permissions || DEFAULT_ROLE_PERMISSIONS[user.role] || [];
+  if (!permissions.includes('issue.assign')) return false;
   // Issue'yu açan kişi atama yapamaz
   if (issue.reporterId === user.id) return false;
   switch (user.role) {
+    case ROLES.WORKER:
+      return issue.projectId === user.projectId;
     case ROLES.SYSTEM_ADMIN:
       return true;
     case ROLES.DEPARTMENT_HEAD: {

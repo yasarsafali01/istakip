@@ -62,3 +62,12 @@ export const inventoryApi = {
   create: (projectId, data) => api.post(`/projects/${projectId}/inventory`, data),
   adjust: (id, quantityChange) => api.patch(`/inventory/${id}`, { quantityChange }),
 };
+
+export const rolesApi = {
+  list: () => api.get('/roles'),
+  permissions: () => api.get('/permissions'),
+  create: (data) => api.post('/roles', data),
+  update: (key, data) => api.patch(`/roles/${key}`, data),
+  remove: (key) => api.delete(`/roles/${key}`),
+  assign: (userId, data) => api.patch(`/users/${userId}/role`, data),
+};

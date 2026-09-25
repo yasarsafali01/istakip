@@ -18,7 +18,7 @@ import ProjectForm from './ProjectForm';
 function ProjectCard({ project }) {
   const { state } = useAppContext();
   const { currentUser } = useAuth();
-  const { role } = usePermissions();
+  const { role, can } = usePermissions();
   const navigate = useNavigate();
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -29,7 +29,9 @@ function ProjectCard({ project }) {
   );
 
   // Department_Head kendi birimine ait projeleri düzenleyebilir
-  const canEdit = role === ROLES.DEPARTMENT_HEAD && project.unitId === currentUser?.unitId;
+  const canEdit =
+    can('project.edit') &&
+    (role === ROLES.SYSTEM_ADMIN || (role === ROLES.DEPARTMENT_HEAD && project.unitId === currentUser?.unitId));
 
   return (
     <>

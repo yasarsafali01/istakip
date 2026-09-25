@@ -22,6 +22,10 @@ migrations/            # golang-migrate SQL dosyaları
 
 Akış: `handler` isteği ayrıştırır → `service` iş kuralını uygular → `repository` SQL çalıştırır. ORM kullanılmaz.
 
+## Roller ve İzinler
+
+Handler'lar rol adı yerine izin ve kapsam kontrol eder (`services/permissions.go` izin kataloğu, `services/role_store.go` önbellek, `services/visibility.go` kapsam kuralları). Roller `roles` / `role_permissions` tablolarında tutulur (migration 000002–000004). Uçlar: `GET /permissions`, `GET/POST /roles`, `PATCH/DELETE /roles/{key}`, `PATCH /users/{id}/role` (yazma uçları `role.manage` ister). `/auth/login` ve `/users/me` yanıtı kullanıcının `scope` ve `permissions` alanlarını içerir.
+
 ## Teknolojiler
 
 - Router: [chi](https://github.com/go-chi/chi)

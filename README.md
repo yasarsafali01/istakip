@@ -12,6 +12,16 @@ Kurumsal birim/proje/talep yönetimi için Jira benzeri bir iş takip sistemi. B
 
 Veri akışı: `mobile/` ve `frontend/`, `backend/`'in REST API'sine JWT ile kimlik doğrulayarak istek atar; kalıcı veri yalnızca PostgreSQL'de tutulur (frontend artık localStorage kullanmaz).
 
+## Roller ve İzinler
+
+Yetkilendirme sabit rol adlarına değil **izinlere** bağlıdır. Bir rol = bir *izin kümesi* + bir *veri kapsamı*:
+
+- **Veri kapsamı** rolün neyi görebileceğini belirler: `all` (tüm sistem), `unit` (kendi birimi), `manager` (yönettiği projeler), `project` (atandığı proje), `own` (yalnızca kendi talepleri).
+- **İzinler** rolün neleri yapabileceğini belirler: talep aç, iş oluştur/düzenle/sil, durum değiştir, atama yap, tarih düzenle, aya taşı, aylık dönem yönet, envanter yönet/kullan, proje/birim yönet, rol yönet (tam liste: `GET /permissions`).
+- 5 yerleşik rol (Sistem Yöneticisi, Daire Başkanı, Proje Yöneticisi, Çalışan, Dış Kullanıcı) önceki davranışı birebir korur. Örnek özel roller de gelir (Birim Müdürü, Talep Karşılama Personeli, Envanter Sorumlusu, İzleyici); bunlar düzenlenebilir veya silinebilir.
+- **Roller ve İzinler** ekranından (web: menüde *Yönetim → Roller ve İzinler*, mobil: *Roller* sekmesi) yeni rol oluşturulur, izinleri işaretlenir ve kullanıcılara atanır. Bu ekran `role.manage` iznini gerektirir; Sistem Yöneticisi rolü kilitlidir (kimse kendini dışarıda bırakamaz) ve kimse kendi rolünü değiştiremez.
+- Rol veya izin değişikliği kullanıcının bir sonraki isteğinde geçerli olur (token yenilemeyi beklemez). Rol tanımlarını mobilde görüntüleme ve kullanıcıya atama yapılır; izin düzenleme web'dedir.
+
 ## Klasör Yapısı
 
 ```

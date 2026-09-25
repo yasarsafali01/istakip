@@ -4,11 +4,13 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { ROLES } from '../../src/utils/constants';
+import { usePermissions } from '../../src/hooks/usePermissions';
 
 export default function AppTabsLayout() {
   const { currentUser, logout } = useAuth();
   const isExternalUser = currentUser?.role === ROLES.EXTERNAL_USER;
   const canManageUnits = currentUser?.role === ROLES.SYSTEM_ADMIN || currentUser?.role === ROLES.DEPARTMENT_HEAD;
+  const { can } = usePermissions();
 
   function handleLogout() {
     Alert.alert('Çıkış Yap', 'Hesabınızdan çıkış yapmak istediğinizden emin misiniz?', [
@@ -62,6 +64,15 @@ export default function AppTabsLayout() {
           title: 'Birimler',
           href: canManageUnits ? undefined : null,
           tabBarIcon: ({ color, size }) => <Ionicons name="business-outline" size={size} color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="roles"
+        options={{
+          title: 'Roller',
+          href: can('role.manage') ? undefined : null,
+          tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark-outline" size={size} color={color} />,
         }}
       />
 

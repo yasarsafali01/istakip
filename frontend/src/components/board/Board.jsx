@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { TbPlus, TbLock } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
-import { useAuth } from '../../hooks/useAuth';
-import { ACTIONS, STATUSES, ROLES } from '../../constants';
+import { usePermissions } from '../../hooks/usePermissions';
+import { ACTIONS, STATUSES } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 import useIssueFilters from '../../hooks/useIssueFilters';
@@ -27,7 +27,7 @@ import EmptyState from '../common/EmptyState';
  */
 function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = null }) {
   const { state, dispatch } = useAppContext();
-  const { currentUser } = useAuth();
+  const { can } = usePermissions();
   const [selectedIssueId, setSelectedIssueId] = useState(null);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -117,7 +117,7 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
             clearFilters={clearFilters}
           />
         </div>
-        {!readonly && currentUser?.role !== ROLES.WORKER && (
+        {!readonly && can('issue.create') && (
           <button
             className="btn btn-sm btn-primary d-flex align-items-center gap-1"
             onClick={() => setShowCreateModal(true)}
@@ -155,7 +155,7 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
                   status={status}
                   issues={columnIssues}
                   onIssueClick={handleIssueClick}
-                  readonly={readonly || !!selectedRequestId}
+                  readonly={readonly || !!selectedRequestId || !can('issue.status')}
                 />
               );
             })}

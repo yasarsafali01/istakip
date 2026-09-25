@@ -10,11 +10,13 @@ import { issuesApi, usersApi, projectsApi, unitsApi } from '../../../src/api/res
 import { StatusBadge, PriorityBadge } from '../../../src/components/Badge';
 import CreateRequestSheet from '../../../src/components/CreateRequestSheet';
 import { PRIORITIES } from '../../../src/utils/constants';
+import { usePermissions } from '../../../src/hooks/usePermissions';
 import type { Issue } from '../../../src/api/types';
 
 export default function RequestsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { can } = usePermissions();
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [unitFilter, setUnitFilter] = useState<string | null>(null);
@@ -135,9 +137,11 @@ export default function RequestsScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => setCreateOpen(true)}>
-        <Ionicons name="add" size={26} color="#fff" />
-      </TouchableOpacity>
+      {can('request.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setCreateOpen(true)}>
+          <Ionicons name="add" size={26} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       <CreateRequestSheet
         visible={createOpen}

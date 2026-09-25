@@ -2,12 +2,23 @@
 // REST routes (same contract the web frontend's src/api/resources.js uses).
 import { api } from './client';
 import type {
-  User, Unit, Project, Sprint, Issue, Comment, Activity, InventoryItem,
+  User, Unit, Project, Sprint, Issue, Comment, Activity, InventoryItem, RoleDef,
 } from './types';
+import { withBaseRole } from './roles';
 
 export const usersApi = {
-  list: () => api.get<User[]>('/users'),
-  me: () => api.get<User>('/users/me'),
+  // Users are mapped to their scope's built-in role so role-based dropdowns keep working with custom roles.
+  list: async () => {
+    const [users, roles] = await Promise.all([api.get<User[]>('/users'), api.get<RoleDef[]>('/roles')]);
+    const scopeByKey = Object.fromEntries(roles.map((r) => [r.key, r.scope]));
+    return users.map((u) => withBaseRole(u, scopeByKey));
+  },
+  me: async () => withBaseRole(await api.get<User>('/users/me')),
+};
+
+export const rolesApi = {
+  list: () => api.get<RoleDef[]>('/roles'),
+  assign: (userId: string, role: string) => api.patch<User>(`/users/${userId}/role`, { role }),
 };
 
 export const unitsApi = {

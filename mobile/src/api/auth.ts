@@ -1,5 +1,6 @@
 import { api, request, setAccessToken, setRefreshToken, getRefreshToken, clearSession } from './client';
 import type { User } from './types';
+import { withBaseRole } from './roles';
 
 export async function login(email: string, password: string): Promise<User> {
   const data = await request<{ accessToken: string; refreshToken: string; user: User }>('/auth/login', {
@@ -9,7 +10,7 @@ export async function login(email: string, password: string): Promise<User> {
   });
   setAccessToken(data.accessToken);
   await setRefreshToken(data.refreshToken);
-  return data.user;
+  return withBaseRole(data.user);
 }
 
 export async function logout(): Promise<void> {
@@ -37,7 +38,7 @@ export async function restoreSession(): Promise<User | null> {
     });
     setAccessToken(data.accessToken);
     await setRefreshToken(data.refreshToken);
-    return api.get<User>('/users/me');
+    return withBaseRole(await api.get<User>('/users/me'));
   } catch {
     return null;
   }

@@ -93,3 +93,37 @@ export const ROLE_NAV_ITEMS = {
   Worker:          ['dashboard', 'projects', 'requests'],
   External_User:   ['requests'],
 };
+
+// Data scope → the built-in role whose UI a custom role borrows. The UI's
+// dashboards, lists and dropdowns are organised around the five built-in
+// roles; a custom role behaves like the built-in role that has the same scope,
+// while individual actions are gated by its permissions.
+export const SCOPE_TO_BASE_ROLE = {
+  all:     'System_Admin',
+  unit:    'Department_Head',
+  manager: 'Project_Manager',
+  project: 'Worker',
+  own:     'External_User',
+};
+
+export const SCOPE_LABELS = {
+  all:     'Tüm sistem',
+  unit:    'Kendi birimi',
+  manager: 'Yönettiği projeler',
+  project: 'Atandığı proje',
+  own:     'Yalnızca kendi talepleri',
+};
+
+// Mirrors the permissions seeded by backend migrations. Only used when the
+// session has no permission list yet (e.g. unit tests).
+const ALL_ISSUE_PERMS = [
+  'issue.create', 'request.create', 'issue.edit', 'issue.delete', 'issue.status', 'issue.assign',
+  'issue.clone', 'issue.sprint', 'issue.dates', 'issue.share', 'sprint.manage', 'inventory.manage', 'inventory.use',
+];
+export const DEFAULT_ROLE_PERMISSIONS = {
+  System_Admin:    [...ALL_ISSUE_PERMS, 'project.create', 'project.edit', 'unit.manage', 'role.manage'],
+  Department_Head: [...ALL_ISSUE_PERMS, 'project.create', 'project.edit'],
+  Project_Manager: ALL_ISSUE_PERMS,
+  Worker:          ['request.create', 'issue.status', 'issue.share', 'inventory.use'],
+  External_User:   ['request.create', 'issue.edit', 'issue.delete', 'issue.clone'],
+};

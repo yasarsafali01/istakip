@@ -13,7 +13,8 @@ import { ROLES } from '../../../src/utils/constants';
 import type { Unit } from '../../../src/api/types';
 
 export default function UnitsScreen() {
-  const { isSystemAdmin } = usePermissions();
+  const { can } = usePermissions();
+  const isSystemAdmin = can('unit.manage'); // may create/edit units
   const queryClient = useQueryClient();
   const unitsQuery = useQuery({ queryKey: ['units'], queryFn: unitsApi.list });
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: usersApi.list });

@@ -9,8 +9,10 @@ import {
   TbLayoutKanban,
   TbList,
   TbPackage,
+  TbShieldCheck,
 } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/usePermissions';
 import { useAppContext } from '../../context/AppContext';
 import { ROLE_NAV_ITEMS, ROLES } from '../../constants';
 import { getVisibleProjects } from '../../utils/permissionUtils';
@@ -33,6 +35,7 @@ const ROLE_LABELS = {
 
 export default function Sidebar() {
   const { currentUser } = useAuth();
+  const { can } = usePermissions();
   const { state } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [isMd, setIsMd] = useState(window.innerWidth >= 768);
@@ -67,6 +70,11 @@ export default function Sidebar() {
         })
         .filter(Boolean)
     : [];
+
+  const roleName =
+    state.roles?.find((r) => r.key === currentUser?.roleKey)?.name ||
+    ROLE_LABELS[currentUser?.roleKey || currentUser?.role] ||
+    currentUser?.role;
 
   const visibleProjects = currentUser
     ? getVisibleProjects(state.projects, currentUser)
@@ -248,6 +256,22 @@ export default function Sidebar() {
               ))}
             </>
           )}
+
+          {can('role.manage') && (
+            <>
+              <li><div className="sidebar-section">Yönetim</div></li>
+              <li>
+                <NavLink
+                  to="/roles"
+                  className={linkClass}
+                  onClick={() => !isMd && setIsOpen(false)}
+                >
+                  <TbShieldCheck size={18} aria-hidden="true" />
+                  <span>Roller ve İzinler</span>
+                </NavLink>
+              </li>
+            </>
+          )}
         </ul>
 
         {/* User card (logout lives in the top bar) */}
@@ -260,7 +284,7 @@ export default function Sidebar() {
                   {currentUser.name}
                 </div>
                 <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>
-                  {ROLE_LABELS[currentUser.role] || currentUser.role}
+                  {roleName}
                 </div>
               </div>
             </div>

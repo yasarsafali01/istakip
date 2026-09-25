@@ -40,7 +40,7 @@ export function filterRequests(requests, searchQuery) {
 export default function RequestList() {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
-  const { isExternalUser, role } = usePermissions();
+  const { isExternalUser, role, can } = usePermissions();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
@@ -143,13 +143,15 @@ export default function RequestList() {
             ]}
           />
         </div>
-        <button
-          className="btn btn-primary d-flex align-items-center gap-1"
-          onClick={() => setShowForm(true)}
-        >
-          <TbPlus size={18} />
-          Yeni Talep
-        </button>
+        {can('request.create') && (
+          <button
+            className="btn btn-primary d-flex align-items-center gap-1"
+            onClick={() => setShowForm(true)}
+          >
+            <TbPlus size={18} />
+            Yeni Talep
+          </button>
+        )}
       </div>
 
       {/* Stat cards */}

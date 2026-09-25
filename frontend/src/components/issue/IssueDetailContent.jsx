@@ -45,7 +45,7 @@ import TaskDoneModal from '../common/TaskDoneModal';
 function IssueDetailContent({ issue, onClose, readonly = false }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
-  const { isExternalUser, isWorker } = usePermissions();
+  const { isExternalUser, can } = usePermissions();
 
   // ── Edit mode ─────────────────────────────────────────────────────────────
   const [editMode, setEditMode] = useState(false);
@@ -92,21 +92,18 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
   });
 
   const canAssign = canChangeAssignee(currentUser, issue, state.projects);
-  const canEditDates =
-    currentUser &&
-    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(
-      currentUser.role
-    );
+  const canEditDates = !!currentUser && can('issue.dates');
 
   const isOwnIssue = issue.reporterId === currentUser?.id;
-  const canEdit = !readonly && !isWorker && (!isExternalUser || isOwnIssue);
-  // Silme: canEdit ile aynı kural (bkz. .kiro/specs/jira-clone-frontend bugfix — Hata 4/5)
-  const canDelete = canEdit;
+  const canEdit = !readonly && can('issue.edit') && (!isExternalUser || isOwnIssue);
+  // Silme ayrı izne bağlı (issue.delete); dış kullanıcı yalnızca kendi talebini silebilir
+  const canDelete = !readonly && can('issue.delete') && (!isExternalUser || isOwnIssue);
   // Geri çevirme: PM/DH/Admin tüm talepleri reddedebilir (backlog ve sprint içindeki işler dahil)
   // Ancak zaten "Geri Çevrildi" durumundaki işler için buton gösterilmez
   const canReject =
     !readonly &&
     currentUser &&
+    can('issue.status') &&
     [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(
       currentUser.role
     ) &&
@@ -339,7 +336,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
       {/* Action toolbar */}
       <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
         {/* Status transition buttons (non-edit-mode, non-readonly, non-external) */}
-        {!readonly && !editMode && !isExternalUser && (
+        {!readonly && !editMode && !isExternalUser && can('issue.status') && (
           editingStatus ? (
             <select
               className="form-select form-select-sm"
