@@ -16,6 +16,28 @@ const (
 	RoleExternalUser   Role = "External_User"
 )
 
+// Scope is how much data a role can see (independent of what it may do).
+type Scope string
+
+const (
+	ScopeAll     Scope = "all"     // everything
+	ScopeUnit    Scope = "unit"    // the user's own unit
+	ScopeManager Scope = "manager" // projects the user manages
+	ScopeProject Scope = "project" // the user's assigned project
+	ScopeOwn     Scope = "own"     // only requests the user opened or was given
+)
+
+// RoleDef is a configurable role: a named permission set plus a data scope.
+type RoleDef struct {
+	Key         Role     `json:"key"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Scope       Scope    `json:"scope"`
+	IsSystem    bool     `json:"isSystem"`
+	Permissions []string `json:"permissions"`
+	UserCount   int      `json:"userCount"`
+}
+
 type User struct {
 	ID           uuid.UUID  `json:"id"`
 	Name         string     `json:"name"`
@@ -26,6 +48,9 @@ type User struct {
 	ProjectID    *uuid.UUID `json:"projectId,omitempty"`
 	AvatarColor  string     `json:"avatarColor"`
 	CreatedAt    time.Time  `json:"createdAt"`
+	// Filled in for /auth/login and /users/me only.
+	Scope       Scope    `json:"scope,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 type Unit struct {

@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 
 	authmw "github.com/yasarsafali01/istakip/backend/internal/middleware"
-	"github.com/yasarsafali01/istakip/backend/internal/models"
 	"github.com/yasarsafali01/istakip/backend/internal/repository"
 	"github.com/yasarsafali01/istakip/backend/internal/response"
+	"github.com/yasarsafali01/istakip/backend/internal/services"
 )
 
 type InventoryHandler struct {
@@ -66,7 +66,7 @@ func (h *InventoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "invalid project id")
 		return
 	}
-	if !canManageIssues(claims.Role) {
+	if !claims.Can(services.PermInventoryManage) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -109,7 +109,7 @@ type adjustInventoryRequest struct {
 
 func (h *InventoryHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if !canManageIssues(claims.Role) && claims.Role != models.RoleWorker {
+	if !claims.Can(services.PermInventoryManage) && !claims.Can(services.PermInventoryUse) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}

@@ -15,7 +15,7 @@ const claimsContextKey contextKey = "claims"
 
 // RequireAuth validates the Bearer access token and stores its claims in the
 // request context. Route-level role checks happen in individual handlers.
-func RequireAuth(authService *services.AuthService) func(http.Handler) http.Handler {
+func RequireAuth(authService *services.AuthService, roles *services.RoleStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
@@ -28,6 +28,13 @@ func RequireAuth(authService *services.AuthService) func(http.Handler) http.Hand
 			claims, err := authService.ParseAccessToken(token)
 			if err != nil {
 				response.Error(w, http.StatusUnauthorized, "invalid or expired token")
+				return
+			}
+
+			// Scope and permissions come from the role store, not the token, so a
+			// role edit (or a deleted role) takes effect on the very next request.
+			if !roles.Apply(claims) {
+				response.Error(w, http.StatusForbidden, "Rolünüz artık geçerli değil")
 				return
 			}
 

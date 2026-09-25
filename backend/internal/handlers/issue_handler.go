@@ -26,30 +26,27 @@ func NewIssueHandler(issues *repository.IssueRepo, projects *repository.ProjectR
 	return &IssueHandler{issues: issues, projects: projects, activities: activities}
 }
 
-func isWorker(role models.Role) bool       { return role == models.RoleWorker }
-func isExternalUser(role models.Role) bool { return role == models.RoleExternalUser }
-
-// canEditIssue mirrors IssueDetailContent.jsx's canEdit (see
-// .kiro/specs/jira-clone-frontend/design.md): Worker never; External_User
-// only on their own request; others per project access.
-func canEditIssue(claims *services.Claims, issue models.Issue, project models.Project) bool {
-	if isWorker(claims.Role) {
+// canModifyIssue: the role must hold the permission (issue.edit / issue.delete)
+// and the issue must be in its scope. An "own"-scope role (external requester)
+// may only touch a request it opened itself.
+func canModifyIssue(claims *services.Claims, permission string, issue models.Issue, project models.Project) bool {
+	if !claims.Can(permission) {
 		return false
 	}
 	isOwnRequest := issue.IsRequest && issue.ReporterID == claims.UserID
-	if isExternalUser(claims.Role) && !isOwnRequest {
+	if claims.Scope == models.ScopeOwn && !isOwnRequest {
 		return false
 	}
 	return services.CanAccessIssue(claims, issue, project)
 }
 
-// canChangeStatus: Worker may only move status (not edit fields);
-// Admin/DeptHead/PM can too. External_User cannot change status.
+func canEditIssue(claims *services.Claims, issue models.Issue, project models.Project) bool {
+	return canModifyIssue(claims, services.PermIssueEdit, issue, project)
+}
+
+// canChangeStatus needs the issue.status permission on an issue in scope.
 func canChangeStatus(claims *services.Claims, issue models.Issue, project models.Project) bool {
-	if !services.CanAccessIssue(claims, issue, project) {
-		return false
-	}
-	return canManageIssues(claims.Role) || isWorker(claims.Role)
+	return claims.Can(services.PermIssueStatus) && services.CanAccessIssue(claims, issue, project)
 }
 
 func (h *IssueHandler) loadWithProject(r *http.Request, id uuid.UUID) (models.Issue, models.Project, error) {
@@ -142,11 +139,11 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !req.IsRequest && !canManageIssues(claims.Role) {
+	if !req.IsRequest && !claims.Can(services.PermIssueCreate) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
-	if req.IsRequest && !isExternalUser(claims.Role) && !canManageIssues(claims.Role) {
+	if req.IsRequest && !claims.Can(services.PermRequestCreate) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -175,7 +172,7 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	// External_User may target any project (they pick unit → project on the
 	// request form); everyone else needs ordinary project access.
-	if !isExternalUser(claims.Role) && !canAccessProject(claims, project) {
+	if claims.Scope != models.ScopeOwn && !canAccessProject(claims, project) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -458,7 +455,7 @@ func (h *IssueHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	isOwnRequest := issue.IsRequest && issue.ReporterID == claims.UserID
-	if !canManageIssues(claims.Role) && !isOwnRequest {
+	if !claims.Can(services.PermIssueClone) || (claims.Scope == models.ScopeOwn && !isOwnRequest) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -485,7 +482,7 @@ type moveSprintRequest struct {
 
 func (h *IssueHandler) MoveSprint(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if !canManageIssues(claims.Role) {
+	if !claims.Can(services.PermIssueSprint) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -532,7 +529,7 @@ type updateDatesRequest struct {
 // External_User is never allowed (Requirement 19.7).
 func (h *IssueHandler) UpdateDates(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if !canManageIssues(claims.Role) {
+	if !claims.Can(services.PermIssueDates) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -599,7 +596,7 @@ type addVisibleUserRequest struct {
 // visibility into a request (Requirement 5.9).
 func (h *IssueHandler) AddVisibleUser(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if isExternalUser(claims.Role) {
+	if !claims.Can(services.PermIssueShare) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -656,7 +653,7 @@ func (h *IssueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to load issue")
 		return
 	}
-	if !canEditIssue(claims, issue, project) {
+	if !canModifyIssue(claims, services.PermIssueDelete, issue, project) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}

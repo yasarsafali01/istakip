@@ -52,7 +52,15 @@ func main() {
 		userRepo := repository.NewUserRepo(pool)
 		refreshTokenRepo := repository.NewRefreshTokenRepo(pool)
 		authService := services.NewAuthService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
-		authHandler := handlers.NewAuthHandler(authService)
+
+		roleRepo := repository.NewRoleRepo(pool)
+		roleStore := services.NewRoleStore(roleRepo)
+		if err := roleStore.Reload(context.Background()); err != nil {
+			log.Fatalf("loading roles failed (run migrations?): %v", err)
+		}
+		roleHandler := handlers.NewRoleHandler(roleRepo, userRepo, roleStore)
+
+		authHandler := handlers.NewAuthHandler(authService, roleStore)
 
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", authHandler.Login)
@@ -75,10 +83,10 @@ func main() {
 		commentHandler := handlers.NewCommentHandler(commentRepo, issueRepo, projectRepo, activityRepo)
 		activityHandler := handlers.NewActivityHandler(activityRepo, issueRepo, projectRepo)
 		inventoryHandler := handlers.NewInventoryHandler(inventoryRepo, projectRepo)
-		userHandler := handlers.NewUserHandler(userRepo)
+		userHandler := handlers.NewUserHandler(userRepo, roleStore)
 
 		r.Group(func(r chi.Router) {
-			r.Use(authmw.RequireAuth(authService))
+			r.Use(authmw.RequireAuth(authService, roleStore))
 
 			r.Route("/units", func(r chi.Router) {
 				r.Get("/", unitHandler.List)
@@ -128,6 +136,15 @@ func main() {
 			r.Route("/users", func(r chi.Router) {
 				r.Get("/", userHandler.List)
 				r.Get("/me", userHandler.Me)
+				r.Patch("/{id}/role", roleHandler.AssignUserRole)
+			})
+
+			r.Get("/permissions", roleHandler.Permissions)
+			r.Route("/roles", func(r chi.Router) {
+				r.Get("/", roleHandler.List)
+				r.Post("/", roleHandler.Create)
+				r.Patch("/{key}", roleHandler.Update)
+				r.Delete("/{key}", roleHandler.Delete)
 			})
 		})
 	}

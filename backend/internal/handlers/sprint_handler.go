@@ -25,10 +25,6 @@ func NewSprintHandler(sprints *repository.SprintRepo, projects *repository.Proje
 	return &SprintHandler{sprints: sprints, projects: projects}
 }
 
-func canManageIssues(role models.Role) bool {
-	return role == models.RoleSystemAdmin || role == models.RoleDepartmentHead || role == models.RoleProjectManager
-}
-
 func (h *SprintHandler) requireProjectAccess(r *http.Request, projectID uuid.UUID) (models.Project, bool) {
 	claims, _ := authmw.CurrentClaims(r.Context())
 	project, err := h.projects.GetByID(r.Context(), projectID)
@@ -69,7 +65,7 @@ func (h *SprintHandler) Create(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "invalid project id")
 		return
 	}
-	if !canManageIssues(claims.Role) {
+	if !claims.Can(services.PermSprintManage) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -121,7 +117,7 @@ func (h *SprintHandler) Complete(w http.ResponseWriter, r *http.Request) {
 
 func (h *SprintHandler) transition(w http.ResponseWriter, r *http.Request, do func(uuid.UUID) (models.Sprint, error)) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if !canManageIssues(claims.Role) {
+	if !claims.Can(services.PermSprintManage) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}

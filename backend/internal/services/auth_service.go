@@ -30,6 +30,11 @@ type Claims struct {
 	UnitID    *uuid.UUID  `json:"unitId,omitempty"`
 	ProjectID *uuid.UUID  `json:"projectId,omitempty"`
 	jwt.RegisteredClaims
+
+	// Resolved from the role store on every request (not carried in the token),
+	// so editing a role takes effect immediately.
+	Scope models.Scope    `json:"-"`
+	Perms map[string]bool `json:"-"`
 }
 
 type AuthService struct {

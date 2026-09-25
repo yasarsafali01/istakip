@@ -12,6 +12,7 @@ import (
 	"github.com/yasarsafali01/istakip/backend/internal/models"
 	"github.com/yasarsafali01/istakip/backend/internal/repository"
 	"github.com/yasarsafali01/istakip/backend/internal/response"
+	"github.com/yasarsafali01/istakip/backend/internal/services"
 )
 
 type UnitHandler struct {
@@ -28,19 +29,15 @@ func (h *UnitHandler) List(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
 
 	var onlyID *uuid.UUID
-	switch claims.Role {
-	case models.RoleSystemAdmin:
-		// no filter — see everything
-	case models.RoleDepartmentHead:
+	if claims.Scope == models.ScopeUnit {
 		if claims.UnitID == nil {
 			response.JSON(w, http.StatusOK, []models.Unit{})
 			return
 		}
 		onlyID = claims.UnitID
-	default:
-		// Project_Manager / Worker / External_User: the request form needs the
-		// full unit list to pick a target (unit names/codes are not sensitive).
 	}
+	// Every other scope gets the full list: the request form needs it to pick a
+	// target unit (unit names/codes are not sensitive).
 
 	units, err := h.units.List(r.Context(), onlyID)
 	if err != nil {
@@ -58,7 +55,7 @@ type createUnitRequest struct {
 
 func (h *UnitHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if claims.Role != models.RoleSystemAdmin {
+	if !claims.Can(services.PermUnitManage) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -98,7 +95,7 @@ type updateUnitRequest struct {
 
 func (h *UnitHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if claims.Role != models.RoleSystemAdmin {
+	if !claims.Can(services.PermUnitManage) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}

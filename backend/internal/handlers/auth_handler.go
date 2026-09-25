@@ -10,11 +10,12 @@ import (
 )
 
 type AuthHandler struct {
-	auth *services.AuthService
+	auth  *services.AuthService
+	roles *services.RoleStore
 }
 
-func NewAuthHandler(auth *services.AuthService) *AuthHandler {
-	return &AuthHandler{auth: auth}
+func NewAuthHandler(auth *services.AuthService, roles *services.RoleStore) *AuthHandler {
+	return &AuthHandler{auth: auth, roles: roles}
 }
 
 type loginRequest struct {
@@ -45,6 +46,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.roles.Decorate(&user)
 	response.JSON(w, http.StatusOK, tokenResponse{
 		AccessToken:  pair.AccessToken,
 		RefreshToken: pair.RefreshToken,

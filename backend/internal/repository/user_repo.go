@@ -64,3 +64,17 @@ func (r *UserRepo) List(ctx context.Context) ([]models.User, error) {
 	}
 	return out, rows.Err()
 }
+
+// SetRole assigns a role (and optionally a unit/project) to a user.
+func (r *UserRepo) SetRole(ctx context.Context, id uuid.UUID, role models.Role, unitID, projectID *uuid.UUID) (models.User, error) {
+	row := r.pool.QueryRow(ctx, `
+		UPDATE users SET role = $2,
+		  unit_id = COALESCE($3, unit_id),
+		  project_id = COALESCE($4, project_id)
+		WHERE id = $1 RETURNING `+userColumns, id, role, unitID, projectID)
+	u, err := scanUser(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return models.User{}, ErrNotFound
+	}
+	return u, err
+}

@@ -33,18 +33,18 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
 
 	var filter repository.ProjectFilter
-	switch claims.Role {
-	case models.RoleSystemAdmin:
+	switch claims.Scope {
+	case models.ScopeAll:
 		// no filter
-	case models.RoleDepartmentHead:
+	case models.ScopeUnit:
 		filter.UnitID = claims.UnitID
-	case models.RoleProjectManager:
+	case models.ScopeManager:
 		uid := claims.UserID
 		filter.ManagerID = &uid
-	case models.RoleWorker:
+	case models.ScopeProject:
 		filter.OnlyID = claims.ProjectID
-	case models.RoleExternalUser:
-		// no filter — an external user picks unit → project when opening a
+	case models.ScopeOwn:
+		// no filter — a requester picks unit → project when opening a
 		// request (issue Create already lets them target any project)
 	default:
 		filter.None = true
@@ -93,7 +93,7 @@ type createProjectRequest struct {
 
 func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if claims.Role != models.RoleSystemAdmin && claims.Role != models.RoleDepartmentHead {
+	if !claims.Can(services.PermProjectCreate) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -109,8 +109,8 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	unitID := req.UnitID
-	if claims.Role == models.RoleDepartmentHead {
-		// Department_Head can only create within their own unit.
+	if claims.Scope == models.ScopeUnit {
+		// A unit-scoped role can only create within its own unit.
 		if claims.UnitID == nil {
 			response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 			return
@@ -175,8 +175,9 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowed := claims.Role == models.RoleSystemAdmin ||
-		(claims.Role == models.RoleDepartmentHead && claims.UnitID != nil && *claims.UnitID == project.UnitID)
+	allowed := claims.Can(services.PermProjectEdit) &&
+		(claims.Scope == models.ScopeAll ||
+			(claims.Scope == models.ScopeUnit && claims.UnitID != nil && *claims.UnitID == project.UnitID))
 	if !allowed {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
@@ -197,16 +198,5 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func canAccessProject(claims *services.Claims, project models.Project) bool {
-	switch claims.Role {
-	case models.RoleSystemAdmin:
-		return true
-	case models.RoleDepartmentHead:
-		return claims.UnitID != nil && *claims.UnitID == project.UnitID
-	case models.RoleProjectManager:
-		return claims.UserID == project.ManagerID
-	case models.RoleWorker:
-		return claims.ProjectID != nil && *claims.ProjectID == project.ID
-	default:
-		return false
-	}
+	return services.CanAccessProject(claims, project)
 }

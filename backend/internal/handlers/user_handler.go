@@ -7,14 +7,16 @@ import (
 	authmw "github.com/yasarsafali01/istakip/backend/internal/middleware"
 	"github.com/yasarsafali01/istakip/backend/internal/repository"
 	"github.com/yasarsafali01/istakip/backend/internal/response"
+	"github.com/yasarsafali01/istakip/backend/internal/services"
 )
 
 type UserHandler struct {
 	users *repository.UserRepo
+	roles *services.RoleStore
 }
 
-func NewUserHandler(users *repository.UserRepo) *UserHandler {
-	return &UserHandler{users: users}
+func NewUserHandler(users *repository.UserRepo, roles *services.RoleStore) *UserHandler {
+	return &UserHandler{users: users, roles: roles}
 }
 
 // List returns every user's safe profile (no password hash). The original
@@ -40,5 +42,6 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to load user")
 		return
 	}
+	h.roles.Decorate(&user)
 	response.JSON(w, http.StatusOK, user)
 }
