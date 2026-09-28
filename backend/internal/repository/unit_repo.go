@@ -44,7 +44,7 @@ func (r *UnitRepo) List(ctx context.Context, onlyID *uuid.UUID) ([]models.Unit, 
 	}
 	defer rows.Close()
 
-	var out []models.Unit
+	out := []models.Unit{}
 	for rows.Next() {
 		u, err := scanUnit(rows)
 		if err != nil {

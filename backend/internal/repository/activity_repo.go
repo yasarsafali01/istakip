@@ -45,7 +45,7 @@ func (r *ActivityRepo) ListByIssue(ctx context.Context, issueID uuid.UUID) ([]mo
 	}
 	defer rows.Close()
 
-	var out []models.Activity
+	out := []models.Activity{}
 	for rows.Next() {
 		a, err := scanActivity(rows)
 		if err != nil {

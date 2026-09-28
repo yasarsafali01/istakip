@@ -62,7 +62,7 @@ func (r *ProjectRepo) List(ctx context.Context, filter ProjectFilter) ([]models.
 	}
 	defer rows.Close()
 
-	var out []models.Project
+	out := []models.Project{}
 	for rows.Next() {
 		p, err := scanProject(rows)
 		if err != nil {

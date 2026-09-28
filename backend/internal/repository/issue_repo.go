@@ -127,7 +127,7 @@ func (r *IssueRepo) List(ctx context.Context, scope VisibilityScope, filter Issu
 	}
 	defer rows.Close()
 
-	var out []models.Issue
+	out := []models.Issue{}
 	for rows.Next() {
 		iss, err := scanIssue(rows)
 		if err != nil {

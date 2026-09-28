@@ -35,7 +35,7 @@ func (r *CommentRepo) ListByIssue(ctx context.Context, issueID uuid.UUID) ([]mod
 	}
 	defer rows.Close()
 
-	var out []models.Comment
+	out := []models.Comment{}
 	for rows.Next() {
 		c, err := scanComment(rows)
 		if err != nil {

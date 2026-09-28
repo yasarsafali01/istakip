@@ -35,7 +35,7 @@ func (r *InventoryRepo) ListByProject(ctx context.Context, projectID uuid.UUID) 
 	}
 	defer rows.Close()
 
-	var out []models.InventoryItem
+	out := []models.InventoryItem{}
 	for rows.Next() {
 		i, err := scanInventoryItem(rows)
 		if err != nil {

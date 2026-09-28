@@ -32,7 +32,7 @@ func (r *RoleRepo) List(ctx context.Context) ([]models.RoleDef, error) {
 	}
 	defer rows.Close()
 
-	var out []models.RoleDef
+	out := []models.RoleDef{}
 	index := map[models.Role]int{}
 	for rows.Next() {
 		var d models.RoleDef

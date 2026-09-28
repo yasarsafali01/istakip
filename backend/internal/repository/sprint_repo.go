@@ -38,7 +38,7 @@ func (r *SprintRepo) ListByProject(ctx context.Context, projectID uuid.UUID) ([]
 	}
 	defer rows.Close()
 
-	var out []models.Sprint
+	out := []models.Sprint{}
 	for rows.Next() {
 		s, err := scanSprint(rows)
 		if err != nil {
