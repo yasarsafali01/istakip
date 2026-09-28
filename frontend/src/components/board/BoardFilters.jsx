@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TbX } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
-import { PRIORITIES, ROLES } from '../../constants';
+import { PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
 import Avatar from '../common/Avatar';
 
 function BoardFilters({
@@ -73,7 +73,7 @@ function BoardFilters({
           onClick={() => setPriorityOpen(v => !v)}
         >
           <span>⚑</span>
-          <span>{priorityFilter || 'Öncelik'}</span>
+          <span>{priorityFilter ? PRIORITY_LABELS[priorityFilter] : 'Öncelik'}</span>
           {priorityFilter ? (
             <span
               role="button"
@@ -95,7 +95,7 @@ function BoardFilters({
               {PRIORITIES.map((p) => (
                 <button key={p} className={`btn btn-sm w-100 text-start mb-1 ${priorityFilter === p ? 'btn-primary' : 'btn-light'}`} style={{ fontSize: '0.82rem' }}
                   onClick={() => { setPriorityFilter(p); setPriorityOpen(false); }}>
-                  {p}
+                  {PRIORITY_LABELS[p]}
                 </button>
               ))}
             </div>

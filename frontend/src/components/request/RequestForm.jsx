@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
-import { ACTIONS } from '../../constants';
+import { ACTIONS, PRIORITY_LABELS } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 
@@ -161,7 +161,7 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
           onChange={e => setPriority(e.target.value)}
         >
           {['Highest', 'High', 'Medium', 'Low', 'Lowest'].map(p => (
-            <option key={p} value={p}>{p}</option>
+            <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
           ))}
         </select>
       </div>

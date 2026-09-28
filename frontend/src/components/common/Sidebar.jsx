@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   TbLayoutDashboard,
   TbBuilding,
@@ -10,6 +10,7 @@ import {
   TbList,
   TbPackage,
   TbShieldCheck,
+  TbLogout,
 } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -34,11 +35,17 @@ const ROLE_LABELS = {
 };
 
 export default function Sidebar() {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { can } = usePermissions();
   const { state } = useAppContext();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isMd, setIsMd] = useState(window.innerWidth >= 768);
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
 
   useEffect(() => {
     function handleResize() {
@@ -274,12 +281,12 @@ export default function Sidebar() {
           )}
         </ul>
 
-        {/* User card (logout lives in the top bar) */}
+        {/* User card + logout */}
         {currentUser && (
           <div className="p-3">
             <div className="sidebar-user d-flex align-items-center gap-2 p-2">
               <Avatar name={currentUser.name} color={currentUser.avatarColor} size={34} />
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="fw-semibold text-truncate" style={{ fontSize: '0.82rem' }}>
                   {currentUser.name}
                 </div>
@@ -287,6 +294,16 @@ export default function Sidebar() {
                   {roleName}
                 </div>
               </div>
+              <button
+                type="button"
+                className="icon-btn icon-btn--danger flex-shrink-0"
+                style={{ width: 32, height: 32 }}
+                onClick={handleLogout}
+                title="Çıkış yap"
+                aria-label="Çıkış yap"
+              >
+                <TbLogout size={16} aria-hidden="true" />
+              </button>
             </div>
           </div>
         )}

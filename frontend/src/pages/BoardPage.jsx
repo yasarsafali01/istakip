@@ -8,6 +8,7 @@ import Board from '../components/board/Board';
 import EmptyState from '../components/common/EmptyState';
 import HelpGuide from '../components/common/HelpGuide';
 import { ROLES } from '../constants';
+import { sortSprintsByCurrentMonth } from '../utils/sprintUtils';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -38,16 +39,7 @@ function BoardPage() {
   }
 
   // All sprints for this project, sorted newest first
-  const allSprints = state.sprints
-    .filter(s => s.projectId === projectId)
-    .sort((a, b) => {
-      const aYear = a.year ?? new Date(a.startDate).getFullYear();
-      const bYear = b.year ?? new Date(b.startDate).getFullYear();
-      const aMonth = a.month ?? new Date(a.startDate).getMonth() + 1;
-      const bMonth = b.month ?? new Date(b.startDate).getMonth() + 1;
-      if (aYear !== bYear) return bYear - aYear;
-      return bMonth - aMonth;
-    });
+  const allSprints = sortSprintsByCurrentMonth(state.sprints.filter(s => s.projectId === projectId));
 
   const activeSprint = allSprints.find(s => s.status === 'Active');
 

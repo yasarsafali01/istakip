@@ -15,9 +15,10 @@ import Modal from '../components/common/Modal';
 import IssueForm from '../components/issue/IssueForm';
 import EmptyState from '../components/common/EmptyState';
 import HelpGuide from '../components/common/HelpGuide';
-import { PRIORITIES, ROLES, ACTIONS } from '../constants';
+import { PRIORITIES, PRIORITY_LABELS, ROLES, ACTIONS } from '../constants';
 import { issuesApi } from '../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../api/mappers';
+import { sortSprintsByCurrentMonth } from '../utils/sprintUtils';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -58,16 +59,7 @@ function ProjectDetailPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const allSprints = state.sprints
-    .filter((s) => s.projectId === projectId)
-    .sort((a, b) => {
-      const aYear = a.year ?? new Date(a.startDate).getFullYear();
-      const bYear = b.year ?? new Date(b.startDate).getFullYear();
-      const aMonth = a.month ?? new Date(a.startDate).getMonth() + 1;
-      const bMonth = b.month ?? new Date(b.startDate).getMonth() + 1;
-      if (aYear !== bYear) return bYear - aYear;
-      return bMonth - aMonth;
-    });
+  const allSprints = sortSprintsByCurrentMonth(state.sprints.filter((s) => s.projectId === projectId));
 
   const activeSprint = allSprints.find((s) => s.status === 'Active');
   const pageTitle = tab === 'board' ? 'Aktif İşler' : 'Backlog';
@@ -397,7 +389,7 @@ function BacklogTabView({ projectId, allSprints }) {
       return `<tr>
         <td>${issue.number}</td>
         <td>${issue.title}</td>
-        <td>${issue.priority}</td>
+        <td>${PRIORITY_LABELS[issue.priority] || issue.priority}</td>
         <td>${assignee ? assignee.name : 'Atanmamış'}</td>
         <td>${issue.createdAt ? issue.createdAt.substring(0, 10) : ''}</td>
       </tr>`;
@@ -541,12 +533,12 @@ function BacklogTabView({ projectId, allSprints }) {
                 className="card border-0 shadow-sm h-100"
                 style={{ background: isActive ? bg.dark : bg.light, borderLeft: `4px solid ${bg.dark}`, cursor: 'pointer', transition: 'background 0.15s' }}
                 onClick={() => setPriorityFilter(isActive ? '' : p)}
-                title={`${p} öncelikli bekleyen işleri filtrele`}
+                title={`${PRIORITY_LABELS[p]} öncelikli bekleyen işleri filtrele`}
               >
                 <div className="card-body py-3 px-3">
                   <div className="d-flex align-items-center gap-1 mb-1">
                     <TbFlag size={13} style={{ color: isActive ? '#fff' : bg.dark }} />
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: isActive ? '#fff' : bg.dark }}>{p}</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: isActive ? '#fff' : bg.dark }}>{PRIORITY_LABELS[p]}</span>
                   </div>
                   <div className="fw-bold fs-4" style={{ color: isActive ? '#fff' : bg.dark }}>{priorityCounts[p]}</div>
                 </div>
@@ -610,7 +602,7 @@ function BacklogTabView({ projectId, allSprints }) {
                       style={{ fontSize: '0.82rem' }}
                       onClick={() => setPriorityFilter(p)}
                     >
-                      {p || 'Tüm Öncelikler'}
+                      {p ? PRIORITY_LABELS[p] : 'Tüm Öncelikler'}
                     </button>
                   ))}
                 </div>
@@ -722,7 +714,7 @@ function BacklogTabView({ projectId, allSprints }) {
             </div>
           </div>
           {filteredBacklog.length === 0 ? (
-            <p className="text-muted small mb-0">{priorityFilter ? `${priorityFilter} öncelikli bekleyen iş yok.` : 'Bekleyen iş yok.'}</p>
+            <p className="text-muted small mb-0">{priorityFilter ? `${PRIORITY_LABELS[priorityFilter]} öncelikli bekleyen iş yok.` : 'Bekleyen iş yok.'}</p>
           ) : (
             <div className="table-responsive">
               <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>

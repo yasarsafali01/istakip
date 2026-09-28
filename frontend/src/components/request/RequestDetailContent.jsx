@@ -15,7 +15,7 @@ import {
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
-import { ACTIONS, STATUSES, PRIORITIES, ROLES } from '../../constants';
+import { ACTIONS, STATUSES, PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
 import { canChangeAssignee } from '../../utils/permissionUtils';
 import { issuesApi, commentsApi, activitiesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
@@ -376,7 +376,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                     value={editPriority}
                     onChange={(e) => setEditPriority(e.target.value)}
                   >
-                    {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
                   </select>
                 ) : (
                   <PriorityIcon priority={request.priority} showLabel size={13} />

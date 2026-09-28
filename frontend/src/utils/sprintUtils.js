@@ -52,6 +52,35 @@ export function getSprintName(year, month) {
 }
 
 /**
+ * Sprint'leri (aylık dönemleri) "şu an içinde bulunduğumuz ay" en başta olacak
+ * şekilde sıralar: önce bugünün ay/yılına en yakın olan (0 fark = tam o ay),
+ * eşit uzaklıkta geçmiş/gelecek varsa geçmiş önce gelir. Listede hangi ay/yıldaysak
+ * o her zaman ilk sırada görünür; kalanlar da en yakından en uzağa doğru sıralanır.
+ * @param {Array} sprints
+ * @returns {Array} yeni, sıralanmış dizi (girdiyi değiştirmez)
+ */
+export function sortSprintsByCurrentMonth(sprints) {
+  const now = new Date();
+  const nowKey = now.getFullYear() * 12 + (now.getMonth() + 1);
+
+  const keyOf = (s) => {
+    const year = s.year ?? new Date(s.startDate).getFullYear();
+    const month = s.month ?? new Date(s.startDate).getMonth() + 1;
+    return year * 12 + month;
+  };
+
+  return [...sprints].sort((a, b) => {
+    const diffA = keyOf(a) - nowKey;
+    const diffB = keyOf(b) - nowKey;
+    const distA = Math.abs(diffA);
+    const distB = Math.abs(diffB);
+    if (distA !== distB) return distA - distB;
+    // Eşit uzaklıktaysa (örn. bir ay önce vs bir ay sonra) geçmiş önce gelir
+    return diffA - diffB;
+  });
+}
+
+/**
  * Mevcut ay ve yıl için varsayılan sprint verisi döner.
  * @returns {{ year: number, month: number, name: string, startDate: string, endDate: string }}
  */

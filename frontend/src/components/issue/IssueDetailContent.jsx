@@ -20,6 +20,7 @@ import {
   PRIORITIES,
   ISSUE_TYPES,
   ROLES,
+  PRIORITY_LABELS,
 } from '../../constants';
 import { canChangeAssignee } from '../../utils/permissionUtils';
 import { issuesApi, commentsApi, activitiesApi } from '../../api/resources';
@@ -442,7 +443,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
               <div className="col-8 col-md-9">
                 {editMode ? (
                   <select className="form-select form-select-sm" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
-                    {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
                   </select>
                 ) : (
                   <PriorityIcon priority={issue.priority} showLabel size={13} />

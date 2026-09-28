@@ -5,7 +5,7 @@ import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useRequestFilters } from '../../hooks/useRequestFilters';
-import { ACTIONS, ROLES, PRIORITIES } from '../../constants';
+import { ACTIONS, ROLES, PRIORITIES, PRIORITY_LABELS } from '../../constants';
 import { getVisibleRequests } from '../../utils/permissionUtils';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
@@ -327,7 +327,7 @@ export default function RequestList() {
               selected={selectedPriority === p}
               onClick={() => setSelectedPriority(p)}
             >
-              {p}
+              {PRIORITY_LABELS[p]}
             </FilterChipOption>
           ))}
         </FilterChip>

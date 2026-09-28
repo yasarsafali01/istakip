@@ -5,6 +5,7 @@ import { ACTIONS } from '../../constants';
 import { sprintsApi, issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssues } from '../../api/mappers';
 import { formatDate } from '../../utils/dateUtils';
+import { sortSprintsByCurrentMonth } from '../../utils/sprintUtils';
 import Modal from '../common/Modal';
 import SprintForm from './SprintForm';
 import EmptyState from '../common/EmptyState';
@@ -18,16 +19,7 @@ function SprintList({ projectId }) {
   const { state, dispatch } = useAppContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const sprints = state.sprints
-    .filter(s => s.projectId === projectId)
-    .sort((a, b) => {
-      const aYear = a.year ?? new Date(a.startDate).getFullYear();
-      const bYear = b.year ?? new Date(b.startDate).getFullYear();
-      const aMonth = a.month ?? new Date(a.startDate).getMonth() + 1;
-      const bMonth = b.month ?? new Date(b.startDate).getMonth() + 1;
-      if (aYear !== bYear) return bYear - aYear;
-      return bMonth - aMonth;
-    });
+  const sprints = sortSprintsByCurrentMonth(state.sprints.filter(s => s.projectId === projectId));
 
   const hasActiveSprint = sprints.some(s => s.status === 'Active');
 

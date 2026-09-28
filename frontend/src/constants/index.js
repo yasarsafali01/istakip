@@ -32,6 +32,16 @@ export const ACTIONS = {
 
 export const PRIORITIES = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
 
+// Veritabanı ve API bu İngilizce değerleri kullanır (backend CHECK kısıtı,
+// filtre/sıralama mantığı vb.); ekranda gösterilecek Türkçe karşılıkları.
+export const PRIORITY_LABELS = {
+  Highest: 'En Yüksek',
+  High: 'Yüksek',
+  Medium: 'Orta',
+  Low: 'Düşük',
+  Lowest: 'En Düşük',
+};
+
 export const STATUSES = ['To Do', 'In Progress', 'In Review', 'Done', 'Geri Çevrildi'];
 
 export const ISSUE_TYPES = ['Task', 'Bug', 'Story', 'Epic', 'Request'];

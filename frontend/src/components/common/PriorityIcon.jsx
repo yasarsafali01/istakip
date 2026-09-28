@@ -6,7 +6,7 @@ import {
   TbArrowBigDownLinesFilled,
   TbArrowBigRightFilled,
 } from 'react-icons/tb';
-import { PRIORITY_COLORS } from '../../constants';
+import { PRIORITY_COLORS, PRIORITY_LABELS } from '../../constants';
 
 const PRIORITY_ICONS = {
   Highest: TbArrowBigUpLinesFilled,
@@ -28,17 +28,18 @@ const PRIORITY_ICONS = {
 function PriorityIcon({ priority, size = 16, showLabel = false, className = '' }) {
   const Icon = PRIORITY_ICONS[priority] || TbArrowBigRightFilled;
   const color = PRIORITY_COLORS[priority] || '#FFAA00';
+  const label = PRIORITY_LABELS[priority] || priority;
 
   return (
     <span
       className={`d-inline-flex align-items-center gap-1 ${className}`}
-      title={priority}
-      aria-label={`Öncelik: ${priority}`}
+      title={label}
+      aria-label={`Öncelik: ${label}`}
     >
       <Icon size={size} color={color} aria-hidden="true" />
       {showLabel && (
         <span style={{ fontSize: '0.8rem', color }} className="fw-semibold">
-          {priority}
+          {label}
         </span>
       )}
     </span>

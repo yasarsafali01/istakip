@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
-import { ACTIONS, PRIORITIES, STATUSES, ISSUE_TYPES } from '../../constants';
+import { ACTIONS, PRIORITIES, PRIORITY_LABELS, STATUSES, ISSUE_TYPES } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 
@@ -173,7 +173,7 @@ function IssueForm({ projectId, issue, onSuccess, onCancel }) {
             onChange={e => setPriority(e.target.value)}
           >
             {PRIORITIES.map(p => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
             ))}
           </select>
         </div>

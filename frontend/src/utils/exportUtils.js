@@ -3,6 +3,8 @@
  * No external libraries — pure browser APIs.
  */
 
+import { PRIORITY_LABELS } from '../constants';
+
 /**
  * Escapes a cell value for CSV: wraps in quotes if it contains comma, quote or newline.
  * @param {string|number|null|undefined} value
@@ -34,7 +36,7 @@ export function requestsToCsv(requests, units = [], users = []) {
       r.number,
       r.title,
       r.status,
-      r.priority,
+      PRIORITY_LABELS[r.priority] || r.priority,
       unit?.name ?? r.unitCode ?? '',
       assignee?.name ?? '',
       date,
@@ -79,7 +81,7 @@ export function printRequests(requests, units = [], users = []) {
         <td>${r.number ?? ''}</td>
         <td>${r.title ?? ''}</td>
         <td>${r.status ?? ''}</td>
-        <td>${r.priority ?? ''}</td>
+        <td>${PRIORITY_LABELS[r.priority] || r.priority || ''}</td>
         <td>${unit?.name ?? r.unitCode ?? ''}</td>
         <td>${assignee?.name ?? '—'}</td>
         <td>${date}</td>

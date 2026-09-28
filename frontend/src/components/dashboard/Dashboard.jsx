@@ -10,9 +10,10 @@ import { useState } from 'react';
 import Board from '../board/Board';
 import ProjectProgress from './ProjectProgress';
 import RecentActivity from './RecentActivity';
-import { PRIORITY_COLORS, ROLES } from '../../constants';
+import { PRIORITY_COLORS, PRIORITY_LABELS, ROLES } from '../../constants';
 import { getVisibleProjects, getVisibleRequests } from '../../utils/permissionUtils';
 import { formatDate } from '../../utils/dateUtils';
+import { sortSprintsByCurrentMonth } from '../../utils/sprintUtils';
 import HelpGuide from '../common/HelpGuide';
 
 /* ── Sprint tarih aralığı formatla ──────────────────────────────────────────── */
@@ -419,16 +420,7 @@ function WorkerBoardSection({ projectId, currentUserId }) {
   const { state } = useAppContext();
   const [boardSprintId, setBoardSprintId] = useState('active');
 
-  const allSprints = state.sprints
-    .filter(s => s.projectId === projectId)
-    .sort((a, b) => {
-      const aYear = a.year ?? new Date(a.startDate).getFullYear();
-      const bYear = b.year ?? new Date(b.startDate).getFullYear();
-      const aMonth = a.month ?? new Date(a.startDate).getMonth() + 1;
-      const bMonth = b.month ?? new Date(b.startDate).getMonth() + 1;
-      if (aYear !== bYear) return bYear - aYear;
-      return bMonth - aMonth;
-    });
+  const allSprints = sortSprintsByCurrentMonth(state.sprints.filter(s => s.projectId === projectId));
 
   const activeSprint = allSprints.find(s => s.status === 'Active');
 
@@ -511,7 +503,7 @@ function WorkerBacklogSection({ projectId, currentUserId, state }) {
                 <td className="align-middle fw-medium">{issue.title}</td>
                 <td className="align-middle">
                   <span style={{ fontSize: '0.72rem', fontWeight: 600, color: { Highest: '#DE350B', High: '#FF7700', Medium: '#D4A000', Low: '#2684FF', Lowest: '#00875A' }[issue.priority] || '#6B778C' }}>
-                    {issue.priority}
+                    {PRIORITY_LABELS[issue.priority] || issue.priority}
                   </span>
                 </td>
                 <td className="align-middle text-muted small">
@@ -613,7 +605,7 @@ function PriorityBreakdown({ issues }) {
           {priorityCounts.map(({ priority, count, color }) => (
             <li key={priority} className="mb-2">
               <div className="d-flex align-items-center gap-2">
-                <span style={{ width: 60, fontSize: '0.8rem', color, fontWeight: 600 }}>{priority}</span>
+                <span style={{ width: 60, fontSize: '0.8rem', color, fontWeight: 600 }}>{PRIORITY_LABELS[priority]}</span>
                 <div className="flex-grow-1 rounded" style={{ height: 10, background: '#F4F5F7' }}>
                   <div className="rounded" style={{
                     width: `${Math.round((count / maxCount) * 100)}%`,
