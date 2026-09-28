@@ -25,6 +25,8 @@ const issueSelectBase = `
 	SELECT i.id, i.number, i.project_id, p.key, i.sprint_id, i.title, i.description, i.type,
 	       i.priority, i.status, i.assignee_id, i.reporter_id, i.is_request, i.time_spent,
 	       i.created_at, i.updated_at, i.resolved_at,
+	       i.rating, i.rating_comment, i.rated_at, i.contact_name, i.contact_phone,
+	       i.forwarded_from_project_id, i.assignee_team_id,
 	       COALESCE(array_agg(v.user_id) FILTER (WHERE v.user_id IS NOT NULL), '{}')
 	FROM issues i
 	JOIN projects p ON p.id = i.project_id
@@ -37,7 +39,10 @@ func scanIssue(row pgx.Row) (models.Issue, error) {
 	var iss models.Issue
 	err := row.Scan(&iss.ID, &iss.Number, &iss.ProjectID, &iss.ProjectKey, &iss.SprintID, &iss.Title, &iss.Description,
 		&iss.Type, &iss.Priority, &iss.Status, &iss.AssigneeID, &iss.ReporterID, &iss.IsRequest, &iss.TimeSpent,
-		&iss.CreatedAt, &iss.UpdatedAt, &iss.ResolvedAt, &iss.VisibleTo)
+		&iss.CreatedAt, &iss.UpdatedAt, &iss.ResolvedAt,
+		&iss.Rating, &iss.RatingComment, &iss.RatedAt, &iss.ContactName, &iss.ContactPhone,
+		&iss.ForwardedFromProjectID, &iss.AssigneeTeamID,
+		&iss.VisibleTo)
 	if err == nil {
 		iss.Key = fmt.Sprintf("%s-%d", iss.ProjectKey, iss.Number)
 	}
@@ -148,15 +153,17 @@ func (r *IssueRepo) GetByID(ctx context.Context, id uuid.UUID) (models.Issue, er
 }
 
 type NewIssue struct {
-	ProjectID   uuid.UUID
-	SprintID    *uuid.UUID
-	Title       string
-	Description string
-	Type        string
-	Priority    string
-	AssigneeID  *uuid.UUID
-	ReporterID  uuid.UUID
-	IsRequest   bool
+	ProjectID    uuid.UUID
+	SprintID     *uuid.UUID
+	Title        string
+	Description  string
+	Type         string
+	Priority     string
+	AssigneeID   *uuid.UUID
+	ReporterID   uuid.UUID
+	IsRequest    bool
+	ContactName  *string
+	ContactPhone *string
 }
 
 // Create atomically reserves the next issue number for the project and
@@ -180,10 +187,10 @@ func (r *IssueRepo) Create(ctx context.Context, in NewIssue) (models.Issue, erro
 	var id uuid.UUID
 	if err := tx.QueryRow(ctx,
 		`INSERT INTO issues (number, project_id, sprint_id, title, description, type, priority, status,
-		                     assignee_id, reporter_id, is_request)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,'To Do',$8,$9,$10) RETURNING id`,
+		                     assignee_id, reporter_id, is_request, contact_name, contact_phone)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,'To Do',$8,$9,$10,$11,$12) RETURNING id`,
 		number, in.ProjectID, in.SprintID, in.Title, in.Description, in.Type, in.Priority,
-		in.AssigneeID, in.ReporterID, in.IsRequest,
+		in.AssigneeID, in.ReporterID, in.IsRequest, in.ContactName, in.ContactPhone,
 	).Scan(&id); err != nil {
 		return models.Issue{}, err
 	}
@@ -233,9 +240,79 @@ func (r *IssueRepo) SetStatus(ctx context.Context, id uuid.UUID, status string) 
 	return r.GetByID(ctx, id)
 }
 
+// SetAssignee assigns one person, clearing any team assignment.
 func (r *IssueRepo) SetAssignee(ctx context.Context, id uuid.UUID, assigneeID *uuid.UUID) (models.Issue, error) {
-	_, err := r.pool.Exec(ctx, `UPDATE issues SET assignee_id = $2, updated_at = now() WHERE id = $1`, id, assigneeID)
+	_, err := r.pool.Exec(ctx,
+		`UPDATE issues SET assignee_id = $2, assignee_team_id = NULL, updated_at = now() WHERE id = $1`,
+		id, assigneeID)
 	if err != nil {
+		return models.Issue{}, err
+	}
+	return r.GetByID(ctx, id)
+}
+
+// SetAssigneeTeam assigns a whole team, clearing any individual assignment.
+func (r *IssueRepo) SetAssigneeTeam(ctx context.Context, id uuid.UUID, teamID *uuid.UUID) (models.Issue, error) {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE issues SET assignee_team_id = $2, assignee_id = NULL, updated_at = now() WHERE id = $1`,
+		id, teamID)
+	if err != nil {
+		return models.Issue{}, err
+	}
+	return r.GetByID(ctx, id)
+}
+
+// Rate records the requester's satisfaction rating for a resolved request.
+// Fails silently on "already rated" is avoided — callers check RatedAt first.
+func (r *IssueRepo) Rate(ctx context.Context, id uuid.UUID, rating int16, comment string) (models.Issue, error) {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE issues SET rating = $2, rating_comment = NULLIF($3, ''), rated_at = now() WHERE id = $1`,
+		id, rating, comment)
+	if err != nil {
+		return models.Issue{}, err
+	}
+	return r.GetByID(ctx, id)
+}
+
+// Forward routes a request to a different project (a stand-in for "another
+// unit/topic" in this project-centric model): reserves a fresh issue number
+// in the target project (numbers are only unique per-project), clears
+// sprint/assignee, and marks where it came from.
+func (r *IssueRepo) Forward(ctx context.Context, id, targetProjectID uuid.UUID) (models.Issue, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return models.Issue{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var fromProjectID uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT project_id FROM issues WHERE id = $1`, id).Scan(&fromProjectID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Issue{}, ErrNotFound
+		}
+		return models.Issue{}, err
+	}
+
+	var number int
+	if err := tx.QueryRow(ctx,
+		`UPDATE projects SET next_issue_number = next_issue_number + 1
+		 WHERE id = $1 RETURNING next_issue_number - 1`,
+		targetProjectID,
+	).Scan(&number); err != nil {
+		return models.Issue{}, err
+	}
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE issues SET project_id = $2, number = $3, status = 'Yönlendirildi',
+		   forwarded_from_project_id = $4, sprint_id = NULL, assignee_id = NULL, assignee_team_id = NULL,
+		   updated_at = now()
+		 WHERE id = $1`,
+		id, targetProjectID, number, fromProjectID,
+	); err != nil {
+		return models.Issue{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return models.Issue{}, err
 	}
 	return r.GetByID(ctx, id)

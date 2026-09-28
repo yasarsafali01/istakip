@@ -20,6 +20,10 @@ const (
 	PermProjectEdit     = "project.edit"
 	PermUnitManage      = "unit.manage"
 	PermRoleManage      = "role.manage"
+	PermIssueForward    = "issue.forward"
+	PermHelpdeskCreate  = "helpdesk.create"
+	PermTeamManage      = "team.manage"
+	PermTemplateManage  = "template.manage"
 )
 
 type PermissionInfo struct {
@@ -41,7 +45,11 @@ var PermissionCatalog = []PermissionInfo{
 	{PermIssueAssign, "Atama yap", "İşler", "İşi bir çalışana atayabilir veya atamayı değiştirebilir"},
 	{PermIssueDates, "Tarih/süre düzenle", "İşler", "Çözüm tarihi ve harcanan süreyi düzenleyebilir"},
 	{PermIssueSprint, "Aya/backlog'a taşı", "İşler", "İşi bir aya atayabilir veya backlog'a alabilir"},
+	{PermIssueForward, "Talebi yönlendir", "Talepler", "Talebi başka bir projeye/birime yönlendirebilir"},
+	{PermHelpdeskCreate, "Başkası adına talep aç", "Talepler", "Telefon/yüz yüze gelen biri için onun adına talep açabilir"},
 	{PermSprintManage, "Aylık dönem yönet", "Projeler", "Aylık dönem oluşturabilir, başlatabilir ve kapatabilir"},
+	{PermTeamManage, "Ekip yönet", "Projeler", "Ekip oluşturabilir ve üyelerini düzenleyebilir"},
+	{PermTemplateManage, "Cevap şablonu yönet", "Projeler", "Hazır yanıt şablonları oluşturabilir ve düzenleyebilir"},
 	{PermProjectCreate, "Proje oluştur", "Projeler", "Yeni proje açabilir"},
 	{PermProjectEdit, "Proje düzenle", "Projeler", "Proje bilgilerini ve yöneticisini değiştirebilir"},
 	{PermInventoryManage, "Envanter yönet", "Envanter", "Envanter kalemi ekleyebilir ve stok düzenleyebilir"},

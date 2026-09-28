@@ -20,10 +20,12 @@ type IssueHandler struct {
 	issues     *repository.IssueRepo
 	projects   *repository.ProjectRepo
 	activities *repository.ActivityRepo
+	users      *repository.UserRepo
+	notifier   *services.Notifier
 }
 
-func NewIssueHandler(issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo) *IssueHandler {
-	return &IssueHandler{issues: issues, projects: projects, activities: activities}
+func NewIssueHandler(issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo, users *repository.UserRepo, notifier *services.Notifier) *IssueHandler {
+	return &IssueHandler{issues: issues, projects: projects, activities: activities, users: users, notifier: notifier}
 }
 
 // canModifyIssue: the role must hold the permission (issue.edit / issue.delete)
@@ -128,6 +130,10 @@ type createIssueRequest struct {
 	Priority    string     `json:"priority"`
 	AssigneeID  *uuid.UUID `json:"assigneeId"`
 	IsRequest   bool       `json:"isRequest"`
+	// Helpdesk walk-in/phone requests only (requires helpdesk.create): who
+	// actually needs help, since that person has no account of their own.
+	ContactName  string `json:"contactName"`
+	ContactPhone string `json:"contactPhone"`
 }
 
 func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +194,7 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 		issueType = "Task"
 	}
 
-	created, err := h.issues.Create(r.Context(), repository.NewIssue{
+	newIssue := repository.NewIssue{
 		ProjectID:   req.ProjectID,
 		SprintID:    req.SprintID,
 		Title:       req.Title,
@@ -198,7 +204,20 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 		AssigneeID:  req.AssigneeID,
 		ReporterID:  claims.UserID,
 		IsRequest:   req.IsRequest,
-	})
+	}
+	// contactName/contactPhone only apply to a helpdesk walk-in/phone request
+	// opened on someone else's behalf — silently ignored otherwise so a
+	// regular requester filling their own name in by mistake has no effect.
+	if req.IsRequest && claims.Can(services.PermHelpdeskCreate) {
+		if req.ContactName != "" {
+			newIssue.ContactName = &req.ContactName
+		}
+		if req.ContactPhone != "" {
+			newIssue.ContactPhone = &req.ContactPhone
+		}
+	}
+
+	created, err := h.issues.Create(r.Context(), newIssue)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to create issue")
 		return
@@ -321,6 +340,185 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
 	}
+	h.notifier.Notify(r.Context(), updated.ReporterID, claims.UserID, services.NotifyStatus,
+		"Talebinizin durumu değişti", updated.Title+": "+req.Status, &updated.ID)
+	response.JSON(w, http.StatusOK, updated)
+}
+
+// Cancel lets a requester withdraw their own request while it's still open.
+func (h *IssueHandler) Cancel(w http.ResponseWriter, r *http.Request) {
+	claims, _ := authmw.CurrentClaims(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid issue id")
+		return
+	}
+	issue, project, err := h.loadWithProject(r, id)
+	if errors.Is(err, repository.ErrNotFound) {
+		response.Error(w, http.StatusNotFound, "issue not found")
+		return
+	}
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load issue")
+		return
+	}
+	if !services.CanAccessIssue(claims, issue, project) {
+		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
+		return
+	}
+	if !issue.IsRequest || issue.ReporterID != claims.UserID {
+		response.Error(w, http.StatusForbidden, "Yalnızca kendi talebinizi iptal edebilirsiniz")
+		return
+	}
+	terminal := map[string]bool{"Done": true, "Geri Çevrildi": true, "İptal Edildi": true}
+	if terminal[issue.Status] {
+		response.Error(w, http.StatusBadRequest, "Bu talep zaten sonuçlanmış")
+		return
+	}
+
+	updated, err := h.issues.SetStatus(r.Context(), id, "İptal Edildi")
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to cancel issue")
+		return
+	}
+	if err := h.activities.Create(r.Context(), id, claims.UserID, "status_change", "Talep, talep eden tarafından iptal edildi"); err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to record activity")
+		return
+	}
+	response.JSON(w, http.StatusOK, updated)
+}
+
+type forwardRequest struct {
+	TargetProjectID uuid.UUID `json:"targetProjectId"`
+	Note            string    `json:"note"`
+}
+
+// Forward routes a request to a different project ("başka bir birime/konuya
+// yönlendirme" in the reference system's terms — see canModifyIssue's doc).
+func (h *IssueHandler) Forward(w http.ResponseWriter, r *http.Request) {
+	claims, _ := authmw.CurrentClaims(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid issue id")
+		return
+	}
+	issue, project, err := h.loadWithProject(r, id)
+	if errors.Is(err, repository.ErrNotFound) {
+		response.Error(w, http.StatusNotFound, "issue not found")
+		return
+	}
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load issue")
+		return
+	}
+	if !issue.IsRequest {
+		response.Error(w, http.StatusBadRequest, "Yalnızca talepler yönlendirilebilir")
+		return
+	}
+	if !claims.Can(services.PermIssueForward) || !services.CanAccessIssue(claims, issue, project) {
+		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
+		return
+	}
+
+	var req forwardRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.TargetProjectID == uuid.Nil || req.TargetProjectID == issue.ProjectID {
+		response.Error(w, http.StatusBadRequest, "geçerli bir hedef proje seçin")
+		return
+	}
+	targetProject, err := h.projects.GetByID(r.Context(), req.TargetProjectID)
+	if errors.Is(err, repository.ErrNotFound) {
+		response.Error(w, http.StatusBadRequest, "geçersiz hedef proje")
+		return
+	}
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load target project")
+		return
+	}
+
+	updated, err := h.issues.Forward(r.Context(), id, req.TargetProjectID)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to forward issue")
+		return
+	}
+	desc := `"` + project.Name + `" → "` + targetProject.Name + `" birimine yönlendirildi`
+	if req.Note != "" {
+		desc += ": " + req.Note
+	}
+	if err := h.activities.Create(r.Context(), id, claims.UserID, "field_update", desc); err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to record activity")
+		return
+	}
+	h.notifier.Notify(r.Context(), updated.ReporterID, claims.UserID, services.NotifyForwarded,
+		"Talebiniz yönlendirildi", updated.Title+" → "+targetProject.Name, &updated.ID)
+	response.JSON(w, http.StatusOK, updated)
+}
+
+type rateRequest struct {
+	Rating  int16  `json:"rating"`
+	Comment string `json:"comment"`
+}
+
+// Rate lets a requester score their resolved request once.
+func (h *IssueHandler) Rate(w http.ResponseWriter, r *http.Request) {
+	claims, _ := authmw.CurrentClaims(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid issue id")
+		return
+	}
+	issue, project, err := h.loadWithProject(r, id)
+	if errors.Is(err, repository.ErrNotFound) {
+		response.Error(w, http.StatusNotFound, "issue not found")
+		return
+	}
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load issue")
+		return
+	}
+	if !services.CanAccessIssue(claims, issue, project) {
+		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
+		return
+	}
+	if !issue.IsRequest || issue.ReporterID != claims.UserID {
+		response.Error(w, http.StatusForbidden, "Yalnızca kendi talebinizi puanlayabilirsiniz")
+		return
+	}
+	if issue.Status != "Done" {
+		response.Error(w, http.StatusBadRequest, "Yalnızca tamamlanmış talepler puanlanabilir")
+		return
+	}
+	if issue.RatedAt != nil {
+		response.Error(w, http.StatusBadRequest, "Bu talep zaten puanlandı")
+		return
+	}
+
+	var req rateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Rating < 1 || req.Rating > 5 {
+		response.Error(w, http.StatusBadRequest, "rating 1-5 arasında olmalıdır")
+		return
+	}
+
+	updated, err := h.issues.Rate(r.Context(), id, req.Rating, req.Comment)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to rate issue")
+		return
+	}
+	if err := h.activities.Create(r.Context(), id, claims.UserID, "field_update", "Talep puanlandı"); err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to record activity")
+		return
+	}
+	if updated.AssigneeID != nil {
+		h.notifier.Notify(r.Context(), *updated.AssigneeID, claims.UserID, services.NotifyRated,
+			"Çözümünüz puanlandı", updated.Title, &updated.ID)
+	}
 	response.JSON(w, http.StatusOK, updated)
 }
 
@@ -388,6 +586,8 @@ func (h *IssueHandler) Complete(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to complete issue")
 		return
 	}
+	h.notifier.Notify(r.Context(), result.Issue.ReporterID, claims.UserID, services.NotifyStatus,
+		"Talebiniz tamamlandı", result.Issue.Title, &result.Issue.ID)
 	response.JSON(w, http.StatusOK, map[string]interface{}{
 		"issue":        result.Issue,
 		"stockWarning": result.StockWarning,
@@ -395,7 +595,8 @@ func (h *IssueHandler) Complete(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateAssigneeRequest struct {
-	AssigneeID *uuid.UUID `json:"assigneeId"`
+	AssigneeID     *uuid.UUID `json:"assigneeId"`
+	AssigneeTeamID *uuid.UUID `json:"assigneeTeamId"`
 }
 
 func (h *IssueHandler) UpdateAssignee(w http.ResponseWriter, r *http.Request) {
@@ -425,7 +626,12 @@ func (h *IssueHandler) UpdateAssignee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := h.issues.SetAssignee(r.Context(), id, req.AssigneeID)
+	var updated models.Issue
+	if req.AssigneeTeamID != nil {
+		updated, err = h.issues.SetAssigneeTeam(r.Context(), id, req.AssigneeTeamID)
+	} else {
+		updated, err = h.issues.SetAssignee(r.Context(), id, req.AssigneeID)
+	}
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to update assignee")
 		return
@@ -434,6 +640,10 @@ func (h *IssueHandler) UpdateAssignee(w http.ResponseWriter, r *http.Request) {
 	if err := h.activities.Create(r.Context(), id, claims.UserID, "assignment", "Atama değiştirildi"); err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
+	}
+	if updated.AssigneeID != nil {
+		h.notifier.Notify(r.Context(), *updated.AssigneeID, claims.UserID, services.NotifyAssigned,
+			"Size bir iş atandı", updated.Title, &updated.ID)
 	}
 	response.JSON(w, http.StatusOK, updated)
 }

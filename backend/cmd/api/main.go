@@ -78,12 +78,19 @@ func main() {
 		activityRepo := repository.NewActivityRepo(pool)
 		commentRepo := repository.NewCommentRepo(pool)
 		inventoryRepo := repository.NewInventoryRepo(pool)
+		teamRepo := repository.NewTeamRepo(pool)
+		templateRepo := repository.NewReplyTemplateRepo(pool)
+		notificationRepo := repository.NewNotificationRepo(pool)
+		notifier := services.NewNotifier(notificationRepo, userRepo)
 
-		issueHandler := handlers.NewIssueHandler(issueRepo, projectRepo, activityRepo)
-		commentHandler := handlers.NewCommentHandler(commentRepo, issueRepo, projectRepo, activityRepo)
+		issueHandler := handlers.NewIssueHandler(issueRepo, projectRepo, activityRepo, userRepo, notifier)
+		commentHandler := handlers.NewCommentHandler(commentRepo, issueRepo, projectRepo, activityRepo, notifier)
 		activityHandler := handlers.NewActivityHandler(activityRepo, issueRepo, projectRepo)
 		inventoryHandler := handlers.NewInventoryHandler(inventoryRepo, projectRepo)
 		userHandler := handlers.NewUserHandler(userRepo, roleStore)
+		teamHandler := handlers.NewTeamHandler(teamRepo, projectRepo)
+		templateHandler := handlers.NewReplyTemplateHandler(templateRepo, projectRepo)
+		notificationHandler := handlers.NewNotificationHandler(notificationRepo)
 
 		r.Group(func(r chi.Router) {
 			r.Use(authmw.RequireAuth(authService, roleStore))
@@ -105,6 +112,31 @@ func main() {
 
 				r.Get("/{id}/inventory", inventoryHandler.List)
 				r.Post("/{id}/inventory", inventoryHandler.Create)
+
+				r.Get("/{id}/teams", teamHandler.List)
+				r.Post("/{id}/teams", teamHandler.Create)
+
+				r.Get("/{id}/reply-templates", templateHandler.List)
+				r.Post("/{id}/reply-templates", templateHandler.Create)
+			})
+
+			r.Route("/teams", func(r chi.Router) {
+				r.Patch("/{id}", teamHandler.Rename)
+				r.Delete("/{id}", teamHandler.Delete)
+				r.Post("/{id}/members", teamHandler.AddMember)
+				r.Delete("/{id}/members/{userId}", teamHandler.RemoveMember)
+			})
+
+			r.Route("/reply-templates", func(r chi.Router) {
+				r.Patch("/{id}", templateHandler.Update)
+				r.Delete("/{id}", templateHandler.Delete)
+			})
+
+			r.Route("/notifications", func(r chi.Router) {
+				r.Get("/", notificationHandler.List)
+				r.Get("/unread-count", notificationHandler.UnreadCount)
+				r.Post("/{id}/read", notificationHandler.MarkRead)
+				r.Post("/read-all", notificationHandler.MarkAllRead)
 			})
 
 			r.Route("/sprints", func(r chi.Router) {
@@ -125,6 +157,9 @@ func main() {
 				r.Post("/{id}/visible-users", issueHandler.AddVisibleUser)
 				r.Post("/{id}/clone", issueHandler.Clone)
 				r.Post("/{id}/move-sprint", issueHandler.MoveSprint)
+				r.Post("/{id}/forward", issueHandler.Forward)
+				r.Post("/{id}/cancel", issueHandler.Cancel)
+				r.Post("/{id}/rate", issueHandler.Rate)
 				r.Get("/{id}/comments", commentHandler.List)
 				r.Post("/{id}/comments", commentHandler.Create)
 				r.Get("/{id}/activities", activityHandler.List)
@@ -136,6 +171,8 @@ func main() {
 			r.Route("/users", func(r chi.Router) {
 				r.Get("/", userHandler.List)
 				r.Get("/me", userHandler.Me)
+				r.Patch("/me", userHandler.UpdateMe)
+				r.Post("/me/change-password", userHandler.ChangePassword)
 				r.Patch("/{id}/role", roleHandler.AssignUserRole)
 			})
 

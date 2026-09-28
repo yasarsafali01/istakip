@@ -20,10 +20,11 @@ type CommentHandler struct {
 	issues     *repository.IssueRepo
 	projects   *repository.ProjectRepo
 	activities *repository.ActivityRepo
+	notifier   *services.Notifier
 }
 
-func NewCommentHandler(comments *repository.CommentRepo, issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo) *CommentHandler {
-	return &CommentHandler{comments: comments, issues: issues, projects: projects, activities: activities}
+func NewCommentHandler(comments *repository.CommentRepo, issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo, notifier *services.Notifier) *CommentHandler {
+	return &CommentHandler{comments: comments, issues: issues, projects: projects, activities: activities, notifier: notifier}
 }
 
 func (h *CommentHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -110,6 +111,11 @@ func (h *CommentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := h.activities.Create(r.Context(), issueID, claims.UserID, "comment", "Yorum ekledi"); err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
+	}
+	// Notify the other side of the conversation — reporter and assignee, whichever the commenter isn't.
+	h.notifier.Notify(r.Context(), issue.ReporterID, claims.UserID, services.NotifyComment, "Talebinize yorum eklendi", issue.Title, &issue.ID)
+	if issue.AssigneeID != nil {
+		h.notifier.Notify(r.Context(), *issue.AssigneeID, claims.UserID, services.NotifyComment, "Bir işinize yorum eklendi", issue.Title, &issue.ID)
 	}
 	response.JSON(w, http.StatusCreated, comment)
 }
