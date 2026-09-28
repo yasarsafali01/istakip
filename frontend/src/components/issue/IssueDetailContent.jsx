@@ -17,6 +17,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import {
   ACTIONS,
   STATUSES,
+  STATUS_LABELS,
   PRIORITIES,
   ISSUE_TYPES,
   ROLES,
@@ -347,12 +348,12 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
               onBlur={() => setEditingStatus(false)}
               autoFocus
             >
-              {STATUSES.filter((s) => s !== 'Geri Çevrildi').map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUSES.filter((s) => s !== 'Geri Çevrildi').map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           ) : (
             STATUSES.filter((s) => s !== issue.status && s !== 'Geri Çevrildi').map((s) => (
               <button key={s} className="btn btn-sm btn-outline-secondary" onClick={() => handleStatusChange(s)}>
-                {s}
+                {STATUS_LABELS[s]}
               </button>
             ))
           )
@@ -457,7 +458,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
               <div className="col-8 col-md-9">
                 {editMode ? (
                   <select className="form-select form-select-sm" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
-                    {STATUSES.filter((s) => s !== 'Done').map((s) => <option key={s} value={s}>{s}</option>)}
+                    {STATUSES.filter((s) => s !== 'Done').map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
                 ) : (
                   <Badge label={issue.status} type="status" />

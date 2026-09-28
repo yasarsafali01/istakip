@@ -1,5 +1,5 @@
 import React from 'react';
-import { STATUS_COLORS, ISSUE_TYPE_COLORS } from '../../constants';
+import { STATUS_COLORS, STATUS_LABELS, ISSUE_TYPE_COLORS } from '../../constants';
 
 /**
  * A small pill-shaped label for statuses, issue types, or custom values.
@@ -42,9 +42,11 @@ function Badge({ label, type = 'custom', color, className = '' }) {
     letterSpacing: '0.02em',
   };
 
+  const displayLabel = type === 'status' ? STATUS_LABELS[label] || label : label;
+
   return (
     <span style={style} className={className}>
-      {label}
+      {displayLabel}
     </span>
   );
 }

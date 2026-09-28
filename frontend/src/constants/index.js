@@ -62,6 +62,21 @@ export const STATUS_COLORS = {
   'In Review': '#FF991F',
   Done: '#00875A',
   'Geri Çevrildi': '#DE350B',
+  // Reached only through the dedicated forward/cancel actions (never a plain
+  // status-change dropdown) — kept out of STATUSES so board columns and the
+  // manual transition pickers don't offer them directly.
+  Yönlendirildi: '#6554C0',
+  'İptal Edildi': '#6B778C',
+};
+
+export const STATUS_LABELS = {
+  'To Do': 'Yapılacak',
+  'In Progress': 'Devam Ediyor',
+  'In Review': 'İncelemede',
+  Done: 'Tamamlandı',
+  'Geri Çevrildi': 'Geri Çevrildi',
+  Yönlendirildi: 'Yönlendirildi',
+  'İptal Edildi': 'İptal Edildi',
 };
 
 export const ISSUE_TYPE_COLORS = {

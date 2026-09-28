@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/usePermissions';
 import { ACTIONS, PRIORITY_LABELS } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
@@ -8,12 +9,16 @@ import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 export default function RequestForm({ onClose, defaultUnitId = '' }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
+  const { can } = usePermissions();
 
   const [unitId, setUnitId] = useState(defaultUnitId || currentUser?.unitId || '');
   const [projectId, setProjectId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('Medium');
+  const [onBehalf, setOnBehalf] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,6 +68,9 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
         description: description.trim(),
         priority,
         isRequest: true,
+        ...(onBehalf && can('helpdesk.create')
+          ? { contactName: contactName.trim(), contactPhone: contactPhone.trim() }
+          : {}),
       });
       const unitCodeByProjectId = buildUnitCodeByProjectId(state.projects, state.units);
       dispatch({ type: ACTIONS.ADD_ISSUE, payload: mapIssue(created, unitCodeByProjectId) });
@@ -76,6 +84,44 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      {/* Yardım masası: telefonla arayan/yüz yüze gelen biri adına talep açma */}
+      {can('helpdesk.create') && (
+        <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#F4F5F7' }}>
+          <div className="form-check">
+            <input
+              id="req-on-behalf"
+              type="checkbox"
+              className="form-check-input"
+              checked={onBehalf}
+              onChange={(e) => setOnBehalf(e.target.checked)}
+            />
+            <label htmlFor="req-on-behalf" className="form-check-label small fw-medium">
+              Bir kişi adına açıyorum (telefon / yüz yüze)
+            </label>
+          </div>
+          {onBehalf && (
+            <div className="row g-2 mt-1">
+              <div className="col-6">
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Ad Soyad"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                />
+              </div>
+              <div className="col-6">
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Telefon"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Birim */}
       <div className="mb-3">
         <label htmlFor="req-unit" className="form-label fw-medium">

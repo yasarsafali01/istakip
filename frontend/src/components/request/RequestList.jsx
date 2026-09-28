@@ -45,16 +45,21 @@ export default function RequestList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
 
-  // The top bar's "Yeni Talep" button links here with ?yeni=1 — open the form once, then drop the param
+  const [visibleToModal, setVisibleToModal] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+
+  // The top bar's "Yeni Talep" button links here with ?yeni=1 — open the form once.
+  // A notification click links with ?issue=<id> — open that request's detail once.
   useEffect(() => {
     if (searchParams.get('yeni') === '1') {
       setShowForm(true);
       setSearchParams({}, { replace: true });
+    } else if (searchParams.get('issue')) {
+      setSelectedRequestId(searchParams.get('issue'));
+      setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-  const [visibleToModal, setVisibleToModal] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRequestId, setSelectedRequestId] = useState(null);
 
   // All filtering logic delegated to the hook
   const {

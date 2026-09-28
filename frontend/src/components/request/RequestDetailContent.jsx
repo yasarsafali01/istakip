@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TbCalendar,
   TbClock,
@@ -11,18 +11,23 @@ import {
   TbUserPlus,
   TbTrash,
   TbCopy,
+  TbArrowForwardUp,
+  TbBan,
+  TbPhone,
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
-import { ACTIONS, STATUSES, PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
+import { ACTIONS, STATUSES, STATUS_LABELS, PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
 import { canChangeAssignee } from '../../utils/permissionUtils';
-import { issuesApi, commentsApi, activitiesApi } from '../../api/resources';
+import { issuesApi, commentsApi, activitiesApi, teamsApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 import { formatDate, timeAgo, formatTimeSpent } from '../../utils/dateUtils';
 import Avatar from '../common/Avatar';
 import Badge from '../common/Badge';
 import PriorityIcon from '../common/PriorityIcon';
+import SlaBadge from '../common/SlaBadge';
+import StarRating from '../common/StarRating';
 import CommentSection from '../issue/CommentSection';
 import ActivityFeed from '../issue/ActivityFeed';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -55,6 +60,14 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const [activeTab, setActiveTab] = useState('comments');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDoneModal, setShowDoneModal] = useState(false);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardTargetId, setForwardTargetId] = useState('');
+  const [forwardNote, setForwardNote] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [teams, setTeams] = useState([]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const assignee = state.users.find((u) => u.id === request.assigneeId);
@@ -81,6 +94,12 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
     const projectUnit = state.units?.find((u) => u.id === p.unitId);
     return projectUnit?.unitCode === request.unitCode;
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    teamsApi.listByProject(request.projectId).then((list) => { if (!cancelled) setTeams(list); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [request.projectId]);
 
   // Users eligible for assignment: workers of the (possibly new) project, PM, dept head, admin
   const assignableUsers = state.users.filter((u) => {
@@ -155,10 +174,15 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   }
 
   // ── Assignee change ───────────────────────────────────────────────────────
-  async function handleAssigneeChange(newAssigneeId) {
+  // value is either "" (unassign), "u:<userId>" or "t:<teamId>"
+  async function handleAssigneeChange(value) {
     if (!canAssign) return;
     try {
-      await issuesApi.updateAssignee(request.id, newAssigneeId || null);
+      if (value.startsWith('t:')) {
+        await issuesApi.assignTeam(request.id, value.slice(2));
+      } else {
+        await issuesApi.updateAssignee(request.id, value.startsWith('u:') ? value.slice(2) : null);
+      }
       await refreshRequest();
     } catch (err) {
       window.alert(err.message);
@@ -242,6 +266,52 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
 
+  // ── Yönlendir (Forward to another project) ───────────────────────────────
+  const TERMINAL_STATUSES = ['Done', 'Geri Çevrildi', 'İptal Edildi', 'Yönlendirildi'];
+  const isTerminal = TERMINAL_STATUSES.includes(request.status);
+  const canForward = !!currentUser && can('issue.forward') && !isTerminal;
+  const forwardTargets = state.projects.filter((p) => p.id !== request.projectId);
+
+  async function handleForward() {
+    if (!forwardTargetId) return;
+    try {
+      await issuesApi.forward(request.id, forwardTargetId, forwardNote.trim());
+      await refreshRequest();
+      setShowForwardModal(false);
+      setForwardTargetId('');
+      setForwardNote('');
+    } catch (err) {
+      window.alert(err.message);
+    }
+  }
+
+  // ── İptal Et (requester withdraws their own open request) ────────────────
+  const canCancel = !!currentUser && isOwnRequest && !isTerminal;
+  async function handleCancel() {
+    try {
+      await issuesApi.cancel(request.id);
+      await refreshRequest();
+      setShowCancelConfirm(false);
+    } catch (err) {
+      window.alert(err.message);
+    }
+  }
+
+  // ── Puanla (requester rates a completed request once) ────────────────────
+  const canRate = !!currentUser && isOwnRequest && request.status === 'Done' && !request.ratedAt;
+  async function handleRate() {
+    if (!rating) return;
+    setRatingSubmitting(true);
+    try {
+      await issuesApi.rate(request.id, rating, ratingComment.trim());
+      await refreshRequest();
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setRatingSubmitting(false);
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div>
@@ -252,6 +322,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
         {project && <span className="text-muted small">{project.name}</span>}
         {project && <span className="text-muted small">/</span>}
         <span className="text-primary small fw-semibold">{request.number}</span>
+        <SlaBadge request={request} />
       </div>
 
       {/* Title */}
@@ -281,12 +352,12 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                 onBlur={() => setEditingStatus(false)}
                 autoFocus
               >
-                {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
             ) : (
               STATUSES.filter((s) => s !== request.status && s !== 'Geri Çevrildi').map((s) => (
                 <button key={s} className="btn btn-sm btn-outline-secondary" onClick={() => handleStatusChange(s)}>
-                  {s}
+                  {STATUS_LABELS[s]}
                 </button>
               ))
             )}
@@ -322,6 +393,20 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
           {canClone && !editMode && (
             <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={handleClone} title="Talebi klonla">
               <TbCopy size={14} /> Klonla
+            </button>
+          )}
+
+          {/* Yönlendir */}
+          {canForward && !editMode && (
+            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowForwardModal(true)} title="Talebi başka bir projeye yönlendir">
+              <TbArrowForwardUp size={14} /> Yönlendir
+            </button>
+          )}
+
+          {/* İptal Et — talebi açan kişi kendi talebini geri çekebilir */}
+          {canCancel && !editMode && (
+            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowCancelConfirm(true)} title="Talebi iptal et">
+              <TbBan size={14} /> İptal Et
             </button>
           )}
 
@@ -547,15 +632,22 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
               {canAssign && editingAssignee ? (
                 <select
                   className="form-select form-select-sm"
-                  defaultValue={request.assigneeId ?? ''}
+                  defaultValue={request.assigneeTeamId ? `t:${request.assigneeTeamId}` : request.assigneeId ? `u:${request.assigneeId}` : ''}
                   onChange={(e) => handleAssigneeChange(e.target.value)}
                   onBlur={() => setEditingAssignee(false)}
                   autoFocus
                 >
                   <option value="">— Atanmamış —</option>
                   {assignableUsers.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
+                    <option key={u.id} value={`u:${u.id}`}>{u.name}</option>
                   ))}
+                  {teams.length > 0 && (
+                    <optgroup label="Ekipler">
+                      {teams.map((t) => (
+                        <option key={t.id} value={`t:${t.id}`}>{t.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               ) : (
                 <div
@@ -575,6 +667,11 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                         {canAssign && <div className="text-primary" style={{ fontSize: '0.75rem' }}>Değiştir</div>}
                       </div>
                     </>
+                  ) : request.assigneeTeamId ? (
+                    <div>
+                      <div className="fw-medium">{teams.find((t) => t.id === request.assigneeTeamId)?.name || 'Ekip'}</div>
+                      {canAssign && <div className="text-primary" style={{ fontSize: '0.75rem' }}>Değiştir</div>}
+                    </div>
                   ) : (
                     <div>
                       <span className="text-muted">Atanmamış</span>
@@ -586,7 +683,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
             </div>
 
             {/* Reporter */}
-            <div className="mb-1">
+            <div className={request.contactName ? 'mb-3' : 'mb-1'}>
               <p className="text-muted mb-1 small fw-semibold">Raporlayan</p>
               <div className="d-flex align-items-center gap-2">
                 {reporter ? (
@@ -599,7 +696,51 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                 )}
               </div>
             </div>
+
+            {/* Yardım masası: bu talep, başka biri adına telefonla/yüz yüze açıldıysa */}
+            {request.contactName && (
+              <div className="mb-1">
+                <p className="text-muted mb-1 small fw-semibold d-flex align-items-center gap-1">
+                  <TbPhone size={12} /> Talep Eden Kişi
+                </p>
+                <div className="fw-medium">{request.contactName}</div>
+                {request.contactPhone && <div className="text-muted small">{request.contactPhone}</div>}
+              </div>
+            )}
           </div>
+
+          {/* Puanlama */}
+          {(canRate || request.ratedAt) && (
+            <div className="p-3 rounded mb-3" style={{ backgroundColor: '#F4F5F7', fontSize: '0.85rem' }}>
+              <h6 className="fw-semibold text-muted text-uppercase mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+                Çözüm Değerlendirmesi
+              </h6>
+              {request.ratedAt ? (
+                <>
+                  <StarRating value={request.rating} size={16} />
+                  {request.ratingComment && <p className="text-muted small mt-2 mb-0 fst-italic">"{request.ratingComment}"</p>}
+                </>
+              ) : (
+                <>
+                  <StarRating value={rating} onRate={setRating} size={20} />
+                  <textarea
+                    className="form-control form-control-sm mt-2"
+                    rows={2}
+                    placeholder="İsteğe bağlı yorum..."
+                    value={ratingComment}
+                    onChange={(e) => setRatingComment(e.target.value)}
+                  />
+                  <button
+                    className="btn btn-sm btn-primary mt-2"
+                    disabled={!rating || ratingSubmitting}
+                    onClick={handleRate}
+                  >
+                    {ratingSubmitting ? 'Gönderiliyor…' : 'Puanı Gönder'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Dates */}
           <div className="p-3 rounded" style={{ backgroundColor: '#F4F5F7', fontSize: '0.85rem' }}>
@@ -672,6 +813,43 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
         issue={request}
         onConfirm={() => setShowDoneModal(false)}
         onCancel={() => setShowDoneModal(false)}
+      />
+
+      {/* Yönlendir Modalı */}
+      {showForwardModal && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999 }}
+        >
+          <div className="bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: 500 }}>
+            <h6 className="fw-semibold mb-3">Talebi Yönlendir</h6>
+            <p className="text-muted small mb-3">Talep seçtiğiniz projeye taşınır, ataması kaldırılır ve durumu "Yönlendirildi" olur.</p>
+            <div className="mb-3">
+              <label className="form-label small fw-semibold">Hedef Proje <span className="text-danger">*</span></label>
+              <select className="form-select" value={forwardTargetId} onChange={(e) => setForwardTargetId(e.target.value)} autoFocus>
+                <option value="">— Proje seçin —</option>
+                {forwardTargets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="form-label small fw-semibold">Not (isteğe bağlı)</label>
+              <textarea className="form-control" rows={2} value={forwardNote} onChange={(e) => setForwardNote(e.target.value)} />
+            </div>
+            <div className="d-flex gap-2 justify-content-end">
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => { setShowForwardModal(false); setForwardTargetId(''); setForwardNote(''); }}>İptal</button>
+              <button className="btn btn-primary btn-sm" onClick={handleForward} disabled={!forwardTargetId}>Yönlendir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancel}
+        title="Talebi İptal Et"
+        message="Bu talebi iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        confirmText="İptal Et"
       />
     </div>
   );

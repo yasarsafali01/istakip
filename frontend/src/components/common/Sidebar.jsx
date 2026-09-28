@@ -11,6 +11,7 @@ import {
   TbPackage,
   TbShieldCheck,
   TbLogout,
+  TbUsersGroup,
 } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -237,6 +238,21 @@ export default function Sidebar() {
                       Backlog
                     </NavLink>
                   </li>
+
+                  {/* Ekip & Şablonlar — yalnızca yönetebilen rollere görünür */}
+                  {(can('team.manage') || can('template.manage')) && (
+                    <li>
+                      <NavLink
+                        to={`/projects/${project.id}?tab=team`}
+                        className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
+                        style={subLinkStyle}
+                        onClick={() => !isMd && setIsOpen(false)}
+                      >
+                        <TbUsersGroup size={16} />
+                        Ekip & Şablonlar
+                      </NavLink>
+                    </li>
+                  )}
 
                   {/* Stok Takip — yalnızca hasInventory: true olan projeler */}
                   {project.hasInventory && (

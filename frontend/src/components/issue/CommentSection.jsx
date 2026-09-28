@@ -1,12 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { TbTrash, TbSend } from 'react-icons/tb';
+import { TbTrash, TbSend, TbTemplate } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { ACTIONS } from '../../constants';
-import { commentsApi, activitiesApi } from '../../api/resources';
+import { commentsApi, activitiesApi, templatesApi } from '../../api/resources';
 import { timeAgo } from '../../utils/dateUtils';
 import Avatar from '../common/Avatar';
 import ConfirmDialog from '../common/ConfirmDialog';
+
+/** Fills a canned-reply template's {Placeholder} tokens from the current issue/user. */
+function fillTemplate(body, { issue, project, currentUser, reporterName }) {
+  return body
+    .replaceAll('{TalepNo}', issue?.key || '')
+    .replaceAll('{TalepEdenAdı}', reporterName || '')
+    .replaceAll('{ProjeAdı}', project?.name || '')
+    .replaceAll('{BenimAdım}', currentUser?.name || '')
+    .replaceAll('{BenimEposta}', currentUser?.email || '');
+}
 
 /**
  * Comment list with add and delete functionality for a given issue.
@@ -19,6 +29,22 @@ function CommentSection({ issueId }) {
   const { currentUser } = useAuth();
   const [text, setText] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+
+  const issue = state.issues.find((i) => i.id === issueId);
+  const project = state.projects.find((p) => p.id === issue?.projectId);
+  const reporter = state.users.find((u) => u.id === issue?.reporterId);
+
+  useEffect(() => {
+    if (!project) return;
+    templatesApi.listByProject(project.id).then(setTemplates).catch(() => {});
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function insertTemplate(tmpl) {
+    setText(fillTemplate(tmpl.body, { issue, project, currentUser, reporterName: reporter?.name }));
+    setTemplatesOpen(false);
+  }
 
   const loadComments = useCallback(() => {
     commentsApi.listByIssue(issueId).then((comments) => {
@@ -141,7 +167,40 @@ function CommentSection({ issueId }) {
                 }
               }}
             />
-            <div className="d-flex justify-content-end mt-1">
+            <div className="d-flex justify-content-end gap-2 mt-1 position-relative">
+              {templates.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                    onClick={() => setTemplatesOpen((o) => !o)}
+                  >
+                    <TbTemplate size={14} aria-hidden="true" />
+                    Şablon
+                  </button>
+                  {templatesOpen && (
+                    <>
+                      <div className="position-fixed top-0 start-0 w-100 h-100" style={{ zIndex: 1040 }} onClick={() => setTemplatesOpen(false)} />
+                      <div
+                        className="position-absolute bg-white rounded shadow p-1"
+                        style={{ zIndex: 1050, bottom: '110%', right: 0, minWidth: 200, border: '1px solid #DFE1E6' }}
+                      >
+                        {templates.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            className="btn btn-sm w-100 text-start btn-light mb-1"
+                            style={{ fontSize: '0.8rem' }}
+                            onClick={() => insertTemplate(t)}
+                          >
+                            {t.title}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
               <button
                 type="submit"
                 className="btn btn-sm btn-primary d-flex align-items-center gap-1"

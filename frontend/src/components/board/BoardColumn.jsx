@@ -1,6 +1,6 @@
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
-import { STATUS_COLORS } from '../../constants';
+import { STATUS_COLORS, STATUS_LABELS } from '../../constants';
 import IssueCard from './IssueCard';
 
 /**
@@ -29,7 +29,7 @@ function BoardColumn({ status, issues, onIssueClick, readonly = false }) {
           className="fw-semibold small text-truncate"
           style={{ color: isLight ? '#42526E' : '#ffffff' }}
         >
-          {status}
+          {STATUS_LABELS[status] || status}
         </span>
         <span
           className="badge rounded-pill ms-2 flex-shrink-0"

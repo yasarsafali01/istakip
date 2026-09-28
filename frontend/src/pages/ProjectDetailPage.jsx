@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom';
-import { TbLock, TbPlus, TbUsers, TbAlertCircle, TbFlag } from 'react-icons/tb';
+import { TbLock, TbPlus, TbUsers, TbAlertCircle, TbFlag, TbTrash, TbTemplate } from 'react-icons/tb';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessProject } from '../utils/permissionUtils';
@@ -16,8 +16,9 @@ import IssueForm from '../components/issue/IssueForm';
 import EmptyState from '../components/common/EmptyState';
 import HelpGuide from '../components/common/HelpGuide';
 import { PRIORITIES, PRIORITY_LABELS, ROLES, ACTIONS } from '../constants';
-import { issuesApi } from '../api/resources';
+import { issuesApi, teamsApi, templatesApi } from '../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../api/mappers';
+import { usePermissions } from '../hooks/usePermissions';
 import { sortSprintsByCurrentMonth } from '../utils/sprintUtils';
 
 const MONTH_NAMES = [
@@ -40,7 +41,8 @@ function ProjectDetailPage() {
   const { state } = useAppContext();
   const { currentUser } = useAuth();
 
-  const tab = searchParams.get('tab') === 'backlog' ? 'backlog' : 'board';
+  const tabParam = searchParams.get('tab');
+  const tab = tabParam === 'backlog' ? 'backlog' : tabParam === 'team' ? 'team' : 'board';
   const [boardSprintId, setBoardSprintId] = useState('active');
 
   const project = state.projects.find((p) => p.id === projectId);
@@ -62,7 +64,7 @@ function ProjectDetailPage() {
   const allSprints = sortSprintsByCurrentMonth(state.sprints.filter((s) => s.projectId === projectId));
 
   const activeSprint = allSprints.find((s) => s.status === 'Active');
-  const pageTitle = tab === 'board' ? 'Aktif İşler' : 'Backlog';
+  const pageTitle = tab === 'board' ? 'Aktif İşler' : tab === 'team' ? 'Ekip & Şablonlar' : 'Backlog';
 
   return (
     <div>
@@ -109,6 +111,8 @@ function ProjectDetailPage() {
       {tab === 'backlog' && (
         <BacklogTabView projectId={projectId} allSprints={allSprints} />
       )}
+
+      {tab === 'team' && <TeamTabView projectId={projectId} />}
     </div>
   );
 }
@@ -971,6 +975,203 @@ function FilterPill({ label, icon, active, activeLabel, onClear, children }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ── Ekip & Şablonlar sekmesi ────────────────────────────────────────────────── */
+function TeamTabView({ projectId }) {
+  const { state } = useAppContext();
+  const { can } = usePermissions();
+  const [teams, setTeams] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newMemberByTeam, setNewMemberByTeam] = useState({});
+  const [tmplForm, setTmplForm] = useState({ title: '', body: '' });
+
+  const canManageTeams = can('team.manage');
+  const canManageTemplates = can('template.manage');
+
+  const projectUsers = state.users.filter((u) => u.role !== ROLES.EXTERNAL_USER);
+
+  function load() {
+    setLoading(true);
+    Promise.all([teamsApi.listByProject(projectId), templatesApi.listByProject(projectId, true)])
+      .then(([t, tmpl]) => { setTeams(t); setTemplates(tmpl); })
+      .finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function createTeam(e) {
+    e.preventDefault();
+    if (!newTeamName.trim()) return;
+    await teamsApi.create(projectId, newTeamName.trim());
+    setNewTeamName('');
+    load();
+  }
+  async function deleteTeam(id) {
+    if (!window.confirm('Bu ekibi silmek istediğinizden emin misiniz?')) return;
+    await teamsApi.delete(id);
+    load();
+  }
+  async function addMember(teamId) {
+    const userId = newMemberByTeam[teamId];
+    if (!userId) return;
+    await teamsApi.addMember(teamId, userId);
+    setNewMemberByTeam((s) => ({ ...s, [teamId]: '' }));
+    load();
+  }
+  async function removeMember(teamId, userId) {
+    await teamsApi.removeMember(teamId, userId);
+    load();
+  }
+
+  async function createTemplate(e) {
+    e.preventDefault();
+    if (!tmplForm.title.trim() || !tmplForm.body.trim()) return;
+    await templatesApi.create(projectId, { title: tmplForm.title.trim(), body: tmplForm.body.trim() });
+    setTmplForm({ title: '', body: '' });
+    load();
+  }
+  async function toggleTemplateActive(t) {
+    await templatesApi.update(t.id, { title: t.title, body: t.body, sortOrder: t.sortOrder, isActive: !t.isActive });
+    load();
+  }
+  async function deleteTemplate(id) {
+    if (!window.confirm('Bu şablonu silmek istediğinizden emin misiniz?')) return;
+    await templatesApi.delete(id);
+    load();
+  }
+
+  if (loading) return <div className="text-center py-5"><span className="spinner-border text-primary" /></div>;
+
+  return (
+    <div className="row g-4">
+      {/* Ekipler */}
+      <div className="col-lg-6">
+        <div className="card border-0 shadow-sm">
+          <div className="card-body">
+            <h6 className="fw-semibold d-flex align-items-center gap-2 mb-3">
+              <TbUsers size={16} /> Ekipler
+            </h6>
+            <p className="text-muted small">Konulara/işlere tek tek kişi yerine bir ekip atayabilirsiniz.</p>
+
+            {canManageTeams && (
+              <form className="d-flex gap-2 mb-3" onSubmit={createTeam}>
+                <input className="form-control form-control-sm" placeholder="Yeni ekip adı" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} />
+                <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 flex-shrink-0" type="submit">
+                  <TbPlus size={14} /> Ekle
+                </button>
+              </form>
+            )}
+
+            {teams.length === 0 ? (
+              <p className="text-muted small fst-italic">Henüz ekip oluşturulmadı.</p>
+            ) : (
+              teams.map((t) => (
+                <div key={t.id} className="border rounded-3 p-2 mb-2">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="fw-medium small">{t.name}</span>
+                    {canManageTeams && (
+                      <button className="btn btn-sm btn-link text-danger p-0" onClick={() => deleteTeam(t.id)} title="Ekibi sil">
+                        <TbTrash size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="d-flex flex-wrap gap-1 mb-2">
+                    {t.memberIds.length === 0 && <span className="text-muted" style={{ fontSize: 12 }}>Üye yok</span>}
+                    {t.memberIds.map((uid) => {
+                      const u = state.users.find((x) => x.id === uid);
+                      return (
+                        <span key={uid} className="badge text-bg-light border d-flex align-items-center gap-1" style={{ fontSize: 11 }}>
+                          {u?.name || uid}
+                          {canManageTeams && (
+                            <span role="button" onClick={() => removeMember(t.id, uid)} style={{ cursor: 'pointer' }}>×</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {canManageTeams && (
+                    <div className="d-flex gap-1">
+                      <select
+                        className="form-select form-select-sm"
+                        value={newMemberByTeam[t.id] || ''}
+                        onChange={(e) => setNewMemberByTeam((s) => ({ ...s, [t.id]: e.target.value }))}
+                      >
+                        <option value="">— Üye ekle —</option>
+                        {projectUsers.filter((u) => !t.memberIds.includes(u.id)).map((u) => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                      <button className="btn btn-sm btn-outline-secondary flex-shrink-0" onClick={() => addMember(t.id)}>Ekle</button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Cevap Şablonları */}
+      <div className="col-lg-6">
+        <div className="card border-0 shadow-sm">
+          <div className="card-body">
+            <h6 className="fw-semibold d-flex align-items-center gap-2 mb-3">
+              <TbTemplate size={16} /> Cevap Şablonları
+            </h6>
+            <p className="text-muted small">
+              Yorum kutusuna eklenebilecek hazır yanıtlar. Yer tutucular: <code>{'{TalepNo}'}</code>, <code>{'{TalepEdenAdı}'}</code>, <code>{'{ProjeAdı}'}</code>, <code>{'{BenimAdım}'}</code>.
+            </p>
+
+            {canManageTemplates && (
+              <form className="mb-3" onSubmit={createTemplate}>
+                <input
+                  className="form-control form-control-sm mb-2"
+                  placeholder="Şablon başlığı"
+                  value={tmplForm.title}
+                  onChange={(e) => setTmplForm((s) => ({ ...s, title: e.target.value }))}
+                />
+                <textarea
+                  className="form-control form-control-sm mb-2"
+                  rows={2}
+                  placeholder="Şablon metni"
+                  value={tmplForm.body}
+                  onChange={(e) => setTmplForm((s) => ({ ...s, body: e.target.value }))}
+                />
+                <button className="btn btn-primary btn-sm d-flex align-items-center gap-1" type="submit">
+                  <TbPlus size={14} /> Şablon Ekle
+                </button>
+              </form>
+            )}
+
+            {templates.length === 0 ? (
+              <p className="text-muted small fst-italic">Henüz şablon eklenmedi.</p>
+            ) : (
+              templates.map((t) => (
+                <div key={t.id} className="border rounded-3 p-2 mb-2" style={{ opacity: t.isActive ? 1 : 0.55 }}>
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="fw-medium small">{t.title}</span>
+                    {canManageTemplates && (
+                      <div className="d-flex gap-2">
+                        <button className="btn btn-sm btn-link p-0" style={{ fontSize: 11 }} onClick={() => toggleTemplateActive(t)}>
+                          {t.isActive ? 'Pasifleştir' : 'Aktifleştir'}
+                        </button>
+                        <button className="btn btn-sm btn-link text-danger p-0" onClick={() => deleteTemplate(t.id)}>
+                          <TbTrash size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-muted mb-0" style={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{t.body}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

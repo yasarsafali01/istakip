@@ -3,6 +3,7 @@ import { TbCalendar, TbBuilding } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import Badge from '../common/Badge';
 import PriorityIcon from '../common/PriorityIcon';
+import SlaBadge from '../common/SlaBadge';
 import { formatDate } from '../../utils/dateUtils';
 import { highlightText } from '../../utils/highlightUtils';
 import { STATUS_COLORS } from '../../constants';
@@ -61,6 +62,7 @@ export default function RequestCard({ request, searchQuery = '' }) {
                 {request.number}
               </span>
               <PriorityIcon priority={request.priority} />
+              <SlaBadge request={request} />
             </div>
 
             {/* Title with optional highlight */}

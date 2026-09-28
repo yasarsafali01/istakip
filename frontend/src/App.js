@@ -18,6 +18,7 @@ const RequestsPage      = lazy(() => import('./pages/RequestsPage'));
 const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 const InventoryPage     = lazy(() => import('./pages/InventoryPage'));
 const RolesPage         = lazy(() => import('./pages/RolesPage'));
+const ProfilePage       = lazy(() => import('./pages/ProfilePage'));
 
 const LoadingSpinner = () => (
   <div className="d-flex justify-content-center align-items-center py-5">
@@ -126,6 +127,9 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Profile — any authenticated user */}
+              <Route path="/profile" element={<ProfilePage />} />
 
               {/* Requests — all authenticated users */}
               <Route path="/requests" element={<RequestsPage />} />

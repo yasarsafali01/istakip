@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
-import { ACTIONS, PRIORITIES, PRIORITY_LABELS, STATUSES, ISSUE_TYPES } from '../../constants';
+import { ACTIONS, PRIORITIES, PRIORITY_LABELS, STATUSES, STATUS_LABELS, ISSUE_TYPES } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 
@@ -190,7 +190,7 @@ function IssueForm({ projectId, issue, onSuccess, onCancel }) {
             onChange={e => setStatus(e.target.value)}
           >
             {EDITABLE_STATUSES.map(s => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
             ))}
           </select>
         </div>

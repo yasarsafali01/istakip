@@ -4,6 +4,7 @@ import { TbPlus, TbLogout } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
 import Avatar from './Avatar';
+import NotificationBell from './NotificationBell';
 
 // Route prefix → page title shown in the top bar. First match wins.
 const PAGE_TITLES = [
@@ -12,6 +13,7 @@ const PAGE_TITLES = [
   ['/projects', 'Projeler'],
   ['/requests', 'Talepler'],
   ['/roles', 'Roller ve İzinler'],
+  ['/profile', 'Profilim'],
 ];
 
 function titleFor(pathname) {
@@ -48,13 +50,15 @@ export default function Topbar() {
           </Link>
         )}
 
+        <NotificationBell />
+
         {currentUser && (
-          <div className="topbar-user d-none d-md-flex" title={currentUser.name}>
+          <Link to="/profile" className="topbar-user d-none d-md-flex text-decoration-none" title="Profilim">
             <Avatar name={currentUser.name} color={currentUser.avatarColor} size={28} />
-            <span className="fw-medium text-truncate" style={{ fontSize: 13, maxWidth: 140 }}>
+            <span className="fw-medium text-truncate" style={{ fontSize: 13, maxWidth: 140, color: '#172B4D' }}>
               {currentUser.name}
             </span>
-          </div>
+          </Link>
         )}
 
         <button
