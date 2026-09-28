@@ -844,7 +844,10 @@ describe('Hata 4 — Koruma Testleri (Preservation)', () => {
     // Worker için durum değiştirme butonları görünmeli (korunmalı)
     // Durum butonları: requestBigd1.status = 'To Do', diğer statüsler gösterilmeli
     // (!readonly && !editMode && !isExternalUser) koşuluyla render edilen butonlar
-    const statusButtons = screen.queryAllByRole('button', { name: /in progress|in review|done/i });
+    // Durum butonları artık Türkçe etiketlerle gösteriliyor (bkz. STATUS_LABELS).
+    // "ncelemede" fragmanı kullanılıyor çünkü "İ" harfinin regex /i bayrağıyla
+    // büyük/küçük harf eşlemesi yerele göre değişebiliyor (dotless/dotted i).
+    const statusButtons = screen.queryAllByRole('button', { name: /devam ediyor|ncelemede|tamamlandı|yapılacak/i });
     expect(statusButtons.length).toBeGreaterThan(0);
   });
 });
