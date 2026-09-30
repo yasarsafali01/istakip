@@ -12,6 +12,7 @@ import {
   TbShieldCheck,
   TbLogout,
   TbUsersGroup,
+  TbUsers,
 } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -280,19 +281,33 @@ export default function Sidebar() {
             </>
           )}
 
-          {can('role.manage') && (
+          {(can('role.manage') || can('user.assign_role')) && (
             <>
               <li><div className="sidebar-section">Yönetim</div></li>
-              <li>
-                <NavLink
-                  to="/roles"
-                  className={linkClass}
-                  onClick={() => !isMd && setIsOpen(false)}
-                >
-                  <TbShieldCheck size={18} aria-hidden="true" />
-                  <span>Roller ve İzinler</span>
-                </NavLink>
-              </li>
+              {can('user.assign_role') && (
+                <li>
+                  <NavLink
+                    to="/users"
+                    className={linkClass}
+                    onClick={() => !isMd && setIsOpen(false)}
+                  >
+                    <TbUsers size={18} aria-hidden="true" />
+                    <span>Kullanıcılar</span>
+                  </NavLink>
+                </li>
+              )}
+              {can('role.manage') && (
+                <li>
+                  <NavLink
+                    to="/roles"
+                    className={linkClass}
+                    onClick={() => !isMd && setIsOpen(false)}
+                  >
+                    <TbShieldCheck size={18} aria-hidden="true" />
+                    <span>Roller ve İzinler</span>
+                  </NavLink>
+                </li>
+              )}
             </>
           )}
         </ul>

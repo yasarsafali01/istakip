@@ -1,14 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { TbPlus, TbLock, TbUsers, TbShieldCheck, TbTrash } from 'react-icons/tb';
 import { useAppContext } from '../context/AppContext';
-import { useAuth } from '../hooks/useAuth';
 import { rolesApi } from '../api/resources';
 import { SCOPE_LABELS } from '../constants';
 import Modal from '../components/common/Modal';
-import Avatar from '../components/common/Avatar';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
-const EMPTY_FORM = { key: null, name: '', description: '', scope: 'project', permissions: [], isSystem: false };
+const EMPTY_FORM = { key: null, name: '', description: '', scope: 'project', level: 50, permissions: [], isSystem: false };
+
+// Reference levels shown next to the "Seviye" field so an admin can place a
+// new custom role correctly in the hierarchy (higher = more authority; see
+// backend services.CanAssignRoleLevel — a role can only be handed out by
+// someone whose own role level is strictly greater).
+const BUILTIN_LEVELS = [
+  ['Sistem Yöneticisi', 100], ['Daire Başkanı', 80], ['Proje Yöneticisi', 60],
+  ['Çalışan', 40], ['Dış Kullanıcı', 20],
+];
 
 /** Groups the flat permission catalog by its "group" field, keeping catalog order. */
 function groupCatalog(catalog) {
@@ -82,6 +89,30 @@ function RoleEditor({ form, setForm, catalog, locked, onSave, onCancel, onDelete
         </div>
       </div>
 
+      <div className="mb-3">
+        <label className="form-label">Seviye (hiyerarşi derecesi)</label>
+        <input
+          type="number"
+          className="form-control"
+          style={{ maxWidth: 140 }}
+          min={1}
+          max={99}
+          value={form.level}
+          disabled={locked || form.isSystem}
+          onChange={(e) => setForm({ ...form, level: Number(e.target.value) })}
+        />
+        <div className="form-text">
+          {form.isSystem ? (
+            'Yerleşik rollerin seviyesi değiştirilemez.'
+          ) : (
+            <>
+              Bir kullanıcı, yalnızca kendi rolünden <strong>düşük seviyeli</strong> bir rolü başkasına atayabilir (kendi
+              seviyesiyle aynı veya üstünü asla veremez). Referans: {BUILTIN_LEVELS.map(([n, l]) => `${n}: ${l}`).join(', ')}.
+            </>
+          )}
+        </div>
+      </div>
+
       <div className="fw-semibold mb-2">İzinler</div>
       <div className="row g-3">
         {groups.map((g) => (
@@ -152,7 +183,7 @@ function RolesTab({ roles, catalog, reload }) {
     setError('');
     setEditing({
       key: role.key, name: role.name, description: role.description,
-      scope: role.scope, permissions: role.permissions, isSystem: role.isSystem, userCount: role.userCount,
+      scope: role.scope, level: role.level, permissions: role.permissions, isSystem: role.isSystem, userCount: role.userCount,
     });
   }
 
@@ -160,7 +191,7 @@ function RolesTab({ roles, catalog, reload }) {
     setSaving(true);
     setError('');
     try {
-      const body = { name: editing.name, description: editing.description, scope: editing.scope, permissions: editing.permissions };
+      const body = { name: editing.name, description: editing.description, scope: editing.scope, level: editing.level, permissions: editing.permissions };
       if (editing.key) await rolesApi.update(editing.key, body);
       else await rolesApi.create(body);
       setEditing(null);
@@ -205,6 +236,7 @@ function RolesTab({ roles, catalog, reload }) {
                 <div className="d-flex flex-wrap gap-2 small">
                   <span className="badge text-bg-primary bg-opacity-10 text-primary">{r.permissions.length} izin</span>
                   <span className="badge text-bg-light border">{SCOPE_LABELS[r.scope] || r.scope}</span>
+                  <span className="badge text-bg-light border" title="Hiyerarşi seviyesi">Seviye {r.level}</span>
                   <span className="badge text-bg-light border d-flex align-items-center gap-1">
                     <TbUsers size={12} /> {r.userCount}
                   </span>
@@ -259,91 +291,8 @@ function RolesTab({ roles, catalog, reload }) {
   );
 }
 
-function UsersTab({ roles, reload }) {
-  const { state } = useAppContext();
-  const { currentUser } = useAuth();
-  const [busyId, setBusyId] = useState(null);
-  const [error, setError] = useState('');
-  const [query, setQuery] = useState('');
-
-  const unitName = (id) => state.units.find((u) => u.id === id)?.name;
-  const projectName = (id) => state.projects.find((p) => p.id === id)?.name;
-
-  const users = state.users.filter((u) => {
-    const q = query.trim().toLowerCase();
-    return !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-  });
-
-  async function changeRole(user, roleKey) {
-    setBusyId(user.id);
-    setError('');
-    try {
-      await rolesApi.assign(user.id, { role: roleKey });
-      await reload();
-    } catch (err) {
-      setError(`${user.name}: ${err.message || 'Rol atanamadı'}`);
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  return (
-    <div className="card">
-      <div className="card-body">
-        {error && <div className="alert alert-danger py-2 small">{error}</div>}
-        <input
-          className="form-control mb-3"
-          style={{ maxWidth: 320 }}
-          placeholder="Kullanıcı ara…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="table-responsive">
-          <table className="table align-middle mb-0">
-            <thead>
-              <tr><th>Kullanıcı</th><th>Birim / Proje</th><th style={{ minWidth: 220 }}>Rol</th></tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td>
-                    <div className="d-flex align-items-center gap-2">
-                      <Avatar name={u.name} color={u.avatarColor} size={32} />
-                      <div>
-                        <div className="fw-medium">{u.name}</div>
-                        <div className="text-muted small">{u.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="small text-muted">
-                    {[unitName(u.unitId), projectName(u.projectId)].filter(Boolean).join(' · ') || '—'}
-                  </td>
-                  <td>
-                    <select
-                      className="form-select form-select-sm"
-                      value={u.roleKey || u.role}
-                      disabled={busyId === u.id || u.id === currentUser?.id}
-                      title={u.id === currentUser?.id ? 'Kendi rolünüzü değiştiremezsiniz' : undefined}
-                      onChange={(e) => changeRole(u, e.target.value)}
-                    >
-                      {roles.map((r) => (
-                        <option key={r.key} value={r.key}>{r.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function RolesPage() {
   const { hydrateAll } = useAppContext();
-  const [tab, setTab] = useState('roles');
   const [roles, setRoles] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -374,25 +323,15 @@ export default function RolesPage() {
     <div>
       <h4 className="fw-bold mb-1">Roller ve İzinler</h4>
       <p className="text-muted small mb-3">
-        Bir rol, bir izin kümesi ve bir veri kapsamıdır. Kullanıcılara rol atayarak neleri görüp yapabileceklerini belirleyin.
+        Bir rol, bir izin kümesi, bir veri kapsamı ve bir hiyerarşi seviyesidir. Kullanıcılara rol atamak için{' '}
+        <strong>Kullanıcılar</strong> sayfasını kullanın.
       </p>
-
-      <ul className="nav nav-tabs mb-3">
-        <li className="nav-item">
-          <button className={`nav-link ${tab === 'roles' ? 'active' : ''}`} onClick={() => setTab('roles')}>Roller</button>
-        </li>
-        <li className="nav-item">
-          <button className={`nav-link ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Kullanıcı Rolleri</button>
-        </li>
-      </ul>
 
       {error && <div className="alert alert-danger">{error}</div>}
       {loading ? (
         <div className="text-center py-5"><span className="spinner-border text-primary" /></div>
-      ) : tab === 'roles' ? (
-        <RolesTab roles={roles} catalog={catalog} reload={reload} />
       ) : (
-        <UsersTab roles={roles} reload={reload} />
+        <RolesTab roles={roles} catalog={catalog} reload={reload} />
       )}
     </div>
   );

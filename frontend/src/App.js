@@ -19,6 +19,7 @@ const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 const InventoryPage     = lazy(() => import('./pages/InventoryPage'));
 const RolesPage         = lazy(() => import('./pages/RolesPage'));
 const ProfilePage       = lazy(() => import('./pages/ProfilePage'));
+const UsersPage         = lazy(() => import('./pages/UsersPage'));
 
 const LoadingSpinner = () => (
   <div className="d-flex justify-content-center align-items-center py-5">
@@ -124,6 +125,16 @@ function App() {
                 element={
                   <ProtectedRoute permission="role.manage">
                     <RolesPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Users — hierarchical role assignment, delegated below role.manage */}
+              <Route
+                path="/users"
+                element={
+                  <ProtectedRoute permission="user.assign_role">
+                    <UsersPage />
                   </ProtectedRoute>
                 }
               />

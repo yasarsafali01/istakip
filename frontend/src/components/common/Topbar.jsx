@@ -12,6 +12,7 @@ const PAGE_TITLES = [
   ['/units', 'Birimler'],
   ['/projects', 'Projeler'],
   ['/requests', 'Talepler'],
+  ['/users', 'Kullanıcılar'],
   ['/roles', 'Roller ve İzinler'],
   ['/profile', 'Profilim'],
 ];
