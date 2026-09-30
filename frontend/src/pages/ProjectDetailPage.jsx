@@ -16,10 +16,11 @@ import IssueForm from '../components/issue/IssueForm';
 import EmptyState from '../components/common/EmptyState';
 import HelpGuide from '../components/common/HelpGuide';
 import { PRIORITIES, PRIORITY_LABELS, ROLES, ACTIONS } from '../constants';
-import { issuesApi, teamsApi, templatesApi } from '../api/resources';
+import { issuesApi, teamsApi, templatesApi, sprintsApi } from '../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../api/mappers';
 import { usePermissions } from '../hooks/usePermissions';
-import { sortSprintsByCurrentMonth } from '../utils/sprintUtils';
+import { sortSprintsByCurrentMonth, getMissingSprintMonths, getSprintName } from '../utils/sprintUtils';
+import SprintForm from '../components/sprint/SprintForm';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -119,7 +120,24 @@ function ProjectDetailPage() {
 
 /* ── Board view ─────────────────────────────────────────────────────────────── */
 function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoardSprintId }) {
-  const { state } = useAppContext();
+  const { state, dispatch } = useAppContext();
+  const { can } = usePermissions();
+  const [creatingMissingMonths, setCreatingMissingMonths] = useState(false);
+  const missingMonths = getMissingSprintMonths(allSprints);
+
+  async function handleCreateMissingMonths() {
+    setCreatingMissingMonths(true);
+    try {
+      for (const { year, month } of missingMonths) {
+        const created = await sprintsApi.create(projectId, { month, year });
+        dispatch({ type: ACTIONS.ADD_SPRINT, payload: created });
+      }
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setCreatingMissingMonths(false);
+    }
+  }
 
   const resolvedSprint =
     boardSprintId === 'active'
@@ -232,6 +250,17 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
             <TbLock size={13} /> Kapalı Ay — Salt Okunur
           </span>
         )}
+        {can('sprint.manage') && missingMonths.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+            onClick={handleCreateMissingMonths}
+            disabled={creatingMissingMonths}
+            title={`Eksik aylar: ${missingMonths.map((m) => getSprintName(m.year, m.month)).join(', ')}`}
+          >
+            {creatingMissingMonths ? 'Oluşturuluyor…' : `${missingMonths.length} ay eksik — tümünü oluştur`}
+          </button>
+        )}
       </div>
       <Board projectId={projectId} sprintId={resolvedSprintId} readonly={isReadonly} />
     </div>
@@ -241,10 +270,30 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
 /* ── Backlog tab view ────────────────────────────────────────────────────────── */
 function BacklogTabView({ projectId, allSprints }) {
   const { state, dispatch } = useAppContext();
+  const { can } = usePermissions();
   const [priorityFilter, setPriorityFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
   const [assigneeFilter, setAssigneeFilter] = useState('');
+  const [showAddMonthModal, setShowAddMonthModal] = useState(false);
+  const [creatingMissingMonths, setCreatingMissingMonths] = useState(false);
+  const missingMonths = getMissingSprintMonths(allSprints);
+
+  // "Aylık Dönem" seçicisinde ay eksik görünmesin diye: son var olan aydan
+  // bugüne kadar arada kalan tüm ayları tek seferde oluşturur.
+  async function handleCreateMissingMonths() {
+    setCreatingMissingMonths(true);
+    try {
+      for (const { year, month } of missingMonths) {
+        const created = await sprintsApi.create(projectId, { month, year });
+        dispatch({ type: ACTIONS.ADD_SPRINT, payload: created });
+      }
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setCreatingMissingMonths(false);
+    }
+  }
   const [selectedSprintId, setSelectedSprintId] = useState(() => {
     const active = allSprints.find((s) => s.status === 'Active');
     return active ? active.id : (allSprints[0]?.id ?? '');
@@ -433,11 +482,24 @@ function BacklogTabView({ projectId, allSprints }) {
         <div className="col-12 col-md-3">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body py-3">
-              <div className="text-muted fw-semibold mb-2" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Aylık Dönem
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <div className="text-muted fw-semibold" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Aylık Dönem
+                </div>
+                {can('sprint.manage') && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-link p-0"
+                    style={{ fontSize: '0.72rem' }}
+                    onClick={() => setShowAddMonthModal(true)}
+                    title="Yeni ay ekle"
+                  >
+                    <TbPlus size={13} /> Ay Ekle
+                  </button>
+                )}
               </div>
               <select
-                className="form-select form-select-sm mb-3"
+                className="form-select form-select-sm mb-2"
                 value={selectedSprintId}
                 onChange={(e) => setSelectedSprintId(e.target.value)}
               >
@@ -448,6 +510,20 @@ function BacklogTabView({ projectId, allSprints }) {
                   </option>
                 ))}
               </select>
+              {can('sprint.manage') && missingMonths.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-1 mb-3"
+                  style={{ fontSize: '0.72rem' }}
+                  onClick={handleCreateMissingMonths}
+                  disabled={creatingMissingMonths}
+                  title={`Eksik aylar: ${missingMonths.map((m) => getSprintName(m.year, m.month)).join(', ')}`}
+                >
+                  {creatingMissingMonths
+                    ? 'Oluşturuluyor…'
+                    : `${missingMonths.length} ay eksik — tümünü oluştur`}
+                </button>
+              )}
               {selectedSprint && (() => {
                 const badge = sprintBadge(selectedSprint);
                 return (
@@ -834,6 +910,19 @@ function BacklogTabView({ projectId, allSprints }) {
           </div>
         </Modal>
       )}
+
+      {/* Yeni ay ekle */}
+      <Modal
+        isOpen={showAddMonthModal}
+        onClose={() => setShowAddMonthModal(false)}
+        title="Yeni Aylık Dönem Ekle"
+      >
+        <SprintForm
+          projectId={projectId}
+          onSuccess={(created) => { setShowAddMonthModal(false); if (created?.id) setSelectedSprintId(created.id); }}
+          onCancel={() => setShowAddMonthModal(false)}
+        />
+      </Modal>
     </div>
   );
 }

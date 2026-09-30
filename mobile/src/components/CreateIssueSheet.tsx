@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { issuesApi } from '../api/resources';
-import { PRIORITIES } from '../utils/constants';
+import { PRIORITIES, PRIORITY_LABELS } from '../utils/constants';
 
 interface Props {
   visible: boolean;
@@ -73,7 +73,7 @@ export default function CreateIssueSheet({ visible, projectId, onCreated, onCanc
                 style={[styles.priorityChip, priority === p && styles.priorityChipActive]}
                 onPress={() => setPriority(p)}
               >
-                <Text style={[styles.priorityChipText, priority === p && styles.priorityChipTextActive]}>{p}</Text>
+                <Text style={[styles.priorityChipText, priority === p && styles.priorityChipTextActive]}>{PRIORITY_LABELS[p]}</Text>
               </TouchableOpacity>
             ))}
           </View>

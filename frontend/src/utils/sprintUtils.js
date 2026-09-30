@@ -81,6 +81,44 @@ export function sortSprintsByCurrentMonth(sprints) {
 }
 
 /**
+ * Bir projenin sprint listesinde, en son var olan aydan bugüne kadar
+ * ARADA KALAN (henüz oluşturulmamış) ay/yılları hesaplar. "Aya Ata" /
+ * "Aktif Ay" gibi seçicilerde ay listesi eksik göründüğünde (örn. son sprint
+ * geçen yıldan kalmışsa), tek tıkla tamamlanabilmesi için kullanılır.
+ * Hiç sprint yoksa yalnızca içinde bulunduğumuz ayı döner.
+ * @param {Array} sprints - bir projeye ait sprint'ler
+ * @returns {Array<{year: number, month: number}>} eksik ay/yıl çiftleri, kronolojik sırayla
+ */
+export function getMissingSprintMonths(sprints) {
+  const now = new Date();
+  const nowKey = now.getFullYear() * 12 + (now.getMonth() + 1);
+
+  const keyOf = (s) => {
+    const year = s.year ?? new Date(s.startDate).getFullYear();
+    const month = s.month ?? new Date(s.startDate).getMonth() + 1;
+    return year * 12 + month;
+  };
+  const toYearMonth = (key) => ({
+    year: Math.floor((key - 1) / 12),
+    month: ((key - 1) % 12) + 1,
+  });
+
+  if (sprints.length === 0) {
+    return [toYearMonth(nowKey)];
+  }
+
+  const existingKeys = new Set(sprints.map(keyOf));
+  const maxKey = Math.max(...existingKeys);
+  if (maxKey >= nowKey) return [];
+
+  const missing = [];
+  for (let k = maxKey + 1; k <= nowKey; k++) {
+    if (!existingKeys.has(k)) missing.push(toYearMonth(k));
+  }
+  return missing;
+}
+
+/**
  * Mevcut ay ve yıl için varsayılan sprint verisi döner.
  * @returns {{ year: number, month: number, name: string, startDate: string, endDate: string }}
  */

@@ -5,6 +5,27 @@ export const PRIORITIES = ['Highest', 'High', 'Medium', 'Low', 'Lowest'] as cons
 export const STATUSES = ['To Do', 'In Progress', 'In Review', 'Done', 'Geri Çevrildi'] as const;
 export const ISSUE_TYPES = ['Task', 'Bug', 'Story', 'Epic', 'Request'] as const;
 
+// Backend/DB values stay in English (matches frontend/src/constants — the
+// CHECK constraint and filter/sort logic key off these); only the on-screen
+// text is Turkish. Mirrors frontend/src/constants's PRIORITY_LABELS/STATUS_LABELS.
+export const PRIORITY_LABELS: Record<string, string> = {
+  Highest: 'En Yüksek',
+  High: 'Yüksek',
+  Medium: 'Orta',
+  Low: 'Düşük',
+  Lowest: 'En Düşük',
+};
+
+export const STATUS_LABELS: Record<string, string> = {
+  'To Do': 'Yapılacak',
+  'In Progress': 'Devam Ediyor',
+  'In Review': 'İncelemede',
+  Done: 'Tamamlandı',
+  'Geri Çevrildi': 'Geri Çevrildi',
+  Yönlendirildi: 'Yönlendirildi',
+  'İptal Edildi': 'İptal Edildi',
+};
+
 export const PRIORITY_COLORS: Record<string, string> = {
   Highest: '#FF0000',
   High: '#FF7700',

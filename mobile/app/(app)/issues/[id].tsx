@@ -13,7 +13,7 @@ import PickerSheet from '../../../src/components/PickerSheet';
 import CompleteIssueModal from '../../../src/components/CompleteIssueModal';
 import { useAuth } from '../../../src/context/AuthContext';
 import { usePermissions } from '../../../src/hooks/usePermissions';
-import { STATUSES, ROLES } from '../../../src/utils/constants';
+import { STATUSES, STATUS_LABELS, ROLES } from '../../../src/utils/constants';
 
 export default function IssueDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -209,7 +209,7 @@ export default function IssueDetailScreen() {
             <View style={styles.statusButtons}>
               {STATUSES.filter((s) => s !== issue.status && s !== 'Geri Çevrildi').map((s) => (
                 <TouchableOpacity key={s} style={styles.statusBtn} onPress={() => handleStatusChange(s)}>
-                  <Text style={styles.statusBtnText}>{s}</Text>
+                  <Text style={styles.statusBtnText}>{STATUS_LABELS[s]}</Text>
                 </TouchableOpacity>
               ))}
             </View>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { STATUS_COLORS, PRIORITY_COLORS } from '../utils/constants';
+import { STATUS_COLORS, PRIORITY_COLORS, STATUS_LABELS, PRIORITY_LABELS } from '../utils/constants';
 
 interface Props {
   label: string;
@@ -20,12 +20,12 @@ export function StatusBadge({ status }: { status: string }) {
   const bg = STATUS_COLORS[status] || '#DFE1E6';
   // Light backgrounds get dark text, dark backgrounds get white text.
   const dark = ['To Do'].includes(status);
-  return <Badge label={status} bg={dark ? bg + '33' : bg} color={dark ? '#42526E' : '#fff'} />;
+  return <Badge label={STATUS_LABELS[status] || status} bg={dark ? bg + '33' : bg} color={dark ? '#42526E' : '#fff'} />;
 }
 
 export function PriorityBadge({ priority }: { priority: string }) {
   const color = PRIORITY_COLORS[priority] || '#666';
-  return <Badge label={priority} bg={color + '22'} color={color} />;
+  return <Badge label={PRIORITY_LABELS[priority] || priority} bg={color + '22'} color={color} />;
 }
 
 const styles = StyleSheet.create({

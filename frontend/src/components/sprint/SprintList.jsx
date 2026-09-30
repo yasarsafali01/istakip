@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { TbPlayerPlay, TbCheck, TbPlus, TbCalendar, TbLock } from 'react-icons/tb';
+import { TbPlayerPlay, TbCheck, TbPlus, TbCalendar, TbLock, TbCalendarPlus } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { ACTIONS } from '../../constants';
 import { sprintsApi, issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssues } from '../../api/mappers';
 import { formatDate } from '../../utils/dateUtils';
-import { sortSprintsByCurrentMonth } from '../../utils/sprintUtils';
+import { sortSprintsByCurrentMonth, getMissingSprintMonths, getSprintName } from '../../utils/sprintUtils';
 import Modal from '../common/Modal';
 import SprintForm from './SprintForm';
 import EmptyState from '../common/EmptyState';
@@ -20,8 +20,26 @@ function SprintList({ projectId }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const sprints = sortSprintsByCurrentMonth(state.sprints.filter(s => s.projectId === projectId));
+  const missingMonths = getMissingSprintMonths(sprints);
 
   const hasActiveSprint = sprints.some(s => s.status === 'Active');
+  const [creatingMissing, setCreatingMissing] = useState(false);
+
+  // "Aya Ata" / board ay seçicilerinde ay eksik görünmesin diye: son var olan
+  // aydan bugüne kadar arada kalan tüm ayları tek seferde oluşturur.
+  async function handleCreateMissingMonths() {
+    setCreatingMissing(true);
+    try {
+      for (const { year, month } of missingMonths) {
+        const created = await sprintsApi.create(projectId, { month, year });
+        dispatch({ type: ACTIONS.ADD_SPRINT, payload: created });
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCreatingMissing(false);
+    }
+  }
 
   async function refreshProjectIssues() {
     const fresh = mapIssues(await issuesApi.list({ projectId }), buildUnitCodeByProjectId(state.projects, state.units));
@@ -73,6 +91,26 @@ function SprintList({ projectId }) {
           Ay Ekle
         </button>
       </div>
+
+      {/* Son var olan aydan bugüne kadar arada kalan aylar olduğunda (örn. "Aya Ata"
+          seçicilerinde son ay geçmişte kalmış gibi görünmesi) tek tıkla tamamlama. */}
+      {sprints.length > 0 && missingMonths.length > 0 && (
+        <div className="alert alert-warning d-flex align-items-center justify-content-between gap-2 py-2 px-3 mb-3" style={{ fontSize: '0.82rem' }}>
+          <span>
+            {missingMonths.length} ay eksik ({getSprintName(missingMonths[0].year, missingMonths[0].month)}
+            {missingMonths.length > 1 ? ` – ${getSprintName(missingMonths[missingMonths.length - 1].year, missingMonths[missingMonths.length - 1].month)}` : ''}) —
+            "Aya Ata" ve ay seçicilerinde görünmüyorlar.
+          </span>
+          <button
+            className="btn btn-sm btn-warning d-flex align-items-center gap-1 flex-shrink-0"
+            onClick={handleCreateMissingMonths}
+            disabled={creatingMissing}
+          >
+            <TbCalendarPlus size={14} />
+            {creatingMissing ? 'Oluşturuluyor…' : 'Eksik Ayları Oluştur'}
+          </button>
+        </div>
+      )}
 
       {sprints.length === 0 ? (
         <EmptyState

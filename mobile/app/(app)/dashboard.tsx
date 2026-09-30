@@ -7,7 +7,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { usePermissions } from '../../src/hooks/usePermissions';
 import { projectsApi, issuesApi, unitsApi, sprintsApi, usersApi } from '../../src/api/resources';
 import { StatusBadge, PriorityBadge } from '../../src/components/Badge';
-import { PRIORITIES, PRIORITY_COLORS } from '../../src/utils/constants';
+import { PRIORITIES, PRIORITY_COLORS, PRIORITY_LABELS } from '../../src/utils/constants';
 import type { Sprint } from '../../src/api/types';
 
 function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
@@ -46,7 +46,7 @@ function PriorityBreakdown({ counts }: { counts: Record<string, number> }) {
         const count = counts[p] || 0;
         return (
           <View key={p} style={styles.breakdownRow}>
-            <Text style={[styles.breakdownLabel, { color: PRIORITY_COLORS[p] }]}>{p}</Text>
+            <Text style={[styles.breakdownLabel, { color: PRIORITY_COLORS[p] }]}>{PRIORITY_LABELS[p]}</Text>
             <View style={styles.breakdownBarTrack}>
               <View style={[styles.breakdownBarFill, { width: `${(count / maxCount) * 100}%`, backgroundColor: PRIORITY_COLORS[p] }]} />
             </View>

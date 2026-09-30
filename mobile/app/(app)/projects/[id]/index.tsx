@@ -14,7 +14,7 @@ import CreateIssueSheet from '../../../../src/components/CreateIssueSheet';
 import CreateSprintSheet from '../../../../src/components/CreateSprintSheet';
 import CreateProjectSheet from '../../../../src/components/CreateProjectSheet';
 import { usePermissions } from '../../../../src/hooks/usePermissions';
-import { STATUSES } from '../../../../src/utils/constants';
+import { STATUSES, STATUS_LABELS } from '../../../../src/utils/constants';
 import type { Issue, Sprint } from '../../../../src/api/types';
 
 type ViewMode = 'board' | 'backlog' | 'sprints';
@@ -183,7 +183,7 @@ export default function ProjectDetailScreen() {
               const columnIssues = (boardIssuesQuery.data || []).filter((i) => i.status === status);
               return (
                 <View key={status} style={styles.column}>
-                  <Text style={styles.columnTitle}>{status} ({columnIssues.length})</Text>
+                  <Text style={styles.columnTitle}>{STATUS_LABELS[status]} ({columnIssues.length})</Text>
                   {columnIssues.length === 0 ? (
                     <Text style={styles.columnEmpty}>—</Text>
                   ) : (
@@ -251,7 +251,7 @@ export default function ProjectDetailScreen() {
       <PickerSheet
         visible={!!statusPickerIssue}
         title="Durum Değiştir"
-        options={STATUSES.filter((s) => s !== statusPickerIssue?.status).map((s) => ({ key: s, label: s }))}
+        options={STATUSES.filter((s) => s !== statusPickerIssue?.status).map((s) => ({ key: s, label: STATUS_LABELS[s] }))}
         onSelect={(key) => statusPickerIssue && applyStatusChange(statusPickerIssue, key)}
         onClose={() => setStatusPickerIssue(null)}
       />

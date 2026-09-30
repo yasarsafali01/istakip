@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { issuesApi, usersApi, projectsApi, unitsApi } from '../../../src/api/resources';
 import { StatusBadge, PriorityBadge } from '../../../src/components/Badge';
 import CreateRequestSheet from '../../../src/components/CreateRequestSheet';
-import { PRIORITIES } from '../../../src/utils/constants';
+import { PRIORITIES, PRIORITY_LABELS } from '../../../src/utils/constants';
 import { usePermissions } from '../../../src/hooks/usePermissions';
 import type { Issue } from '../../../src/api/types';
 
@@ -110,7 +110,7 @@ export default function RequestsScreen() {
             style={[styles.chip, priorityFilter === p && styles.chipActive]}
             onPress={() => setPriorityFilter(priorityFilter === p ? null : p)}
           >
-            <Text style={[styles.chipText, priorityFilter === p && styles.chipTextActive]}>{p}</Text>
+            <Text style={[styles.chipText, priorityFilter === p && styles.chipTextActive]}>{PRIORITY_LABELS[p]}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

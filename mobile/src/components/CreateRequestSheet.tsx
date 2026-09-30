@@ -6,7 +6,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { issuesApi, unitsApi, projectsApi } from '../api/resources';
 import PickerSheet from './PickerSheet';
-import { PRIORITIES } from '../utils/constants';
+import { PRIORITIES, PRIORITY_LABELS } from '../utils/constants';
 
 interface Props {
   visible: boolean;
@@ -122,7 +122,7 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
                 style={[styles.priorityChip, priority === p && styles.priorityChipActive]}
                 onPress={() => setPriority(p)}
               >
-                <Text style={[styles.priorityChipText, priority === p && styles.priorityChipTextActive]}>{p}</Text>
+                <Text style={[styles.priorityChipText, priority === p && styles.priorityChipTextActive]}>{PRIORITY_LABELS[p]}</Text>
               </TouchableOpacity>
             ))}
           </View>
