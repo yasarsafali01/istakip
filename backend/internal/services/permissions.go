@@ -24,6 +24,7 @@ const (
 	PermHelpdeskCreate  = "helpdesk.create"
 	PermTeamManage      = "team.manage"
 	PermTemplateManage  = "template.manage"
+	PermAssignUserRole  = "user.assign_role"
 )
 
 type PermissionInfo struct {
@@ -55,7 +56,8 @@ var PermissionCatalog = []PermissionInfo{
 	{PermInventoryManage, "Envanter yönet", "Envanter", "Envanter kalemi ekleyebilir ve stok düzenleyebilir"},
 	{PermInventoryUse, "Envanter kullan", "Envanter", "İş tamamlarken envanterden düşüm yapabilir"},
 	{PermUnitManage, "Birim yönet", "Yönetim", "Birim oluşturabilir ve düzenleyebilir"},
-	{PermRoleManage, "Rol ve izinleri yönet", "Yönetim", "Rolleri düzenleyebilir ve kullanıcılara rol atayabilir"},
+	{PermRoleManage, "Rol ve izinleri yönet", "Yönetim", "Rol tanımlarını (izin kümesi, veri kapsamı, seviye) oluşturabilir ve düzenleyebilir"},
+	{PermAssignUserRole, "Kullanıcıya rol ata", "Yönetim", "Kendi yönetim alanındaki kullanıcılara, kendi rol seviyesinin altındaki rolleri atayabilir"},
 }
 
 func ValidPermission(key string) bool {

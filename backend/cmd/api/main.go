@@ -53,12 +53,15 @@ func main() {
 		refreshTokenRepo := repository.NewRefreshTokenRepo(pool)
 		authService := services.NewAuthService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 
+		unitRepo := repository.NewUnitRepo(pool)
+		projectRepo := repository.NewProjectRepo(pool)
+
 		roleRepo := repository.NewRoleRepo(pool)
 		roleStore := services.NewRoleStore(roleRepo)
 		if err := roleStore.Reload(context.Background()); err != nil {
 			log.Fatalf("loading roles failed (run migrations?): %v", err)
 		}
-		roleHandler := handlers.NewRoleHandler(roleRepo, userRepo, roleStore)
+		roleHandler := handlers.NewRoleHandler(roleRepo, userRepo, projectRepo, roleStore)
 
 		authHandler := handlers.NewAuthHandler(authService, roleStore)
 
@@ -68,9 +71,7 @@ func main() {
 			r.Post("/logout", authHandler.Logout)
 		})
 
-		unitRepo := repository.NewUnitRepo(pool)
 		unitHandler := handlers.NewUnitHandler(unitRepo)
-		projectRepo := repository.NewProjectRepo(pool)
 		projectHandler := handlers.NewProjectHandler(projectRepo, unitRepo)
 		sprintHandler := handlers.NewSprintHandler(repository.NewSprintRepo(pool), projectRepo)
 

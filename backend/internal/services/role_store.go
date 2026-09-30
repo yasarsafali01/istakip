@@ -65,6 +65,7 @@ func (s *RoleStore) Apply(c *Claims) bool {
 		return false
 	}
 	c.Scope = d.Scope
+	c.Level = d.Level
 	c.Perms = make(map[string]bool, len(d.Permissions))
 	for _, p := range d.Permissions {
 		c.Perms[p] = true
@@ -72,10 +73,11 @@ func (s *RoleStore) Apply(c *Claims) bool {
 	return true
 }
 
-// Decorate adds scope and permissions to a user's profile for the client.
+// Decorate adds scope, level and permissions to a user's profile for the client.
 func (s *RoleStore) Decorate(u *models.User) {
 	if d, ok := s.Get(u.Role); ok {
 		u.Scope = d.Scope
+		u.Level = d.Level
 		u.Permissions = d.Permissions
 	}
 }

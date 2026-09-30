@@ -24,9 +24,9 @@ func NewRoleRepo(pool *pgxpool.Pool) *RoleRepo {
 // List returns every role with its permissions and how many users hold it.
 func (r *RoleRepo) List(ctx context.Context) ([]models.RoleDef, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT r.key, r.name, r.description, r.scope, r.is_system,
+		SELECT r.key, r.name, r.description, r.scope, r.level, r.is_system,
 		       COALESCE((SELECT count(*) FROM users u WHERE u.role = r.key), 0)
-		FROM roles r ORDER BY r.is_system DESC, r.name`)
+		FROM roles r ORDER BY r.level DESC, r.name`)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (r *RoleRepo) List(ctx context.Context) ([]models.RoleDef, error) {
 	index := map[models.Role]int{}
 	for rows.Next() {
 		var d models.RoleDef
-		if err := rows.Scan(&d.Key, &d.Name, &d.Description, &d.Scope, &d.IsSystem, &d.UserCount); err != nil {
+		if err := rows.Scan(&d.Key, &d.Name, &d.Description, &d.Scope, &d.Level, &d.IsSystem, &d.UserCount); err != nil {
 			return nil, err
 		}
 		d.Permissions = []string{}
@@ -86,8 +86,8 @@ func (r *RoleRepo) Create(ctx context.Context, d models.RoleDef) error {
 	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx,
-		"INSERT INTO roles (key, name, description, scope, is_system) VALUES ($1,$2,$3,$4,FALSE)",
-		d.Key, d.Name, d.Description, d.Scope); err != nil {
+		"INSERT INTO roles (key, name, description, scope, level, is_system) VALUES ($1,$2,$3,$4,$5,FALSE)",
+		d.Key, d.Name, d.Description, d.Scope, d.Level); err != nil {
 		return err
 	}
 	if err := setPermissions(ctx, tx, d.Key, d.Permissions); err != nil {
@@ -96,9 +96,10 @@ func (r *RoleRepo) Create(ctx context.Context, d models.RoleDef) error {
 	return tx.Commit(ctx)
 }
 
-// Update replaces a role's name, description and permission set. The scope is
-// only changed when scope is non-empty (custom roles).
-func (r *RoleRepo) Update(ctx context.Context, key models.Role, name, description string, scope models.Scope, permissions []string) error {
+// Update replaces a role's name, description, permission set and (for custom
+// roles) scope/level. scope="" or level=nil leaves that field unchanged —
+// used to keep built-in roles' scope/level locked.
+func (r *RoleRepo) Update(ctx context.Context, key models.Role, name, description string, scope models.Scope, level *int, permissions []string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -106,8 +107,8 @@ func (r *RoleRepo) Update(ctx context.Context, key models.Role, name, descriptio
 	defer tx.Rollback(ctx)
 
 	tag, err := tx.Exec(ctx,
-		"UPDATE roles SET name = $2, description = $3, scope = COALESCE(NULLIF($4,''), scope) WHERE key = $1",
-		key, name, description, string(scope))
+		"UPDATE roles SET name = $2, description = $3, scope = COALESCE(NULLIF($4,''), scope), level = COALESCE($5, level) WHERE key = $1",
+		key, name, description, string(scope), level)
 	if err != nil {
 		return err
 	}

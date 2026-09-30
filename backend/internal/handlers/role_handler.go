@@ -19,13 +19,14 @@ import (
 )
 
 type RoleHandler struct {
-	roles *repository.RoleRepo
-	users *repository.UserRepo
-	store *services.RoleStore
+	roles    *repository.RoleRepo
+	users    *repository.UserRepo
+	projects *repository.ProjectRepo
+	store    *services.RoleStore
 }
 
-func NewRoleHandler(roles *repository.RoleRepo, users *repository.UserRepo, store *services.RoleStore) *RoleHandler {
-	return &RoleHandler{roles: roles, users: users, store: store}
+func NewRoleHandler(roles *repository.RoleRepo, users *repository.UserRepo, projects *repository.ProjectRepo, store *services.RoleStore) *RoleHandler {
+	return &RoleHandler{roles: roles, users: users, projects: projects, store: store}
 }
 
 const forbiddenMsg = "Bu sayfaya erişim yetkiniz bulunmamaktadır"
@@ -55,6 +56,7 @@ type roleRequest struct {
 	Name        string       `json:"name"`
 	Description string       `json:"description"`
 	Scope       models.Scope `json:"scope"`
+	Level       int          `json:"level"`
 	Permissions []string     `json:"permissions"`
 }
 
@@ -94,6 +96,10 @@ func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "Geçersiz veri kapsamı")
 		return
 	}
+	if req.Level <= 0 || req.Level >= 100 {
+		response.Error(w, http.StatusBadRequest, "Seviye 1-99 arasında olmalıdır (100, Sistem Yöneticisi için ayrılmıştır)")
+		return
+	}
 	perms, ok := cleanPermissions(req.Permissions)
 	if !ok {
 		response.Error(w, http.StatusBadRequest, "Geçersiz izin")
@@ -107,6 +113,7 @@ func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name:        req.Name,
 		Description: strings.TrimSpace(req.Description),
 		Scope:       req.Scope,
+		Level:       req.Level,
 		Permissions: perms,
 	}
 	if err := h.roles.Create(r.Context(), def); err != nil {
@@ -155,17 +162,23 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "Geçersiz izin")
 		return
 	}
-	// Built-in roles keep their data scope; only custom roles can change it.
+	// Built-in roles keep their data scope and level; only custom roles can change them.
 	scope := models.Scope("")
+	var level *int
 	if !existing.IsSystem {
 		if !validScopes[req.Scope] {
 			response.Error(w, http.StatusBadRequest, "Geçersiz veri kapsamı")
 			return
 		}
 		scope = req.Scope
+		if req.Level <= 0 || req.Level >= 100 {
+			response.Error(w, http.StatusBadRequest, "Seviye 1-99 arasında olmalıdır (100, Sistem Yöneticisi için ayrılmıştır)")
+			return
+		}
+		level = &req.Level
 	}
 
-	if err := h.roles.Update(r.Context(), key, req.Name, strings.TrimSpace(req.Description), scope, perms); err != nil {
+	if err := h.roles.Update(r.Context(), key, req.Name, strings.TrimSpace(req.Description), scope, level, perms); err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to update role")
 		return
 	}
@@ -203,11 +216,18 @@ type assignRoleRequest struct {
 	ProjectID *uuid.UUID  `json:"projectId"`
 }
 
-// AssignUserRole gives a user a role (and optionally a unit/project). A role
-// with a unit or project scope needs the user to belong to one.
+// AssignUserRole gives a user a role, delegated down the org chart: the
+// caller must have management authority over the target user (their own
+// scope — unit for Department_Head, managed projects for Project_Manager,
+// everyone for System_Admin) AND the new role must be strictly weaker than
+// the caller's own role (services.CanAssignRoleLevel) — so nobody can ever
+// hand out a role at or above their own rank, e.g. a Project_Manager can
+// never grant a Department_Head-level role even to their own team member.
+// Only a scope="all" caller (System_Admin) may also move the user between
+// units/projects in the same call.
 func (h *RoleHandler) AssignUserRole(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
-	if !claims.Can(services.PermRoleManage) {
+	if !claims.Can(services.PermAssignUserRole) {
 		response.Error(w, http.StatusForbidden, forbiddenMsg)
 		return
 	}
@@ -239,6 +259,38 @@ func (h *RoleHandler) AssignUserRole(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to load user")
 		return
+	}
+
+	// Management-scope check: is this user even in the caller's org chart?
+	var targetProject *models.Project
+	if claims.Scope == models.ScopeManager && user.ProjectID != nil {
+		p, err := h.projects.GetByID(r.Context(), *user.ProjectID)
+		if err == nil {
+			targetProject = &p
+		}
+	}
+	if !services.CanManageUser(claims, user, targetProject) {
+		response.Error(w, http.StatusForbidden, "Bu kullanıcı yönetim alanınızın dışında")
+		return
+	}
+
+	// Hierarchy check: both the new role and the user's current role must be
+	// strictly weaker than the caller's own — reject role-definition-level
+	// escalation attempts before touching anything.
+	currentDef, ok := h.store.Get(user.Role)
+	if !ok {
+		response.Error(w, http.StatusInternalServerError, "failed to resolve current role")
+		return
+	}
+	if !services.CanAssignRoleLevel(claims.Level, def.Level, currentDef.Level) {
+		response.Error(w, http.StatusForbidden, "Bu rolü atamak için yetkiniz yetersiz")
+		return
+	}
+
+	// Only a system-wide (scope=all) caller may relocate the user between
+	// units/projects in the same call — a scoped manager can only change the role.
+	if claims.Scope != models.ScopeAll {
+		req.UnitID, req.ProjectID = nil, nil
 	}
 	unitID, projectID := user.UnitID, user.ProjectID
 	if req.UnitID != nil {

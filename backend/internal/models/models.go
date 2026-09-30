@@ -29,10 +29,14 @@ const (
 
 // RoleDef is a configurable role: a named permission set plus a data scope.
 type RoleDef struct {
-	Key         Role     `json:"key"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Scope       Scope    `json:"scope"`
+	Key         Role   `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Scope       Scope  `json:"scope"`
+	// Level is authority rank: higher = more senior. Determines which roles
+	// this role's holders may hand to someone else (see services.CanAssignRole)
+	// — strictly below their own level, independent of the permission set.
+	Level       int      `json:"level"`
 	IsSystem    bool     `json:"isSystem"`
 	Permissions []string `json:"permissions"`
 	UserCount   int      `json:"userCount"`
@@ -59,6 +63,7 @@ type User struct {
 	NotifyPush  bool `json:"notifyPush"`
 	// Filled in for /auth/login and /users/me only.
 	Scope       Scope    `json:"scope,omitempty"`
+	Level       int      `json:"level,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
 }
 

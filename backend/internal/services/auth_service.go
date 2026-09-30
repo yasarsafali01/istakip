@@ -35,6 +35,7 @@ type Claims struct {
 	// so editing a role takes effect immediately.
 	Scope models.Scope    `json:"-"`
 	Perms map[string]bool `json:"-"`
+	Level int             `json:"-"`
 }
 
 type AuthService struct {
