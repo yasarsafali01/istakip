@@ -46,9 +46,9 @@ export default function UnitFilter({ units, selectedUnitId, onChange }) {
             value={selectedUnitId ?? ''}
             onChange={handleChange}
             style={{ paddingLeft: '2.5rem' }}
-            aria-label="Birime göre filtrele"
+            aria-label="Daire başkanlığına göre filtrele"
           >
-            <option value="">Tüm Birimler</option>
+            <option value="">Tüm Daire Başkanlıkları</option>
             {units.map(unit => (
               <option key={unit.id} value={unit.id}>
                 {unit.unitCode} — {unit.name}
@@ -59,7 +59,7 @@ export default function UnitFilter({ units, selectedUnitId, onChange }) {
             htmlFor={selectId}
             style={{ paddingLeft: '2.5rem', color: '#6c757d' }}
           >
-            Birim
+            Daire Başkanlığı
           </label>
         </div>
       </div>

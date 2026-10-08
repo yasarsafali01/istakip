@@ -73,7 +73,7 @@ export default function UnitList() {
             onClick={() => setSelectedUnit(null)}
           >
             <TbArrowLeft size={15} />
-            Birimler
+            Daire Başkanlıkları
           </button>
           <span className="text-muted">/</span>
           <span className="fw-semibold">{selectedUnit.name}</span>
@@ -83,25 +83,25 @@ export default function UnitList() {
         </div>
 
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="fw-bold mb-0">Projeler</h5>
+          <h5 className="fw-bold mb-0">Müdürlükler</h5>
           {canCreateProject && (
             <button
               className="btn btn-primary btn-sm d-flex align-items-center gap-1"
               onClick={() => setShowProjectModal(true)}
             >
               <TbPlus size={16} />
-              Yeni Proje
+              Yeni Müdürlük
             </button>
           )}
         </div>
 
         {unitProjects.length === 0 ? (
           <EmptyState
-            title="Bu birimde henüz proje yok"
-            description="Yeni bir proje oluşturabilirsiniz."
+            title="Bu daire başkanlığında henüz müdürlük yok"
+            description="Yeni bir müdürlük oluşturabilirsiniz."
             action={canCreateProject ? (
               <button className="btn btn-primary btn-sm" onClick={() => setShowProjectModal(true)}>
-                Proje Oluştur
+                Müdürlük Oluştur
               </button>
             ) : null}
           />
@@ -119,7 +119,7 @@ export default function UnitList() {
                         {canCreateProject && (
                           <button
                             className="btn btn-sm btn-link p-0 text-muted"
-                            title="Projeyi düzenle"
+                            title="Müdürlüğü düzenle"
                             onClick={() => setEditingProject(project)}
                           >
                             <TbEdit size={16} />
@@ -135,7 +135,7 @@ export default function UnitList() {
                         </p>
                       )}
                       <div className="d-flex gap-2 mb-2 text-muted small">
-                        <span><strong className="text-dark">{openCount}</strong> açık issue</span>
+                        <span><strong className="text-dark">{openCount}</strong> açık talep</span>
                         {activeSprint && (
                           <span className="badge" style={{ backgroundColor: '#E3FCEF', color: '#006644', fontSize: '0.65rem' }}>
                             Aktif Sprint
@@ -147,13 +147,13 @@ export default function UnitList() {
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                           onClick={() => navigate(`/projects/${project.id}?tab=board`)}
                         >
-                          <TbLayoutKanban size={13} /> Aktif İşler
+                          <TbLayoutKanban size={13} /> Aktif Talepler
                         </button>
                         <button
                           className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
                           onClick={() => navigate(`/projects/${project.id}?tab=backlog`)}
                         >
-                          <TbList size={13} /> Backlog
+                          <TbList size={13} /> Bekleyen Talepler
                         </button>
                       </div>
                     </div>
@@ -164,7 +164,7 @@ export default function UnitList() {
           </div>
         )}
 
-        <Modal isOpen={showProjectModal} title="Yeni Proje Oluştur" onClose={() => setShowProjectModal(false)} size="lg">
+        <Modal isOpen={showProjectModal} title="Yeni Müdürlük Oluştur" onClose={() => setShowProjectModal(false)} size="lg">
           <ProjectForm
             defaultUnitId={selectedUnit.id}
             onSuccess={() => setShowProjectModal(false)}
@@ -173,7 +173,7 @@ export default function UnitList() {
         </Modal>
 
         {/* Proje düzenleme modalı */}
-        <Modal isOpen={!!editingProject} title="Projeyi Düzenle" onClose={() => setEditingProject(null)} size="lg">
+        <Modal isOpen={!!editingProject} title="Müdürlüğü Düzenle" onClose={() => setEditingProject(null)} size="lg">
           {editingProject && (
             <ProjectForm
               project={editingProject}
@@ -191,18 +191,18 @@ export default function UnitList() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div className="d-flex align-items-center gap-2">
-          <h4 className="fw-bold mb-0">Birimler</h4>
+          <h4 className="fw-bold mb-0">Daire Başkanlıkları</h4>
           <HelpGuide
-            title="Birimler Sayfası — Yardım Kılavuzu"
+            title="Daire Başkanlıkları Sayfası — Yardım Kılavuzu"
             sections={
               canManageUnits ? [
-                { icon: '🏢', title: 'Birim Listesi', items: ['Sistemdeki tüm birimleri görürsünüz.', 'Her birim kartında birim kodu ve daire başkanı bilgisi yer alır.'] },
-                { icon: '➕', title: 'Birim Oluşturma', items: ['"Yeni Birim" butonuyla yeni birim ekleyebilirsiniz.', 'Birime daire başkanı atayabilirsiniz.'] },
-                { icon: '✏️', title: 'Birim Düzenleme', items: ['Birim kartındaki düzenle ikonuyla birim bilgilerini güncelleyebilirsiniz.'] },
-                { icon: '📁', title: 'Birim Projeleri', items: ['Birim kartına tıklayarak o birime ait projeleri görüntüleyebilirsiniz.', 'Birim içinden yeni proje oluşturabilirsiniz.'] },
+                { icon: '🏢', title: 'Daire Başkanlığı Listesi', items: ['Sistemdeki tüm daire başkanlıklarını görürsünüz.', 'Her daire başkanlığı kartında daire başkanlığı kodu ve daire başkanı bilgisi yer alır.'] },
+                { icon: '➕', title: 'Daire Başkanlığı Oluşturma', items: ['"Yeni Daire Başkanlığı" butonuyla yeni daire başkanlığı ekleyebilirsiniz.', 'Daire başkanlığına daire başkanı atayabilirsiniz.'] },
+                { icon: '✏️', title: 'Daire Başkanlığı Düzenleme', items: ['Daire başkanlığı kartındaki düzenle ikonuyla daire başkanlığı bilgilerini güncelleyebilirsiniz.'] },
+                { icon: '📁', title: 'Daire Başkanlığı Müdürlükleri', items: ['Daire başkanlığı kartına tıklayarak o daire başkanlığına ait müdürlükleri görüntüleyebilirsiniz.', 'Daire başkanlığı içinden yeni müdürlük oluşturabilirsiniz.'] },
               ] : [
-                { icon: '🏢', title: 'Birim Listesi', items: ['Bağlı olduğunuz birimi görürsünüz.'] },
-                { icon: '📁', title: 'Birim Projeleri', items: ['Birim kartına tıklayarak birime ait projeleri görüntüleyebilirsiniz.'] },
+                { icon: '🏢', title: 'Daire Başkanlığı Listesi', items: ['Bağlı olduğunuz daire başkanlığını görürsünüz.'] },
+                { icon: '📁', title: 'Daire Başkanlığı Müdürlükleri', items: ['Daire başkanlığı kartına tıklayarak daire başkanlığına ait müdürlükleri görüntüleyebilirsiniz.'] },
               ]
             }
           />
@@ -210,18 +210,18 @@ export default function UnitList() {
         {canManageUnits && (
           <button className="btn btn-primary d-flex align-items-center gap-1" onClick={() => setShowUnitModal(true)}>
             <TbPlus size={18} />
-            Yeni Birim
+            Yeni Daire Başkanlığı
           </button>
         )}
       </div>
 
       {visibleUnits.length === 0 ? (
         <EmptyState
-          title="Henüz birim yok"
-          description="Sistem yöneticisi birim oluşturabilir."
+          title="Henüz daire başkanlığı yok"
+          description="Sistem yöneticisi daire başkanlığı oluşturabilir."
           action={canManageUnits ? (
             <button className="btn btn-primary btn-sm" onClick={() => setShowUnitModal(true)}>
-              Birim Oluştur
+              Daire Başkanlığı Oluştur
             </button>
           ) : null}
         />
@@ -241,7 +241,7 @@ export default function UnitList() {
 
       <Modal
         isOpen={showUnitModal}
-        title={editingUnit ? 'Birimi Düzenle' : 'Yeni Birim Oluştur'}
+        title={editingUnit ? 'Daire Başkanlığını Düzenle' : 'Yeni Daire Başkanlığı Oluştur'}
         onClose={handleCloseUnitModal}
       >
         <UnitForm onClose={handleCloseUnitModal} existingUnit={editingUnit} />

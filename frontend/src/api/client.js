@@ -67,14 +67,16 @@ async function doRefresh() {
  * Core request helper. On a 401, tries exactly one refresh + retry before
  * giving up (concurrent 401s share a single in-flight refresh call).
  */
-export async function request(path, { method = 'GET', body, retry = true } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+export async function request(path, { method = 'GET', body, retry = true, blob = false } = {}) {
+  // FormData (file upload) sets its own multipart Content-Type with boundary.
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  const headers = isForm ? {} : { 'Content-Type': 'application/json' };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });
 
   if (res.status === 401 && retry && getRefreshToken()) {
@@ -86,10 +88,11 @@ export async function request(path, { method = 'GET', body, retry = true } = {})
     } catch (err) {
       throw err;
     }
-    return request(path, { method, body, retry: false });
+    return request(path, { method, body, retry: false, blob });
   }
 
   if (res.status === 204) return null;
+  if (blob && res.ok) return res.blob();
 
   let data = null;
   try {
@@ -107,8 +110,12 @@ export async function request(path, { method = 'GET', body, retry = true } = {})
 export const api = {
   get: (path) => request(path),
   post: (path, body) => request(path, { method: 'POST', body }),
+  put: (path, body) => request(path, { method: 'PUT', body }),
   patch: (path, body) => request(path, { method: 'PATCH', body }),
   delete: (path) => request(path, { method: 'DELETE' }),
+  upload: (path, formData) => request(path, { method: 'POST', body: formData }),
+  // Authenticated binary download (a plain <a href> can't send the bearer token).
+  blob: (path) => request(path, { blob: true }),
 };
 
 export { ApiError };

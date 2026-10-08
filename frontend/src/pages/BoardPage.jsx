@@ -26,9 +26,9 @@ function BoardPage() {
   if (!project) {
     return (
       <EmptyState
-        title="Proje bulunamadı"
-        description="Bu proje mevcut değil veya silinmiş olabilir."
-        action={<Link to="/projects" className="btn btn-primary">Projelere Dön</Link>}
+        title="Müdürlük bulunamadı"
+        description="Bu müdürlük mevcut değil veya silinmiş olabilir."
+        action={<Link to="/projects" className="btn btn-primary">Müdürlüklere Dön</Link>}
       />
     );
   }
@@ -68,7 +68,7 @@ function BoardPage() {
               sections={
                 currentUser?.role === ROLES.PROJECT_MANAGER ? [
                   { icon: '📌', title: 'Board Görünümü', items: ['İşleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.', '"Aktif Ay" seçeneği mevcut aktif dönemi gösterir.'] },
-                  { icon: '➕', title: 'Issue Yönetimi', items: ['Sütun başlıklarındaki "+" butonuyla yeni issue oluşturabilirsiniz.', 'Issue kartına tıklayarak detayları görüntüleyebilir ve düzenleyebilirsiniz.'] },
+                  { icon: '➕', title: 'Talep Yönetimi', items: ['Sütun başlıklarındaki "+" butonuyla yeni talep oluşturabilirsiniz.', 'Talep kartına tıklayarak detayları görüntüleyebilir ve düzenleyebilirsiniz.'] },
                   { icon: '🔒', title: 'Kapalı Dönemler', items: ['Tamamlanan dönemler salt okunur modda görüntülenir, değişiklik yapılamaz.'] },
                 ] : [
                   { icon: '📌', title: 'Board Görünümü', items: ['İşlerin durumlarını sütunlar arasında sürükleyerek güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.'] },

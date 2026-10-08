@@ -30,36 +30,37 @@ export const ACTIONS = {
   COMPLETE_SPRINT: 'COMPLETE_SPRINT',
 };
 
-export const PRIORITIES = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
+// Pickers list them low → high.
+export const PRIORITIES = ['Low', 'Medium', 'High'];
 
 // Veritabanı ve API bu İngilizce değerleri kullanır (backend CHECK kısıtı,
 // filtre/sıralama mantığı vb.); ekranda gösterilecek Türkçe karşılıkları.
 export const PRIORITY_LABELS = {
-  Highest: 'En Yüksek',
   High: 'Yüksek',
   Medium: 'Orta',
   Low: 'Düşük',
-  Lowest: 'En Düşük',
 };
 
-export const STATUSES = ['To Do', 'In Progress', 'In Review', 'Done', 'Geri Çevrildi'];
+export const STATUSES = ['To Do', 'In Progress', 'Onay Bekliyor', 'Done', 'Geri Çevrildi'];
+
+// "Onay Bekliyor" is only reached by completing work without issue.approve
+// (and left by a manager's approve/reject) — never picked by hand.
+export const MANUAL_STATUSES = STATUSES.filter((s) => s !== 'Onay Bekliyor');
 
 export const ISSUE_TYPES = ['Task', 'Bug', 'Story', 'Epic', 'Request'];
 
 export const SPRINT_STATUSES = ['Planned', 'Active', 'Completed'];
 
 export const PRIORITY_COLORS = {
-  Highest: '#FF0000',
-  High: '#FF7700',
+  High: '#E5493A',
   Medium: '#FFAA00',
   Low: '#2684FF',
-  Lowest: '#57D9A3',
 };
 
 export const STATUS_COLORS = {
   'To Do': '#DFE1E6',
   'In Progress': '#2563eb',
-  'In Review': '#FF991F',
+  'Onay Bekliyor': '#8B5CF6',
   Done: '#00875A',
   'Geri Çevrildi': '#DE350B',
   // Reached only through the dedicated forward/cancel actions (never a plain
@@ -72,7 +73,7 @@ export const STATUS_COLORS = {
 export const STATUS_LABELS = {
   'To Do': 'Yapılacak',
   'In Progress': 'Devam Ediyor',
-  'In Review': 'İncelemede',
+  'Onay Bekliyor': 'Onay Bekliyor',
   Done: 'Tamamlandı',
   'Geri Çevrildi': 'Geri Çevrildi',
   Yönlendirildi: 'Yönlendirildi',
@@ -133,9 +134,9 @@ export const SCOPE_TO_BASE_ROLE = {
 
 export const SCOPE_LABELS = {
   all:     'Tüm sistem',
-  unit:    'Kendi birimi',
-  manager: 'Yönettiği projeler',
-  project: 'Atandığı proje',
+  unit:    'Kendi daire başkanlığı',
+  manager: 'Yönettiği müdürlükler',
+  project: 'Atandığı müdürlük',
   own:     'Yalnızca kendi talepleri',
 };
 
@@ -146,9 +147,9 @@ const ALL_ISSUE_PERMS = [
   'issue.clone', 'issue.sprint', 'issue.dates', 'issue.share', 'sprint.manage', 'inventory.manage', 'inventory.use',
 ];
 export const DEFAULT_ROLE_PERMISSIONS = {
-  System_Admin:    [...ALL_ISSUE_PERMS, 'project.create', 'project.edit', 'unit.manage', 'role.manage'],
-  Department_Head: [...ALL_ISSUE_PERMS, 'project.create', 'project.edit'],
-  Project_Manager: ALL_ISSUE_PERMS,
+  System_Admin:    [...ALL_ISSUE_PERMS, 'project.create', 'project.edit', 'unit.manage', 'role.manage', 'request_form.manage', 'issue.approve'],
+  Department_Head: [...ALL_ISSUE_PERMS, 'project.create', 'project.edit', 'request_form.manage', 'issue.approve'],
+  Project_Manager: [...ALL_ISSUE_PERMS, 'request_form.manage', 'issue.approve'],
   Worker:          ['request.create', 'issue.status', 'issue.share', 'inventory.use'],
   External_User:   ['request.create', 'issue.edit', 'issue.delete', 'issue.clone'],
 };

@@ -5,18 +5,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { ACTIONS } from '../../constants';
 import { commentsApi, activitiesApi, templatesApi } from '../../api/resources';
 import { timeAgo } from '../../utils/dateUtils';
+import { fillTemplate } from '../../utils/templateUtils';
 import Avatar from '../common/Avatar';
 import ConfirmDialog from '../common/ConfirmDialog';
-
-/** Fills a canned-reply template's {Placeholder} tokens from the current issue/user. */
-function fillTemplate(body, { issue, project, currentUser, reporterName }) {
-  return body
-    .replaceAll('{TalepNo}', issue?.key || '')
-    .replaceAll('{TalepEdenAdı}', reporterName || '')
-    .replaceAll('{ProjeAdı}', project?.name || '')
-    .replaceAll('{BenimAdım}', currentUser?.name || '')
-    .replaceAll('{BenimEposta}', currentUser?.email || '');
-}
 
 /**
  * Comment list with add and delete functionality for a given issue.
@@ -38,7 +29,7 @@ function CommentSection({ issueId }) {
 
   useEffect(() => {
     if (!project) return;
-    templatesApi.listByProject(project.id).then(setTemplates).catch(() => {});
+    templatesApi.listByProject(project.id, { kind: 'reply' }).then(setTemplates).catch(() => {});
   }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function insertTemplate(tmpl) {

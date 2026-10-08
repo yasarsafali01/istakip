@@ -46,7 +46,7 @@ function ProjectCard({ project }) {
             navigate(`/projects/${project.id}?tab=board`);
           }
         }}
-        aria-label={`${project.name} projesine git`}
+        aria-label={`${project.name} müdürlüğüne git`}
       >
         <div className="card-body">
           {/* Header */}
@@ -63,9 +63,9 @@ function ProjectCard({ project }) {
             {canEdit && (
               <button
                 className="btn btn-sm btn-link p-0 text-muted"
-                title="Projeyi düzenle"
+                title="Müdürlüğü düzenle"
                 onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }}
-                aria-label={`${project.name} projesini düzenle`}
+                aria-label={`${project.name} müdürlüğünü düzenle`}
               >
                 <TbEdit size={16} />
               </button>
@@ -90,7 +90,7 @@ function ProjectCard({ project }) {
           {/* Stats */}
           <div className="d-flex gap-3 mb-3">
             <span className="text-muted small">
-              <strong className="text-dark">{openCount}</strong> açık issue
+              <strong className="text-dark">{openCount}</strong> açık talep
             </span>
             {activeSprint && (
               <span className="text-muted small">
@@ -115,7 +115,7 @@ function ProjectCard({ project }) {
               aria-label={`${project.name} board`}
             >
               <TbLayoutKanban size={14} aria-hidden="true" />
-              Aktif İşler
+              Aktif Talepler
             </button>
             <button
               className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
@@ -126,7 +126,7 @@ function ProjectCard({ project }) {
               aria-label={`${project.name} backlog`}
             >
               <TbList size={14} aria-hidden="true" />
-              Backlog
+              Bekleyen Talepler
             </button>
           </div>
 
@@ -143,7 +143,7 @@ function ProjectCard({ project }) {
         <Modal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
-          title="Projeyi Düzenle"
+          title="Müdürlüğü Düzenle"
           size="lg"
         >
           <ProjectForm

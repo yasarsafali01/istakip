@@ -9,8 +9,12 @@ import NotificationBell from './NotificationBell';
 // Route prefix → page title shown in the top bar. First match wins.
 const PAGE_TITLES = [
   ['/dashboard', 'Ana Sayfa'],
-  ['/units', 'Birimler'],
-  ['/projects', 'Projeler'],
+  ['/units', 'Daire Başkanlıkları'],
+  ['/projects', 'Müdürlükler'],
+  ['/request-forms', 'Talep Formları'],
+  ['/teams-templates', 'Ekipler ve Şablonlar'],
+  ['/reports', 'İstatistikler'],
+  ['/performance', 'Performansım'],
   ['/requests', 'Talepler'],
   ['/users', 'Kullanıcılar'],
   ['/roles', 'Roller ve İzinler'],
@@ -19,7 +23,7 @@ const PAGE_TITLES = [
 
 function titleFor(pathname) {
   const hit = PAGE_TITLES.find(([prefix]) => pathname.startsWith(prefix));
-  return hit ? hit[1] : 'İş Takip';
+  return hit ? hit[1] : 'Talep Takip Sistemi';
 }
 
 export default function Topbar() {
@@ -37,7 +41,8 @@ export default function Topbar() {
     <header className="topbar">
       {/* Left padding on small screens leaves room for the sidebar toggle */}
       <div className="d-flex align-items-center gap-2 ps-5 ps-md-0" style={{ minWidth: 0 }}>
-        <span className="topbar-crumb d-none d-sm-inline">İş Takip</span>
+        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="" aria-hidden="true" className="d-none d-sm-inline" style={{ height: 22 }} />
+        <span className="topbar-crumb d-none d-sm-inline">Talep Takip Sistemi</span>
         <span className="topbar-crumb d-none d-sm-inline" aria-hidden="true">/</span>
         <span className="topbar-title text-truncate">{titleFor(pathname)}</span>
       </div>

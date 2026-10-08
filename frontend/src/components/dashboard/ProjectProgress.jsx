@@ -24,10 +24,10 @@ function ProjectProgress({ unitId, projectId }) {
   return (
     <div className="card border-0 shadow-sm h-100">
       <div className="card-body">
-        <h6 className="card-title fw-semibold mb-3">Proje İlerlemesi</h6>
+        <h6 className="card-title fw-semibold mb-3">Müdürlük İlerlemesi</h6>
 
         {projects.length === 0 ? (
-          <p className="text-muted small">Henüz proje yok.</p>
+          <p className="text-muted small">Henüz müdürlük yok.</p>
         ) : (
           <ul className="list-unstyled mb-0">
             {projects.map((project) => {
@@ -37,7 +37,7 @@ function ProjectProgress({ unitId, projectId }) {
               const total = projectIssues.length;
               const done = projectIssues.filter((i) => i.status === 'Done').length;
               const inProgress = projectIssues.filter(
-                (i) => i.status === 'In Progress' || i.status === 'In Review'
+                (i) => i.status === 'In Progress'
               ).length;
               const todo = total - done - inProgress;
               const donePercent = total ? Math.round((done / total) * 100) : 0;

@@ -13,7 +13,7 @@ const EMPTY_FORM = { key: null, name: '', description: '', scope: 'project', lev
 // backend services.CanAssignRoleLevel — a role can only be handed out by
 // someone whose own role level is strictly greater).
 const BUILTIN_LEVELS = [
-  ['Sistem Yöneticisi', 100], ['Daire Başkanı', 80], ['Proje Yöneticisi', 60],
+  ['Sistem Yöneticisi', 100], ['Daire Başkanı', 80], ['Müdür', 60],
   ['Çalışan', 40], ['Dış Kullanıcı', 20],
 ];
 
@@ -57,7 +57,7 @@ function RoleEditor({ form, setForm, catalog, locked, onSave, onCancel, onDelete
           value={form.name}
           disabled={locked}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="Örn. Birim Müdürü"
+          placeholder="Örn. Daire Başkan Yardımcısı"
         />
       </div>
       <div className="mb-3">

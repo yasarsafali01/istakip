@@ -3,7 +3,11 @@ import Modal from './Modal';
 import { useAppContext } from '../../context/AppContext';
 import { ACTIONS } from '../../constants';
 import { validate } from '../../utils/taskDoneValidation';
-import { issuesApi, inventoryApi } from '../../api/resources';
+import { issuesApi, inventoryApi, templatesApi } from '../../api/resources';
+import { useAuth } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/usePermissions';
+import { fillTemplate } from '../../utils/templateUtils';
+import { TbShieldCheck } from 'react-icons/tb';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 
 /**
@@ -28,6 +32,11 @@ function TaskDoneModal({ isOpen, issue, onConfirm, onCancel }) {
   const [errors, setErrors] = useState({});
   const [showStockWarning, setShowStockWarning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [resolutionTemplates, setResolutionTemplates] = useState([]);
+  const { currentUser } = useAuth();
+  const { can } = usePermissions();
+  // Without issue.approve, completing only submits the work for a manager's approval.
+  const needsApproval = !can('issue.approve');
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const project = state.projects.find((p) => p.id === issue?.projectId);
@@ -49,6 +58,11 @@ function TaskDoneModal({ isOpen, issue, onConfirm, onCancel }) {
       setSubmitting(false);
       return;
     }
+    if (issue?.projectId) {
+      templatesApi.listByProject(issue.projectId, { kind: 'resolution' })
+        .then(setResolutionTemplates)
+        .catch(() => setResolutionTemplates([]));
+    }
     if (project?.hasInventory && issue?.projectId) {
       inventoryApi.listByProject(issue.projectId).then((inventory) => {
         dispatch({ type: ACTIONS.SET_INVENTORY_FOR_PROJECT, payload: { projectId: issue.projectId, inventory } });
@@ -56,6 +70,17 @@ function TaskDoneModal({ isOpen, issue, onConfirm, onCancel }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // Inserts a resolution template (placeholders filled); appends when the
+  // note already has text so nothing typed is lost.
+  function applyResolutionTemplate(id) {
+    const tmpl = resolutionTemplates.find((t) => t.id === id);
+    if (!tmpl) return;
+    const reporterName = state.users.find((u) => u.id === issue?.reporterId)?.name;
+    const text = fillTemplate(tmpl.body, { issue, project, currentUser, reporterName });
+    setResolutionNote((prev) => (prev.trim() ? `${prev.trimEnd()}\n\n${text}` : text).slice(0, 2000));
+    setErrors((prev) => ({ ...prev, resolutionNote: undefined }));
+  }
 
   // ── Confirm flow ───────────────────────────────────────────────────────────
   async function submit() {
@@ -127,10 +152,19 @@ function TaskDoneModal({ isOpen, issue, onConfirm, onCancel }) {
     <Modal
       isOpen={isOpen}
       onClose={handleCancel}
-      title="Görevi Tamamla"
+      title={needsApproval ? 'Tamamla ve Onaya Gönder' : 'Görevi Tamamla'}
       size="lg"
       id="task-done-modal-title"
     >
+      {needsApproval && (
+        <div className="alert alert-info py-2 small d-flex gap-2 align-items-start mb-3">
+          <TbShieldCheck size={18} className="flex-shrink-0 mt-1" />
+          <div>
+            Bu iş <strong>yönetici onayından sonra</strong> kapanacak. Gönderdiğinizde durumu
+            <strong> Onay Bekliyor</strong> olur; çözüm notu ve envanter kullanımı onaylanınca işlenir.
+          </div>
+        </div>
+      )}
       {/* Stock warning overlay */}
       {showStockWarning && (
         <div className="alert alert-warning mb-4" role="alert">
@@ -157,9 +191,23 @@ function TaskDoneModal({ isOpen, issue, onConfirm, onCancel }) {
 
       {/* Resolution note */}
       <div className="mb-4">
-        <label htmlFor="resolution-note" className="form-label fw-semibold">
-          Çözüm İçeriği <span className="text-danger">*</span>
-        </label>
+        <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <label htmlFor="resolution-note" className="form-label fw-semibold mb-0">
+            Çözüm İçeriği <span className="text-danger">*</span>
+          </label>
+          {resolutionTemplates.length > 0 && (
+            <select
+              className="form-select form-select-sm"
+              style={{ width: 'auto', maxWidth: 240 }}
+              value=""
+              onChange={(e) => applyResolutionTemplate(e.target.value)}
+              aria-label="Çözüm şablonundan ekle"
+            >
+              <option value="">Şablondan ekle…</option>
+              {resolutionTemplates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+            </select>
+          )}
+        </div>
         <textarea
           id="resolution-note"
           className={`form-control ${errors.resolutionNote ? 'is-invalid' : ''}`}
@@ -299,7 +347,7 @@ function TaskDoneModal({ isOpen, issue, onConfirm, onCancel }) {
           onClick={handleConfirm}
           disabled={showStockWarning || submitting}
         >
-          {submitting ? 'Kaydediliyor...' : 'Onayla'}
+          {submitting ? 'Kaydediliyor...' : needsApproval ? 'Onaya Gönder' : 'Onayla'}
         </button>
       </div>
     </Modal>

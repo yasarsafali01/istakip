@@ -26,7 +26,7 @@ function csvCell(value) {
  * @returns {string}
  */
 export function requestsToCsv(requests, units = [], users = []) {
-  const headers = ['Numara', 'Başlık', 'Durum', 'Öncelik', 'Birim', 'Atanan Kişi', 'Oluşturulma Tarihi'];
+  const headers = ['Numara', 'Başlık', 'Durum', 'Öncelik', 'Daire Başkanlığı', 'Atanan Kişi', 'Oluşturulma Tarihi'];
 
   const rows = requests.map(r => {
     const unit = units.find(u => u.unitCode === r.unitCode);
@@ -110,7 +110,7 @@ export function printRequests(requests, units = [], users = []) {
     <thead>
       <tr>
         <th>Numara</th><th>Başlık</th><th>Durum</th><th>Öncelik</th>
-        <th>Birim</th><th>Atanan Kişi</th><th>Tarih</th>
+        <th>Daire Başkanlığı</th><th>Atanan Kişi</th><th>Tarih</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>

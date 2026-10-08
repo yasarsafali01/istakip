@@ -14,15 +14,18 @@ import {
   TbArrowForwardUp,
   TbBan,
   TbPhone,
+  TbPaperclip,
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
-import { ACTIONS, STATUSES, STATUS_LABELS, PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
+import { ACTIONS, MANUAL_STATUSES, STATUS_LABELS, PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
 import { canChangeAssignee } from '../../utils/permissionUtils';
-import { issuesApi, commentsApi, activitiesApi, teamsApi } from '../../api/resources';
+import { issuesApi, commentsApi, activitiesApi, teamsApi, filesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 import { formatDate, timeAgo, formatTimeSpent } from '../../utils/dateUtils';
+import { formatAnswer, formatBytes } from '../../utils/requestForm';
+import { requestDurations, formatDuration } from '../../utils/durationUtils';
 import Avatar from '../common/Avatar';
 import Badge from '../common/Badge';
 import PriorityIcon from '../common/PriorityIcon';
@@ -32,6 +35,7 @@ import CommentSection from '../issue/CommentSection';
 import ActivityFeed from '../issue/ActivityFeed';
 import ConfirmDialog from '../common/ConfirmDialog';
 import TaskDoneModal from '../common/TaskDoneModal';
+import ApprovalPanel from '../issue/ApprovalPanel';
 
 /**
  * Full Jira-style request detail content.
@@ -85,7 +89,8 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   // Dış kullanıcı yalnızca kendi talebi üzerinde işlem yapabilir; diğer roller izinlerine göre
   const ownsIfExternal = !isExternalUser || isOwnRequest;
   const canEdit = !!currentUser && can('issue.edit') && ownsIfExternal;
-  const canDelete = !!currentUser && can('issue.delete') && ownsIfExternal;
+  // Kimse kendi açmadığı talebi silemez (yöneticiler dahil)
+  const canDelete = !!currentUser && can('issue.delete') && isOwnRequest;
   const canEditDates = !!currentUser && can('issue.dates');
 
   // Projects available for reassignment (same unit as the request)
@@ -341,7 +346,8 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
       {/* Action toolbar */}
       <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
         {/* Status buttons (view mode only) */}
-        {!isExternalUser && !editMode && can('issue.status') && request.status !== 'Geri Çevrildi' && (
+        {!isExternalUser && !editMode && can('issue.status') && request.status !== 'Geri Çevrildi'
+          && (request.status !== 'Onay Bekliyor' || can('issue.approve')) && (
           <>
             {editingStatus ? (
               <select
@@ -352,10 +358,10 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                 onBlur={() => setEditingStatus(false)}
                 autoFocus
               >
-                {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                {MANUAL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
             ) : (
-              STATUSES.filter((s) => s !== request.status && s !== 'Geri Çevrildi').map((s) => (
+              MANUAL_STATUSES.filter((s) => s !== request.status && s !== 'Geri Çevrildi').map((s) => (
                 <button key={s} className="btn btn-sm btn-outline-secondary" onClick={() => handleStatusChange(s)}>
                   {STATUS_LABELS[s]}
                 </button>
@@ -398,7 +404,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
 
           {/* Yönlendir */}
           {canForward && !editMode && (
-            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowForwardModal(true)} title="Talebi başka bir projeye yönlendir">
+            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowForwardModal(true)} title="Talebi başka bir müdürlüğe yönlendir">
               <TbArrowForwardUp size={14} /> Yönlendir
             </button>
           )}
@@ -428,6 +434,9 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
           )}
         </div>
       </div>
+
+      {/* Onay bekleyen tamamlama — yönetici onaylar/reddeder */}
+      <ApprovalPanel issue={request} />
 
       {/* Two-column layout */}
       <div className="row g-4">
@@ -478,7 +487,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
 
               {/* Project (editable) */}
               <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                📁 Proje
+                📁 Müdürlük
               </div>
               <div className="col-8 col-md-9">
                 {editMode ? (
@@ -568,6 +577,33 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
             </div>
           </div>
 
+          {/* Süreler: bekleme (açılış → işleme alınma), çözüm (işleme alınma → çözülme), toplam */}
+          {(() => {
+            const d = requestDurations(request);
+            const cells = [
+              { label: 'Bekleme Süresi', part: d.waiting, hint: 'Açıldığı andan işleme alınana kadar', color: '#D4A000' },
+              { label: 'Çözüm Süresi', part: d.resolution, hint: 'İşleme alındığı andan çözülene kadar', color: '#FF991F' },
+              { label: 'Toplam Süre', part: d.total, hint: 'Açıldığı andan çözülene kadar', color: '#00875A' },
+            ];
+            return (
+              <div className="row g-2 mt-3">
+                {cells.map(({ label, part, hint, color }) => (
+                  <div className="col-4" key={label}>
+                    <div className="rounded-3 border p-2 h-100" title={hint} style={{ borderLeft: `3px solid ${color}` }}>
+                      <div className="text-muted fw-semibold" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {label}
+                      </div>
+                      <div className="fw-bold" style={{ color, fontSize: '1rem' }}>{formatDuration(part?.ms ?? null)}</div>
+                      <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                        {!part ? 'Kayıt yok' : part.ongoing ? 'devam ediyor' : hint}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           <hr className="my-3" />
 
           {/* Description */}
@@ -589,6 +625,44 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
               <p className="text-muted fst-italic mb-0" style={{ fontSize: '0.875rem' }}>Açıklama eklenmemiş.</p>
             )}
           </div>
+
+          {/* Müdürlük talep formu cevapları (talep açılırken verilen) */}
+          {(request.requestFormName || request.requestAnswers?.length > 0) && (
+            <div className="mb-4">
+              <h6 className="fw-semibold text-muted text-uppercase mb-2 d-flex align-items-center gap-2" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                Talep Bilgileri
+                {request.requestFormName && (
+                  <span className="badge bg-primary bg-opacity-10 text-primary text-capitalize" style={{ letterSpacing: 0 }}>
+                    {request.requestFormName}
+                  </span>
+                )}
+              </h6>
+              {request.requestAnswers?.length > 0 && (
+              <dl className="row mb-0 rounded border p-2 mx-0" style={{ fontSize: '0.875rem', background: '#F8FAFC' }}>
+                {request.requestAnswers.map((a) => (
+                  <React.Fragment key={a.questionId}>
+                    <dt className="col-12 col-md-5 text-dark fw-semibold">{a.label}</dt>
+                    <dd className="col-12 col-md-7 mb-2" style={{ whiteSpace: 'pre-wrap' }}>
+                      {a.type === 'file' ? (
+                        <div className="d-flex flex-column align-items-start gap-1">
+                          {(a.value || []).map((file) => (
+                            <button key={file.id} type="button"
+                              className="btn btn-link btn-sm p-0 text-decoration-none d-flex align-items-center gap-1"
+                              title="İndir"
+                              onClick={() => filesApi.download(file.id, file.name).catch((err) => alert(err.message || 'Dosya indirilemedi'))}>
+                              <TbPaperclip size={14} /> {file.name}
+                              <span className="text-muted">({formatBytes(file.size)})</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : formatAnswer(a)}
+                    </dd>
+                  </React.Fragment>
+                ))}
+              </dl>
+              )}
+            </div>
+          )}
 
           <hr className="my-3" />
 
@@ -823,11 +897,11 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
         >
           <div className="bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: 500 }}>
             <h6 className="fw-semibold mb-3">Talebi Yönlendir</h6>
-            <p className="text-muted small mb-3">Talep seçtiğiniz projeye taşınır, ataması kaldırılır ve durumu "Yönlendirildi" olur.</p>
+            <p className="text-muted small mb-3">Talep seçtiğiniz müdürlüğe taşınır, ataması kaldırılır ve durumu "Yönlendirildi" olur.</p>
             <div className="mb-3">
-              <label className="form-label small fw-semibold">Hedef Proje <span className="text-danger">*</span></label>
+              <label className="form-label small fw-semibold">Hedef Müdürlük <span className="text-danger">*</span></label>
               <select className="form-select" value={forwardTargetId} onChange={(e) => setForwardTargetId(e.target.value)} autoFocus>
-                <option value="">— Proje seçin —</option>
+                <option value="">— Müdürlük seçin —</option>
                 {forwardTargets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>

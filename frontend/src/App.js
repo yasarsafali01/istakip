@@ -20,6 +20,10 @@ const InventoryPage     = lazy(() => import('./pages/InventoryPage'));
 const RolesPage         = lazy(() => import('./pages/RolesPage'));
 const ProfilePage       = lazy(() => import('./pages/ProfilePage'));
 const UsersPage         = lazy(() => import('./pages/UsersPage'));
+const RequestFormsPage  = lazy(() => import('./pages/RequestFormsPage'));
+const TeamsTemplatesPage = lazy(() => import('./pages/TeamsTemplatesPage'));
+const ReportsPage       = lazy(() => import('./pages/ReportsPage'));
+const PerformancePage   = lazy(() => import('./pages/PerformancePage'));
 
 const LoadingSpinner = () => (
   <div className="d-flex justify-content-center align-items-center py-5">
@@ -135,6 +139,46 @@ function App() {
                 element={
                   <ProtectedRoute permission="user.assign_role">
                     <UsersPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Request forms — müdürlük-specific questions asked when a request is opened */}
+              <Route
+                path="/request-forms"
+                element={
+                  <ProtectedRoute permission="request_form.manage">
+                    <RequestFormsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Teams & reply templates — per müdürlük, under Yönetim */}
+              <Route
+                path="/teams-templates"
+                element={
+                  <ProtectedRoute permission={['team.manage', 'template.manage']}>
+                    <TeamsTemplatesPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Raporlar — statistics over the user's management scope */}
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER]}>
+                    <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Performansım — own (or, for managers, a subordinate's) performance */}
+              <Route
+                path="/performance"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
+                    <PerformancePage />
                   </ProtectedRoute>
                 }
               />

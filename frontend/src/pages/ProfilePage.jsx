@@ -9,7 +9,7 @@ import Avatar from '../components/common/Avatar';
 const ROLE_LABELS = {
   System_Admin: 'Sistem Yöneticisi',
   Department_Head: 'Daire Başkanı',
-  Project_Manager: 'Proje Yöneticisi',
+  Project_Manager: 'Müdür',
   Worker: 'Çalışan',
   External_User: 'Dış Kullanıcı',
 };

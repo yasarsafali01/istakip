@@ -48,7 +48,7 @@ export default function UnitCard({ unit, onEdit, onClick }) {
           </span>
           <span className="d-flex align-items-center gap-1 text-muted small">
             <TbFolder size={14} />
-            {projectCount} proje
+            {projectCount} müdürlük
           </span>
         </div>
       </div>

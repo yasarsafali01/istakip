@@ -53,24 +53,24 @@ function BacklogView({ projectId }) {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h6 className="fw-semibold mb-0">
-          Backlog <span className="text-muted fw-normal small">({backlogIssues.length})</span>
+          Bekleyen Talepler <span className="text-muted fw-normal small">({backlogIssues.length})</span>
         </h6>
         <button
           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
           onClick={() => setShowCreateModal(true)}
         >
           <TbPlus size={14} />
-          Issue Oluştur
+          Talep Oluştur
         </button>
       </div>
 
       {backlogIssues.length === 0 ? (
         <EmptyState
-          title="Backlog boş"
-          description="Tüm issue'lar bir aya atanmış."
+          title="Bekleyen talep yok"
+          description="Tüm talepler bir aya atanmış."
           action={
             <button className="btn btn-sm btn-primary" onClick={() => setShowCreateModal(true)}>
-              Issue Oluştur
+              Talep Oluştur
             </button>
           }
         />
@@ -127,7 +127,7 @@ function BacklogView({ projectId }) {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Yeni Issue Oluştur"
+        title="Yeni Talep Oluştur"
         size="lg"
       >
         <IssueForm

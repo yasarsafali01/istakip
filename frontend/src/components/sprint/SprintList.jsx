@@ -63,7 +63,7 @@ function SprintList({ projectId }) {
   }
 
   async function handleComplete(sprintId) {
-    if (!window.confirm('Bu ayı kapatmak istediğinizden emin misiniz? Tamamlanmamış işler backlog\'a taşınacak.')) return;
+    if (!window.confirm('Bu ayı kapatmak istediğinizden emin misiniz? Tamamlanmamış işler bekleyen taleplere taşınacak.')) return;
     try {
       const updated = await sprintsApi.complete(sprintId);
       dispatch({ type: ACTIONS.COMPLETE_SPRINT, payload: updated });

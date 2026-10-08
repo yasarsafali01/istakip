@@ -1,6 +1,8 @@
-# İstakip
+# Mersin Üniversitesi Talep Takip Sistemi
 
-Kurumsal birim/proje/talep yönetimi için Jira benzeri bir iş takip sistemi. Birimler (daireler), projeler, issue/talep takibi, aylık sprint döngüsü, rol tabanlı erişim ve envanter takibi içerir.
+Mersin Üniversitesi birimleri için talep takip sistemi: daire başkanlığı/müdürlük bazında talep yönetimi. Daire başkanlıkları, müdürlükler, issue/talep takibi, aylık sprint döngüsü, rol tabanlı erişim ve envanter takibi içerir.
+
+> **Terminoloji:** Arayüzde *Daire Başkanlığı* ve *Müdürlük* olarak geçen kavramlar kodda, API'de ve veritabanında hâlâ `unit` ve `project` adıyla tutulur (`/units`, `/projects`, `units` / `projects` tabloları). Aynı şekilde *Müdür* rolünün anahtarı `Project_Manager`'dır.
 
 ## Mimari
 
@@ -16,10 +18,11 @@ Veri akışı: `mobile/` ve `frontend/`, `backend/`'in REST API'sine JWT ile kim
 
 Yetkilendirme sabit rol adlarına değil **izinlere** bağlıdır. Bir rol = bir *izin kümesi* + bir *veri kapsamı*:
 
-- **Veri kapsamı** rolün neyi görebileceğini belirler: `all` (tüm sistem), `unit` (kendi birimi), `manager` (yönettiği projeler), `project` (atandığı proje), `own` (yalnızca kendi talepleri).
-- **İzinler** rolün neleri yapabileceğini belirler: talep aç, iş oluştur/düzenle/sil, durum değiştir, atama yap, tarih düzenle, aya taşı, aylık dönem yönet, envanter yönet/kullan, proje/birim yönet, rol yönet (tam liste: `GET /permissions`).
-- 5 yerleşik rol (Sistem Yöneticisi, Daire Başkanı, Proje Yöneticisi, Çalışan, Dış Kullanıcı) önceki davranışı birebir korur. Örnek özel roller de gelir (Birim Müdürü, Talep Karşılama Personeli, Envanter Sorumlusu, İzleyici); bunlar düzenlenebilir veya silinebilir.
+- **Veri kapsamı** rolün neyi görebileceğini belirler: `all` (tüm sistem), `unit` (kendi daire başkanlığı), `manager` (yönettiği müdürlükler), `project` (atandığı müdürlük), `own` (yalnızca kendi talepleri).
+- **İzinler** rolün neleri yapabileceğini belirler: talep aç, iş oluştur/düzenle/sil, durum değiştir, atama yap, tarih düzenle, aya taşı, aylık dönem yönet, envanter yönet/kullan, müdürlük/daire başkanlığı yönet, rol yönet (tam liste: `GET /permissions`).
+- 5 yerleşik rol (Sistem Yöneticisi, Daire Başkanı, Müdür, Çalışan, Dış Kullanıcı) önceki davranışı birebir korur. Örnek özel roller de gelir (Daire Başkan Yardımcısı, Talep Karşılama Personeli, Envanter Sorumlusu, İzleyici); bunlar düzenlenebilir veya silinebilir.
 - **Roller ve İzinler** ekranından (web: menüde *Yönetim → Roller ve İzinler*, mobil: *Roller* sekmesi) yeni rol oluşturulur, izinleri işaretlenir ve kullanıcılara atanır. Bu ekran `role.manage` iznini gerektirir; Sistem Yöneticisi rolü kilitlidir (kimse kendini dışarıda bırakamaz) ve kimse kendi rolünü değiştiremez.
+- Bir kullanıcının bir **ana rolü** ve istediği kadar **ek rolü** olabilir (ör. Çalışan + Envanter Sorumlusu). Etkin yetki tüm rollerin birleşimidir: izinlerin hepsi, en geniş veri kapsamı ve en yüksek seviye. Ek roller *Yönetim → Kullanıcılar* ekranından, aynı hiyerarşi kuralıyla (yalnızca kendi seviyenizin altındaki roller) atanır.
 - Rol veya izin değişikliği kullanıcının bir sonraki isteğinde geçerli olur (token yenilemeyi beklemez). Rol tanımlarını mobilde görüntüleme ve kullanıcıya atama yapılır; izin düzenleme web'dedir.
 
 ## Klasör Yapısı

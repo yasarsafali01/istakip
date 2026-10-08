@@ -109,9 +109,9 @@ function AdminDashboard({ state }) {
         <HelpGuide
           title="Ana Sayfa — Sistem Yöneticisi Kılavuzu"
           sections={[
-            { icon: '📊', title: 'Genel Bakış', items: ['Sistemdeki tüm birim, proje ve issue istatistiklerini görürsünüz.', 'Toplam talep, aktif sprint ve tamamlanan işleri takip edebilirsiniz.'] },
-            { icon: '🏢', title: 'Birim Yönetimi', items: ['"Birimler" menüsünden yeni birim oluşturabilir ve düzenleyebilirsiniz.', 'Her birime daire başkanı atayabilirsiniz.'] },
-            { icon: '📁', title: 'Proje Yönetimi', items: ['"Projeler" menüsünden tüm projeleri görüntüleyebilirsiniz.', 'Yeni proje oluşturabilir, proje yöneticisi atayabilirsiniz.', 'Stok takibi gereken projelerde "Stok Takip" özelliğini aktif edebilirsiniz.'] },
+            { icon: '📊', title: 'Genel Bakış', items: ['Sistemdeki tüm daire başkanlığı, müdürlük ve talep istatistiklerini görürsünüz.', 'Toplam talep, aktif sprint ve tamamlanan işleri takip edebilirsiniz.'] },
+            { icon: '🏢', title: 'Daire Başkanlığı Yönetimi', items: ['"Daire Başkanlıkları" menüsünden yeni daire başkanlığı oluşturabilir ve düzenleyebilirsiniz.', 'Her daire başkanlığına daire başkanı atayabilirsiniz.'] },
+            { icon: '📁', title: 'Müdürlük Yönetimi', items: ['"Müdürlükler" menüsünden tüm müdürlükleri görüntüleyebilirsiniz.', 'Yeni müdürlük oluşturabilir, müdür atayabilirsiniz.', 'Stok takibi gereken müdürlüklerde "Stok Takip" özelliğini aktif edebilirsiniz.'] },
             { icon: '✅', title: 'Talep Yönetimi', items: ['Tüm talepleri görüntüleyebilir, atayabilir ve geri çevirebilirsiniz.', '"Talepler" menüsünden talepleri filtreleyebilirsiniz.'] },
           ]}
         />
@@ -120,11 +120,11 @@ function AdminDashboard({ state }) {
 
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Birim Sayısı" value={totalUnits} icon={<TbBuilding />}
+          <StatCard title="Daire Başkanlığı Sayısı" value={totalUnits} icon={<TbBuilding />}
             bg="#EAF0FF" color="#6554C0" />
         </div>
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bağlı Proje" value={totalProjects} icon={<TbFolder />}
+          <StatCard title="Bağlı Müdürlük" value={totalProjects} icon={<TbFolder />}
             bg="#E6F0FF" color="#2563eb" />
         </div>
         <div className="col-6 col-md-4 col-xl">
@@ -143,7 +143,7 @@ function AdminDashboard({ state }) {
             bg="#E3FCEF" color="#00875A" />
         </div>
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
+          <StatCard title="Bekleyen Talepler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
@@ -183,8 +183,8 @@ function DepartmentHeadDashboard({ state, currentUser }) {
         <HelpGuide
           title="Ana Sayfa — Daire Başkanı Kılavuzu"
           sections={[
-            { icon: '📊', title: 'Genel Bakış', items: ['Biriminize ait tüm proje ve issue istatistiklerini görürsünüz.', 'Toplam iş, açık işler, tamamlanan işler ve bekleyen işleri takip edebilirsiniz.'] },
-            { icon: '📁', title: 'Proje Yönetimi', items: ['"Projeler" menüsünden biriminize ait projeleri görüntüleyebilirsiniz.', 'Proje ilerlemesini ve ekip performansını takip edebilirsiniz.'] },
+            { icon: '📊', title: 'Genel Bakış', items: ['Daire başkanlığınıza ait tüm müdürlük ve talep istatistiklerini görürsünüz.', 'Toplam iş, açık işler, tamamlanan işler ve bekleyen talepleri takip edebilirsiniz.'] },
+            { icon: '📁', title: 'Müdürlük Yönetimi', items: ['"Müdürlükler" menüsünden daire başkanlığınıza ait müdürlükleri görüntüleyebilirsiniz.', 'Müdürlük ilerlemesini ve ekip performansını takip edebilirsiniz.'] },
             { icon: '✅', title: 'İş Takibi', items: ['Öncelik dağılımı grafiğinden işlerin öncelik durumunu görebilirsiniz.', 'Son aktiviteler bölümünden güncel değişiklikleri takip edebilirsiniz.'] },
           ]}
         />
@@ -193,7 +193,7 @@ function DepartmentHeadDashboard({ state, currentUser }) {
 
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bağlı Proje" value={visibleProjects.length} icon={<TbFolder />}
+          <StatCard title="Bağlı Müdürlük" value={visibleProjects.length} icon={<TbFolder />}
             bg="#E6F0FF" color="#2563eb" />
         </div>
         <div className="col-6 col-md-4 col-xl">
@@ -212,7 +212,7 @@ function DepartmentHeadDashboard({ state, currentUser }) {
             bg="#E3FCEF" color="#00875A" />
         </div>
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
+          <StatCard title="Bekleyen Talepler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
@@ -256,21 +256,21 @@ function ProjectManagerDashboard({ state, currentUser }) {
       <div className="d-flex align-items-center gap-2 mb-1">
         <h4 className="fw-bold mb-0">Ana Sayfa</h4>
         <HelpGuide
-          title="Ana Sayfa — Proje Yöneticisi Kılavuzu"
+          title="Ana Sayfa — Müdür Kılavuzu"
           sections={[
-            { icon: '📊', title: 'Genel Bakış', items: ['Yönettiğiniz projeye ait tüm istatistikleri görürsünüz.', 'Toplam iş, açık işler, tamamlanan işler ve bekleyen işleri takip edebilirsiniz.'] },
-            { icon: '👥', title: 'Ekip Yönetimi', items: ['Ekip iş yükü kartından ekip üyelerinin açık issue sayılarını görebilirsiniz.', 'İş dağılımını dengeli tutabilirsiniz.'] },
-            { icon: '📅', title: 'Sprint Yönetimi', items: ['Aktif dönem bilgisini takip edebilirsiniz.', '"Backlog" sayfasından sprint oluşturabilir ve yönetebilirsiniz.'] },
-            { icon: '✅', title: 'İş Takibi', items: ['Proje ilerlemesi grafiğinden tamamlanma oranını görebilirsiniz.', 'Son aktiviteler bölümünden güncel değişiklikleri takip edebilirsiniz.'] },
+            { icon: '📊', title: 'Genel Bakış', items: ['Yönettiğiniz müdürlüğe ait tüm istatistikleri görürsünüz.', 'Toplam iş, açık işler, tamamlanan işler ve bekleyen talepleri takip edebilirsiniz.'] },
+            { icon: '👥', title: 'Ekip Yönetimi', items: ['Ekip iş yükü kartından ekip üyelerinin açık talep sayılarını görebilirsiniz.', 'İş dağılımını dengeli tutabilirsiniz.'] },
+            { icon: '📅', title: 'Sprint Yönetimi', items: ['Aktif dönem bilgisini takip edebilirsiniz.', '"Bekleyen Talepler" sayfasından sprint oluşturabilir ve yönetebilirsiniz.'] },
+            { icon: '✅', title: 'İş Takibi', items: ['Müdürlük ilerlemesi grafiğinden tamamlanma oranını görebilirsiniz.', 'Son aktiviteler bölümünden güncel değişiklikleri takip edebilirsiniz.'] },
           ]}
         />
       </div>
       {myProject && <p className="text-muted small mb-4">{myProject.name}</p>}
-      {!myProject && <p className="text-muted small mb-4">Henüz atanmış proje yok.</p>}
+      {!myProject && <p className="text-muted small mb-4">Henüz atanmış müdürlük yok.</p>}
 
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bağlı Proje" value={myProject ? 1 : 0} icon={<TbFolder />}
+          <StatCard title="Bağlı Müdürlük" value={myProject ? 1 : 0} icon={<TbFolder />}
             bg="#E6F0FF" color="#2563eb" />
         </div>
         <div className="col-6 col-md-4 col-xl">
@@ -289,7 +289,7 @@ function ProjectManagerDashboard({ state, currentUser }) {
             bg="#E3FCEF" color="#00875A" />
         </div>
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
+          <StatCard title="Bekleyen Talepler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
@@ -302,7 +302,7 @@ function ProjectManagerDashboard({ state, currentUser }) {
               <div className="card-body">
                 <h6 className="fw-semibold mb-3">Ekip İş Yükü</h6>
                 {Object.keys(assigneeMap).length === 0 ? (
-                  <p className="text-muted small">Atanmış açık issue yok.</p>
+                  <p className="text-muted small">Atanmış açık talep yok.</p>
                 ) : (
                   <ul className="list-unstyled mb-0">
                     {Object.entries(assigneeMap).map(([userId, count]) => {
@@ -354,9 +354,9 @@ function WorkerDashboard({ state, currentUser }) {
         <HelpGuide
           title="Ana Sayfa — Çalışan Kılavuzu"
           sections={[
-            { icon: '📊', title: 'Genel Bakış', items: ['Size atanan tüm işleri ve istatistikleri görürsünüz.', 'Açık işler, tamamlanan işler ve bekleyen işleri takip edebilirsiniz.'] },
-            { icon: '📌', title: 'Aktif İşler', items: ['Board görünümünde aktif dönemdeki işlerinizi görürsünüz.', 'İşleri sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile geçmiş dönemlerdeki işlerinizi görüntüleyebilirsiniz.'] },
-            { icon: '📋', title: 'Backlog', items: ['Henüz bir aya atanmamış bekleyen işlerinizi görürsünüz.'] },
+            { icon: '📊', title: 'Genel Bakış', items: ['Size atanan tüm işleri ve istatistikleri görürsünüz.', 'Açık işler, tamamlanan işler ve bekleyen talepleri takip edebilirsiniz.'] },
+            { icon: '📌', title: 'Aktif Talepler', items: ['Board görünümünde aktif dönemdeki işlerinizi görürsünüz.', 'İşleri sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile geçmiş dönemlerdeki işlerinizi görüntüleyebilirsiniz.'] },
+            { icon: '📋', title: 'Bekleyen Talepler', items: ['Henüz bir aya atanmamış bekleyen taleplerinizi görürsünüz.'] },
           ]}
         />
       </div>
@@ -365,7 +365,7 @@ function WorkerDashboard({ state, currentUser }) {
       {/* Kartlar */}
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bağlı Proje" value={myProject ? 1 : 0} icon={<TbFolder />}
+          <StatCard title="Bağlı Müdürlük" value={myProject ? 1 : 0} icon={<TbFolder />}
             bg="#E6F0FF" color="#2563eb" />
         </div>
         <div className="col-6 col-md-4 col-xl">
@@ -384,7 +384,7 @@ function WorkerDashboard({ state, currentUser }) {
             bg="#E3FCEF" color="#00875A" />
         </div>
         <div className="col-6 col-md-4 col-xl">
-          <StatCard title="Bekleyen İşler" value={pendingIssues} icon={<TbClock />}
+          <StatCard title="Bekleyen Talepler" value={pendingIssues} icon={<TbClock />}
             bg="#FFF8E1" color="#D4A000" />
         </div>
       </div>
@@ -397,7 +397,7 @@ function WorkerDashboard({ state, currentUser }) {
               <span className="badge" style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.75rem' }}>
                 {myProject.key}
               </span>
-              Aktif İşler
+              Aktif Talepler
             </h5>
             <WorkerBoardSection projectId={myProject.id} currentUserId={currentUser.id} />
           </div>
@@ -406,7 +406,7 @@ function WorkerDashboard({ state, currentUser }) {
 
           {/* Backlog */}
           <div className="mb-4">
-            <h5 className="fw-semibold mb-3">Backlog</h5>
+            <h5 className="fw-semibold mb-3">Bekleyen Talepler</h5>
             <WorkerBacklogSection projectId={myProject.id} currentUserId={currentUser.id} state={state} />
           </div>
         </>
@@ -481,7 +481,7 @@ function WorkerBacklogSection({ projectId, currentUserId, state }) {
   );
 
   if (myBacklog.length === 0) {
-    return <p className="text-muted small">Backlog'da bekleyen işiniz yok.</p>;
+    return <p className="text-muted small">Bekleyen talebiniz yok.</p>;
   }
 
   return (
@@ -502,7 +502,7 @@ function WorkerBacklogSection({ projectId, currentUserId, state }) {
                 <td className="ps-3 align-middle text-muted small">{issue.number}</td>
                 <td className="align-middle fw-medium">{issue.title}</td>
                 <td className="align-middle">
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: { Highest: '#DE350B', High: '#FF7700', Medium: '#D4A000', Low: '#2684FF', Lowest: '#00875A' }[issue.priority] || '#6B778C' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: { High: '#DE350B', Medium: '#D4A000', Low: '#2684FF' }[issue.priority] || '#6B778C' }}>
                     {PRIORITY_LABELS[issue.priority] || issue.priority}
                   </span>
                 </td>
@@ -527,7 +527,7 @@ function ExternalUserDashboard({ state, currentUser }) {
   const resolvedCount = myRequests.filter(r => r.status === 'Done').length;
 
   const STATUS_COLORS_MAP = {
-    'To Do': 'secondary', 'In Progress': 'primary', 'In Review': 'warning', 'Done': 'success',
+    'To Do': 'secondary', 'In Progress': 'primary', 'Done': 'success',
   };
 
   return (
@@ -588,7 +588,7 @@ function ExternalUserDashboard({ state, currentUser }) {
 
 /* ── Priority Breakdown ──────────────────────────────────────────────────────── */
 function PriorityBreakdown({ issues }) {
-  const priorityCounts = ['Highest', 'High', 'Medium', 'Low', 'Lowest'].map(priority => ({
+  const priorityCounts = ['High', 'Medium', 'Low'].map(priority => ({
     priority,
     count: issues.filter(i => i.priority === priority).length,
     color: PRIORITY_COLORS[priority],

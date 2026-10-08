@@ -70,7 +70,9 @@ export default function LoginForm() {
     <div className="card shadow-sm" style={{ width: '100%' }}>
       <div className="card-body p-4">
         <div className="text-center mb-4">
-          <h4 className="fw-bold text-primary mb-1">Kurumsal Proje Yönetimi</h4>
+          <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Mersin Üniversitesi logosu" style={{ height: 84 }} className="mb-2" />
+          <h4 className="fw-bold mb-0" style={{ color: '#1F2855' }}>Mersin Üniversitesi</h4>
+          <div className="fw-semibold mb-2" style={{ color: '#EE7203' }}>Talep Takip Sistemi</div>
           <p className="text-muted small">Hesabınıza giriş yapın</p>
         </div>
 

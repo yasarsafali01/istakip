@@ -29,7 +29,8 @@ export default function ProtectedRoute({ children, allowedRoles, permission }) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (permission && !can(permission)) {
+  // An array means "any of these permissions".
+  if (permission && ![].concat(permission).some(can)) {
     return <Navigate to="/dashboard" replace />;
   }
 

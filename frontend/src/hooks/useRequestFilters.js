@@ -3,12 +3,12 @@ import { getVisibleRequests } from '../utils/permissionUtils';
 import { filterRequests } from '../components/request/RequestList';
 
 // Statuses considered "open" (not resolved)
-const OPEN_STATUSES = ['To Do', 'In Progress', 'In Review'];
+const OPEN_STATUSES = ['To Do', 'In Progress', 'Onay Bekliyor'];
 const CLOSED_STATUSES = ['Done'];
 const REJECTED_STATUSES = ['Geri Çevrildi'];
 
 // Priority order for sorting (lower index = higher priority)
-const PRIORITY_ORDER = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
+const PRIORITY_ORDER = ['High', 'Medium', 'Low'];
 
 /**
  * Centralises all filtering and sorting logic for the requests list.
@@ -98,10 +98,10 @@ export function useRequestFilters({ issues, currentUser, projects, units, role }
     } else if (sortBy === 'date_asc') {
       sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     } else if (sortBy === 'priority_asc') {
-      // Highest → Lowest
+      // High → Low
       sorted.sort((a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority));
     } else if (sortBy === 'priority_desc') {
-      // Lowest → Highest
+      // Low → High
       sorted.sort((a, b) => PRIORITY_ORDER.indexOf(b.priority) - PRIORITY_ORDER.indexOf(a.priority));
     }
     return sorted;

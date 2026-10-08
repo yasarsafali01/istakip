@@ -30,9 +30,9 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
 
   function validate() {
     const errs = {};
-    if (!name.trim()) errs.name = 'Proje adı zorunludur.';
-    if (!unitId) errs.unitId = 'Lütfen bir birim seçin.';
-    if (!managerId) errs.managerId = 'Lütfen bir proje yöneticisi seçin.';
+    if (!name.trim()) errs.name = 'Müdürlük adı zorunludur.';
+    if (!unitId) errs.unitId = 'Lütfen bir daire başkanlığı seçin.';
+    if (!managerId) errs.managerId = 'Lütfen bir müdür seçin.';
     return errs;
   }
 
@@ -80,7 +80,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
       {/* Project Name */}
       <div className="mb-3">
         <label htmlFor="proj-name" className="form-label fw-semibold">
-          Proje Adı <span className="text-danger" aria-hidden="true">*</span>
+          Müdürlük Adı <span className="text-danger" aria-hidden="true">*</span>
         </label>
         <input
           id="proj-name"
@@ -88,7 +88,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
           className={`form-control ${errors.name ? 'is-invalid' : ''}`}
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="Proje adı..."
+          placeholder="Müdürlük adı..."
           autoFocus
           aria-required="true"
           aria-describedby={errors.name ? 'proj-name-error' : undefined}
@@ -101,7 +101,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
       {/* Unit */}
       <div className="mb-3">
         <label htmlFor="proj-unit" className="form-label fw-semibold">
-          Birim <span className="text-danger" aria-hidden="true">*</span>
+          Daire Başkanlığı <span className="text-danger" aria-hidden="true">*</span>
         </label>
         {(defaultUnitId || isEdit) ? (
           <input
@@ -121,7 +121,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
             aria-required="true"
             aria-describedby={errors.unitId ? 'proj-unit-error' : undefined}
           >
-            <option value="">— Birim seçin —</option>
+            <option value="">— Daire başkanlığı seçin —</option>
             {state.units.map(u => (
               <option key={u.id} value={u.id}>{u.name} ({u.unitCode})</option>
             ))}
@@ -135,7 +135,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
       {/* Project Manager */}
       <div className="mb-3">
         <label htmlFor="proj-manager" className="form-label fw-semibold">
-          Proje Yöneticisi <span className="text-danger" aria-hidden="true">*</span>
+          Müdür <span className="text-danger" aria-hidden="true">*</span>
         </label>
         <select
           id="proj-manager"
@@ -164,7 +164,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
           value={description}
           onChange={e => setDescription(e.target.value)}
           rows={3}
-          placeholder="Proje açıklaması..."
+          placeholder="Müdürlük açıklaması..."
         />
       </div>
 
@@ -183,7 +183,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
             Stok Takip İsteniyor mu?
           </label>
           <div className="form-text">
-            Etkinleştirilirse proje menüsünde "Stok Takip" bölümü görünür.
+            Etkinleştirilirse müdürlük menüsünde "Stok Takip" bölümü görünür.
           </div>
         </div>
       </div>
@@ -196,7 +196,7 @@ function ProjectForm({ project, onSuccess, onCancel, defaultUnitId }) {
           </button>
         )}
         <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Kaydediliyor...' : isEdit ? 'Değişiklikleri Kaydet' : 'Proje Oluştur'}
+          {submitting ? 'Kaydediliyor...' : isEdit ? 'Değişiklikleri Kaydet' : 'Müdürlük Oluştur'}
         </button>
       </div>
     </form>

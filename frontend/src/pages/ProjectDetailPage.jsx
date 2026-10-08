@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom';
-import { TbLock, TbPlus, TbUsers, TbAlertCircle, TbFlag, TbTrash, TbTemplate } from 'react-icons/tb';
+import { TbLock, TbPlus, TbUsers, TbUsersGroup, TbAlertCircle, TbFlag } from 'react-icons/tb';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessProject } from '../utils/permissionUtils';
@@ -8,7 +8,6 @@ import { formatDate, timeAgo } from '../utils/dateUtils';
 import Board from '../components/board/Board';
 import Avatar from '../components/common/Avatar';
 import PriorityIcon from '../components/common/PriorityIcon';
-import Badge from '../components/common/Badge';
 import IssueModal from '../components/issue/IssueModal';
 import RequestDetailModal from '../components/request/RequestDetailModal';
 import Modal from '../components/common/Modal';
@@ -16,11 +15,15 @@ import IssueForm from '../components/issue/IssueForm';
 import EmptyState from '../components/common/EmptyState';
 import HelpGuide from '../components/common/HelpGuide';
 import { PRIORITIES, PRIORITY_LABELS, ROLES, ACTIONS } from '../constants';
-import { issuesApi, teamsApi, templatesApi, sprintsApi } from '../api/resources';
+import { issuesApi, sprintsApi, teamsApi } from '../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../api/mappers';
 import { usePermissions } from '../hooks/usePermissions';
 import { sortSprintsByCurrentMonth, getMissingSprintMonths, getSprintName } from '../utils/sprintUtils';
 import SprintForm from '../components/sprint/SprintForm';
+import ApprovalsList from '../components/project/ApprovalsList';
+
+// "Aylık Dönem" seçicisinde tüm aylara atanmış işleri birlikte gösteren seçenek.
+const ALL_MONTHS = '__all__';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -28,11 +31,9 @@ const MONTH_NAMES = [
 ];
 
 const PRIORITY_BG = {
-  Highest: { light: '#FFF0F0', dark: '#DE350B' },
-  High:    { light: '#FFF4E5', dark: '#FF7700' },
+  High:    { light: '#FFF0F0', dark: '#DE350B' },
   Medium:  { light: '#FFFAE5', dark: '#D4A000' },
   Low:     { light: '#EAF2FF', dark: '#2684FF' },
-  Lowest:  { light: '#E6FBF4', dark: '#00875A' },
 };
 
 /* ── Ana sayfa ───────────────────────────────────────────────────────────────── */
@@ -43,16 +44,21 @@ function ProjectDetailPage() {
   const { currentUser } = useAuth();
 
   const tabParam = searchParams.get('tab');
-  const tab = tabParam === 'backlog' ? 'backlog' : tabParam === 'team' ? 'team' : 'board';
+  const tab = tabParam === 'backlog' ? 'backlog' : tabParam === 'approvals' ? 'approvals' : 'board';
   const [boardSprintId, setBoardSprintId] = useState('active');
 
   const project = state.projects.find((p) => p.id === projectId);
 
+  // Ekip & Şablonlar moved under Yönetim; keep old bookmarked links working.
+  if (tabParam === 'team') {
+    return <Navigate to={`/teams-templates?project=${projectId}`} replace />;
+  }
+
   if (!project) {
     return (
       <EmptyState
-        title="Proje bulunamadı"
-        description="Bu proje mevcut değil veya silinmiş olabilir."
+        title="Müdürlük bulunamadı"
+        description="Bu müdürlük mevcut değil veya silinmiş olabilir."
         action={<Link to="/dashboard" className="btn btn-primary">Dashboard'a Dön</Link>}
       />
     );
@@ -65,7 +71,7 @@ function ProjectDetailPage() {
   const allSprints = sortSprintsByCurrentMonth(state.sprints.filter((s) => s.projectId === projectId));
 
   const activeSprint = allSprints.find((s) => s.status === 'Active');
-  const pageTitle = tab === 'board' ? 'Aktif İşler' : tab === 'team' ? 'Ekip & Şablonlar' : 'Backlog';
+  const pageTitle = tab === 'board' ? 'Aktif Talepler' : tab === 'approvals' ? 'Onay Bekleyenler' : 'Bekleyen Talepler';
 
   return (
     <div>
@@ -82,16 +88,16 @@ function ProjectDetailPage() {
               currentUser?.role === ROLES.PROJECT_MANAGER ? [
                 { icon: '📊', title: 'İstatistikler', items: ['Sayfanın üstünde toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
                 { icon: '📌', title: 'Board Görünümü', items: ['İşleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.'] },
-                { icon: '📋', title: 'Backlog', items: ['Bekleyen işleri öncelik, atanan kişi ve tarihe göre filtreleyebilirsiniz.', 'İşleri aktif aya atayabilirsiniz.', 'CSV dışa aktarma ve yazdırma özelliklerini kullanabilirsiniz.'] },
-                { icon: '➕', title: 'Issue Oluşturma', items: ['Backlog görünümünde "Issue Oluştur" butonuyla yeni iş ekleyebilirsiniz.'] },
+                { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri öncelik, atanan kişi ve tarihe göre filtreleyebilirsiniz.', 'İşleri aktif aya atayabilirsiniz.', 'CSV dışa aktarma ve yazdırma özelliklerini kullanabilirsiniz.'] },
+                { icon: '➕', title: 'Talep Oluşturma', items: ['Bekleyen Talepler görünümünde "Talep Oluştur" butonuyla yeni iş ekleyebilirsiniz.'] },
               ] : currentUser?.role === ROLES.WORKER ? [
-                { icon: '📊', title: 'İstatistikler', items: ['Projedeki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                { icon: '📊', title: 'İstatistikler', items: ['Müdürlükteki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
                 { icon: '📌', title: 'Board Görünümü', items: ['Size atanan işleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemleri görüntüleyebilirsiniz.'] },
-                { icon: '📋', title: 'Backlog', items: ['Bekleyen işleri görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri görüntüleyebilirsiniz.'] },
               ] : [
-                { icon: '📊', title: 'İstatistikler', items: ['Projedeki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
-                { icon: '📌', title: 'Board Görünümü', items: ['Projenin aktif dönemindeki işleri görüntüleyebilirsiniz.'] },
-                { icon: '📋', title: 'Backlog', items: ['Bekleyen işleri görüntüleyebilirsiniz.'] },
+                { icon: '📊', title: 'İstatistikler', items: ['Müdürlükteki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                { icon: '📌', title: 'Board Görünümü', items: ['Müdürlüğün aktif dönemindeki işleri görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri görüntüleyebilirsiniz.'] },
               ]
             }
           />
@@ -109,11 +115,12 @@ function ProjectDetailPage() {
         />
       )}
 
+      {tab === 'approvals' && <ApprovalsList projectId={projectId} />}
+
       {tab === 'backlog' && (
         <BacklogTabView projectId={projectId} allSprints={allSprints} />
       )}
 
-      {tab === 'team' && <TeamTabView projectId={projectId} />}
     </div>
   );
 }
@@ -156,7 +163,7 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
 
   const totalCount    = sprintIssues.length;
   const todoCount     = sprintIssues.filter(i => i.status === 'To Do').length;
-  const inProgCount   = sprintIssues.filter(i => i.status === 'In Progress' || i.status === 'In Review').length;
+  const inProgCount   = sprintIssues.filter(i => i.status === 'In Progress').length;
   const doneCount     = sprintIssues.filter(i => i.status === 'Done').length;
 
   return (
@@ -302,7 +309,12 @@ function BacklogTabView({ projectId, allSprints }) {
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   // Aktif aya atama — atanmamış ise önce kişi seçimi
   const [assignToSprintModal, setAssignToSprintModal] = useState(null); // issue objesi
-  const [pendingAssigneeId, setPendingAssigneeId] = useState('');
+  // Atama bir kişiye ya da müdürlüğün bir ekibine yapılabilir: "user:<id>" | "team:<id>"
+  const [pendingTarget, setPendingTarget] = useState('');
+  const [teams, setTeams] = useState([]);
+  useEffect(() => {
+    teamsApi.listByProject(projectId).then(setTeams).catch(() => setTeams([]));
+  }, [projectId]);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Aktif sprint değişirse (proje değişimi vb.) default'u güncelle
@@ -321,9 +333,9 @@ function BacklogTabView({ projectId, allSprints }) {
   // Aktif aya atama işlemi
   async function handleAssignToActiveSprint(issue) {
     if (!activeSprint) return;
-    if (!issue.assigneeId) {
-      // Atanmamış — önce kişi seçimi modalı aç
-      setPendingAssigneeId('');
+    if (!issue.assigneeId && !issue.assigneeTeamId) {
+      // Atanmamış — önce kişi/ekip seçimi modalı aç
+      setPendingTarget('');
       setAssignToSprintModal(issue);
     } else {
       // Atanmış — direkt ata
@@ -339,10 +351,12 @@ function BacklogTabView({ projectId, allSprints }) {
 
   async function confirmAssignToSprint() {
     if (!assignToSprintModal || !activeSprint) return;
-    if (!pendingAssigneeId) return;
+    if (!pendingTarget) return;
+    const [kind, targetId] = pendingTarget.split(':');
     try {
-      // Önce kişiyi ata
-      await issuesApi.updateAssignee(assignToSprintModal.id, pendingAssigneeId);
+      // Önce kişiyi ya da ekibi ata
+      if (kind === 'team') await issuesApi.assignTeam(assignToSprintModal.id, targetId);
+      else await issuesApi.updateAssignee(assignToSprintModal.id, targetId);
       // Sonra sprinte ata
       const updated = await issuesApi.moveSprint(assignToSprintModal.id, activeSprint.id);
       const unitCodeByProjectId = buildUnitCodeByProjectId(state.projects, state.units);
@@ -351,7 +365,7 @@ function BacklogTabView({ projectId, allSprints }) {
       window.alert(err.message);
     } finally {
       setAssignToSprintModal(null);
-      setPendingAssigneeId('');
+      setPendingTarget('');
     }
   }
 
@@ -363,7 +377,7 @@ function BacklogTabView({ projectId, allSprints }) {
   )].sort((a, b) => b.localeCompare(a));
 
   // Filtre + sıralama uygula
-  const PRIORITY_ORDER = { Highest: 0, High: 1, Medium: 2, Low: 3, Lowest: 4 };
+  const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
   const filteredBacklog = backlogIssues
     .filter((i) => !priorityFilter || i.priority === priorityFilter)
     .filter((i) => !monthFilter || (i.createdAt && i.createdAt.startsWith(monthFilter)))
@@ -386,11 +400,15 @@ function BacklogTabView({ projectId, allSprints }) {
     return acc;
   }, {});
 
-  // Seçili sprint
-  const selectedSprint = allSprints.find((s) => s.id === selectedSprintId);
-  const sprintIssues = selectedSprint
-    ? state.issues.filter((i) => i.projectId === projectId && i.sprintId === selectedSprintId)
-    : [];
+  // Seçili sprint — ya da "Tüm Aylar": herhangi bir aya atanmış tüm işler
+  const isAllMonths = selectedSprintId === ALL_MONTHS;
+  const selectedSprint = isAllMonths ? null : allSprints.find((s) => s.id === selectedSprintId);
+  const hasSelection = isAllMonths || !!selectedSprint;
+  const sprintIssues = isAllMonths
+    ? state.issues.filter((i) => i.projectId === projectId && i.sprintId)
+    : selectedSprint
+      ? state.issues.filter((i) => i.projectId === projectId && i.sprintId === selectedSprintId)
+      : [];
   const sprintDone = sprintIssues.filter((i) => i.status === 'Done').length;
 
   // Seçili sprintte çalışan kişiler
@@ -401,7 +419,9 @@ function BacklogTabView({ projectId, allSprints }) {
     return { user, issues: userIssues, done: userIssues.filter((i) => i.status === 'Done').length };
   }).filter((m) => m.user);
 
-  const sprintLabel = (s) => s ? (s.name || (s.month ? `${MONTH_NAMES[s.month - 1]} ${s.year}` : s.id)) : '';
+  const sprintLabel = (s) => s
+    ? (s.name || (s.month ? `${MONTH_NAMES[s.month - 1]} ${s.year}` : s.id))
+    : (isAllMonths ? 'Tüm Aylar' : '');
   const sprintBadge = (s) => {
     if (!s) return null;
     const map = {
@@ -430,7 +450,7 @@ function BacklogTabView({ projectId, allSprints }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bekleyen-isler-${new Date().toISOString().substring(0, 10)}.csv`;
+    a.download = `bekleyen-talepler-${new Date().toISOString().substring(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -448,10 +468,10 @@ function BacklogTabView({ projectId, allSprints }) {
       </tr>`;
     }).join('');
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-      <title>Bekleyen İşler — ${project?.name || ''}</title>
+      <title>Bekleyen Talepler — ${project?.name || ''}</title>
       <style>body{font-family:sans-serif;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}th{background:#f4f5f7;font-weight:600}</style>
     </head><body>
-      <h2>${project?.name || ''} — Bekleyen İşler</h2>
+      <h2>${project?.name || ''} — Bekleyen Talepler</h2>
       <p>Tarih: ${new Date().toLocaleDateString('tr-TR')}</p>
       <table><thead><tr><th>No</th><th>Başlık</th><th>Öncelik</th><th>Atanan</th><th>Açılış Tarihi</th></tr></thead>
       <tbody>${rows}</tbody></table>
@@ -504,6 +524,7 @@ function BacklogTabView({ projectId, allSprints }) {
                 onChange={(e) => setSelectedSprintId(e.target.value)}
               >
                 <option value="">— Ay seçin —</option>
+                <option value={ALL_MONTHS}>Tüm Aylar</option>
                 {allSprints.map((s) => (
                   <option key={s.id} value={s.id}>
                     {sprintLabel(s)}{s.status === 'Active' ? ' ✓' : s.status === 'Completed' ? ' 🔒' : ''}
@@ -524,13 +545,13 @@ function BacklogTabView({ projectId, allSprints }) {
                     : `${missingMonths.length} ay eksik — tümünü oluştur`}
                 </button>
               )}
-              {selectedSprint && (() => {
-                const badge = sprintBadge(selectedSprint);
+              {hasSelection && (() => {
+                const badge = selectedSprint && sprintBadge(selectedSprint);
                 return (
                   <div>
                     <div className="d-flex align-items-center gap-2 mb-2">
                       <span className="fw-semibold small">{sprintLabel(selectedSprint)}</span>
-                      <span className="badge" style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.6rem' }}>{badge.label}</span>
+                      {badge && <span className="badge" style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.6rem' }}>{badge.label}</span>}
                     </div>
                     <div className="d-flex gap-3">
                       <div className="text-center">
@@ -557,12 +578,12 @@ function BacklogTabView({ projectId, allSprints }) {
         <div className="col-12 col-md-7">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body py-3">
-              {!selectedSprint ? (
+              {!hasSelection ? (
                 <div className="text-muted small d-flex align-items-center justify-content-center h-100">
                   Personel bilgisi için bir ay seçin.
                 </div>
               ) : sprintMembers.length === 0 ? (
-                <div className="text-muted small">Bu ayda atanmış iş yok.</div>
+                <div className="text-muted small">{isAllMonths ? 'Hiçbir aya atanmış iş yok.' : 'Bu ayda atanmış iş yok.'}</div>
               ) : (
                 <>
                   <div className="text-muted fw-semibold mb-3" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -613,7 +634,7 @@ function BacklogTabView({ projectId, allSprints }) {
                 className="card border-0 shadow-sm h-100"
                 style={{ background: isActive ? bg.dark : bg.light, borderLeft: `4px solid ${bg.dark}`, cursor: 'pointer', transition: 'background 0.15s' }}
                 onClick={() => setPriorityFilter(isActive ? '' : p)}
-                title={`${PRIORITY_LABELS[p]} öncelikli bekleyen işleri filtrele`}
+                title={`${PRIORITY_LABELS[p]} öncelikli bekleyen talepleri filtrele`}
               >
                 <div className="card-body py-3 px-3">
                   <div className="d-flex align-items-center gap-1 mb-1">
@@ -634,7 +655,7 @@ function BacklogTabView({ projectId, allSprints }) {
           {/* Modern filtre çubuğu */}
           <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
             <h6 className="fw-semibold mb-0">
-              Bekleyen İşler <span className="text-muted fw-normal small ms-1">({filteredBacklog.length})</span>
+              Bekleyen Talepler <span className="text-muted fw-normal small ms-1">({filteredBacklog.length})</span>
             </h6>
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {/* Atanan kişi pill */}
@@ -789,12 +810,12 @@ function BacklogTabView({ projectId, allSprints }) {
               </FilterPill>
 
               <button className="btn btn-sm btn-primary d-flex align-items-center gap-1 ms-1" onClick={() => setShowCreateModal(true)}>
-                <TbPlus size={14} /> Issue Oluştur
+                <TbPlus size={14} /> Talep Oluştur
               </button>
             </div>
           </div>
           {filteredBacklog.length === 0 ? (
-            <p className="text-muted small mb-0">{priorityFilter ? `${PRIORITY_LABELS[priorityFilter]} öncelikli bekleyen iş yok.` : 'Bekleyen iş yok.'}</p>
+            <p className="text-muted small mb-0">{priorityFilter ? `${PRIORITY_LABELS[priorityFilter]} öncelikli bekleyen talep yok.` : 'Bekleyen talep yok.'}</p>
           ) : (
             <div className="table-responsive">
               <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
@@ -810,6 +831,7 @@ function BacklogTabView({ projectId, allSprints }) {
                 <tbody>
                   {filteredBacklog.map((issue) => {
                     const assignee = state.users.find((u) => u.id === issue.assigneeId);
+                    const team = !assignee && teams.find((t) => t.id === issue.assigneeTeamId);
                     return (
                       <tr key={issue.id}>
                         <td className="ps-0 align-middle">
@@ -823,6 +845,8 @@ function BacklogTabView({ projectId, allSprints }) {
                         <td className="align-middle">
                           {assignee ? (
                             <div className="d-flex align-items-center gap-2"><Avatar name={assignee.name} color={assignee.avatarColor} size={22} /><span>{assignee.name}</span></div>
+                          ) : team ? (
+                            <div className="d-flex align-items-center gap-2"><TbUsersGroup size={18} className="text-primary" /><span>{team.name}</span></div>
                           ) : <span className="text-muted fst-italic">Atanmamış</span>}
                         </td>
                         <td className="align-middle text-muted"><span title={formatDate(issue.createdAt)}>{timeAgo(issue.createdAt)}</span></td>
@@ -848,19 +872,9 @@ function BacklogTabView({ projectId, allSprints }) {
         </div>
       </div>
 
-      {/* ── Satır 4: Tamamlanmış Aylar ───────────────────────────────────── */}
-      {allSprints.filter((s) => s.status === 'Completed').length > 0 && (
-        <CompletedSprintsSection
-          projectId={projectId}
-          completedSprints={allSprints.filter((s) => s.status === 'Completed')}
-          state={state}
-          onIssueClick={setSelectedIssueId}
-        />
-      )}
-
       <IssueModal isOpen={Boolean(selectedIssueId)} onClose={() => setSelectedIssueId(null)} issueId={selectedIssueId} />
       <RequestDetailModal isOpen={Boolean(selectedRequestId)} onClose={() => setSelectedRequestId(null)} requestId={selectedRequestId} />
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Yeni Issue Oluştur" size="lg">
+      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Yeni Talep Oluştur" size="lg">
         <IssueForm projectId={projectId} onSuccess={() => setShowCreateModal(false)} onCancel={() => setShowCreateModal(false)} />
       </Modal>
 
@@ -868,7 +882,7 @@ function BacklogTabView({ projectId, allSprints }) {
       {assignToSprintModal && (
         <Modal
           isOpen={true}
-          onClose={() => { setAssignToSprintModal(null); setPendingAssigneeId(''); }}
+          onClose={() => { setAssignToSprintModal(null); setPendingTarget(''); }}
           title="Aktif Aya Ata"
         >
           <div>
@@ -876,33 +890,39 @@ function BacklogTabView({ projectId, allSprints }) {
               <strong>{assignToSprintModal.number}</strong> — {assignToSprintModal.title}
             </p>
             <p className="small mb-3">
-              Bu iş atanmamış. <strong>{activeSprint?.name}</strong> aktif ayına atamadan önce bir kişi seçin.
+              Bu iş atanmamış. <strong>{activeSprint?.name}</strong> aktif ayına atamadan önce bir kişi ya da ekip seçin.
             </p>
             <div className="mb-4">
-              <label className="form-label fw-semibold small">Atanacak Kişi <span className="text-danger">*</span></label>
+              <label className="form-label fw-semibold small">Atanacak Kişi / Ekip <span className="text-danger">*</span></label>
               <select
                 className="form-select"
-                value={pendingAssigneeId}
-                onChange={(e) => setPendingAssigneeId(e.target.value)}
+                value={pendingTarget}
+                onChange={(e) => setPendingTarget(e.target.value)}
                 autoFocus
               >
-                <option value="">— Kişi seçin —</option>
-                {state.users
-                  .filter((u) => u.role !== ROLES.EXTERNAL_USER && (u.projectId === projectId || state.projects.find((p) => p.id === projectId)?.managerId === u.id))
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))
-                }
+                <option value="">— Kişi veya ekip seçin —</option>
+                <optgroup label="Kişiler">
+                  {projectMembers.map((u) => (
+                    <option key={u.id} value={`user:${u.id}`}>{u.name}</option>
+                  ))}
+                </optgroup>
+                {teams.length > 0 && (
+                  <optgroup label="Ekipler">
+                    {teams.map((t) => (
+                      <option key={t.id} value={`team:${t.id}`}>{t.name} ({t.memberIds.length} üye)</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
             <div className="d-flex gap-2 justify-content-end">
-              <button className="btn btn-outline-secondary btn-sm" onClick={() => { setAssignToSprintModal(null); setPendingAssigneeId(''); }}>
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => { setAssignToSprintModal(null); setPendingTarget(''); }}>
                 İptal
               </button>
               <button
                 className="btn btn-primary btn-sm"
                 onClick={confirmAssignToSprint}
-                disabled={!pendingAssigneeId}
+                disabled={!pendingTarget}
               >
                 Ata ve Aktif Aya Ekle
               </button>
@@ -923,88 +943,6 @@ function BacklogTabView({ projectId, allSprints }) {
           onCancel={() => setShowAddMonthModal(false)}
         />
       </Modal>
-    </div>
-  );
-}
-
-/* ── Tamamlanmış Aylar ───────────────────────────────────────────────────────── */
-function CompletedSprintsSection({ projectId, completedSprints, state, onIssueClick }) {
-  const [selectedId, setSelectedId] = useState(null);
-  const sprintIssues = selectedId
-    ? state.issues.filter((i) => i.projectId === projectId && i.sprintId === selectedId)
-    : [];
-
-  return (
-    <div className="card border-0 shadow-sm">
-      <div className="card-body">
-        <h6 className="fw-semibold mb-3">Tamamlanmış Aylar</h6>
-        <div className="row g-3">
-          <div className="col-12 col-md-4">
-            <ul className="list-unstyled mb-0">
-              {completedSprints.map((sprint) => {
-                const label = sprint.name || (sprint.month ? `${MONTH_NAMES[sprint.month - 1]} ${sprint.year}` : sprint.id);
-                const total = state.issues.filter((i) => i.sprintId === sprint.id).length;
-                const done = state.issues.filter((i) => i.sprintId === sprint.id && i.status === 'Done').length;
-                const isSel = selectedId === sprint.id;
-                return (
-                  <li key={sprint.id}>
-                    <button
-                      className={`btn w-100 text-start d-flex align-items-center justify-content-between px-3 py-2 mb-1 rounded ${isSel ? 'btn-primary' : 'btn-outline-secondary'}`}
-                      style={{ fontSize: '0.83rem' }}
-                      onClick={() => setSelectedId(isSel ? null : sprint.id)}
-                    >
-                      <span className="d-flex align-items-center gap-2"><TbLock size={13} />{label}</span>
-                      <span className={`badge ${isSel ? 'bg-white text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.65rem' }}>{done}/{total}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          <div className="col-12 col-md-8">
-            {!selectedId ? (
-              <div className="text-muted small d-flex align-items-center justify-content-center h-100 py-4">Detayları görmek için bir ay seçin.</div>
-            ) : sprintIssues.length === 0 ? (
-              <p className="text-muted small">Bu ayda issue yok.</p>
-            ) : (
-              <div className="table-responsive">
-                <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr className="text-muted" style={{ fontSize: '0.75rem' }}>
-                      <th className="fw-semibold border-0 ps-0">Başlık</th>
-                      <th className="fw-semibold border-0">Durum</th>
-                      <th className="fw-semibold border-0">Öncelik</th>
-                      <th className="fw-semibold border-0">Atanan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sprintIssues.map((issue) => {
-                      const assignee = state.users.find((u) => u.id === issue.assigneeId);
-                      return (
-                        <tr key={issue.id}>
-                          <td className="ps-0 align-middle">
-                            <button className="btn btn-link p-0 text-start text-decoration-none" style={{ fontSize: '0.85rem' }} onClick={() => onIssueClick(issue.id)}>
-                              <span className="text-muted me-1" style={{ fontSize: '0.72rem' }}>{issue.number}</span>
-                              <span className="fw-medium">{issue.title}</span>
-                            </button>
-                          </td>
-                          <td className="align-middle"><Badge label={issue.status} type="status" /></td>
-                          <td className="align-middle"><PriorityIcon priority={issue.priority} showLabel size={13} /></td>
-                          <td className="align-middle">
-                            {assignee ? (
-                              <div className="d-flex align-items-center gap-2"><Avatar name={assignee.name} color={assignee.avatarColor} size={22} /><span>{assignee.name}</span></div>
-                            ) : <span className="text-muted fst-italic">—</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1064,203 +1002,6 @@ function FilterPill({ label, icon, active, activeLabel, onClear, children }) {
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-/* ── Ekip & Şablonlar sekmesi ────────────────────────────────────────────────── */
-function TeamTabView({ projectId }) {
-  const { state } = useAppContext();
-  const { can } = usePermissions();
-  const [teams, setTeams] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [newTeamName, setNewTeamName] = useState('');
-  const [newMemberByTeam, setNewMemberByTeam] = useState({});
-  const [tmplForm, setTmplForm] = useState({ title: '', body: '' });
-
-  const canManageTeams = can('team.manage');
-  const canManageTemplates = can('template.manage');
-
-  const projectUsers = state.users.filter((u) => u.role !== ROLES.EXTERNAL_USER);
-
-  function load() {
-    setLoading(true);
-    Promise.all([teamsApi.listByProject(projectId), templatesApi.listByProject(projectId, true)])
-      .then(([t, tmpl]) => { setTeams(t); setTemplates(tmpl); })
-      .finally(() => setLoading(false));
-  }
-  useEffect(() => { load(); }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function createTeam(e) {
-    e.preventDefault();
-    if (!newTeamName.trim()) return;
-    await teamsApi.create(projectId, newTeamName.trim());
-    setNewTeamName('');
-    load();
-  }
-  async function deleteTeam(id) {
-    if (!window.confirm('Bu ekibi silmek istediğinizden emin misiniz?')) return;
-    await teamsApi.delete(id);
-    load();
-  }
-  async function addMember(teamId) {
-    const userId = newMemberByTeam[teamId];
-    if (!userId) return;
-    await teamsApi.addMember(teamId, userId);
-    setNewMemberByTeam((s) => ({ ...s, [teamId]: '' }));
-    load();
-  }
-  async function removeMember(teamId, userId) {
-    await teamsApi.removeMember(teamId, userId);
-    load();
-  }
-
-  async function createTemplate(e) {
-    e.preventDefault();
-    if (!tmplForm.title.trim() || !tmplForm.body.trim()) return;
-    await templatesApi.create(projectId, { title: tmplForm.title.trim(), body: tmplForm.body.trim() });
-    setTmplForm({ title: '', body: '' });
-    load();
-  }
-  async function toggleTemplateActive(t) {
-    await templatesApi.update(t.id, { title: t.title, body: t.body, sortOrder: t.sortOrder, isActive: !t.isActive });
-    load();
-  }
-  async function deleteTemplate(id) {
-    if (!window.confirm('Bu şablonu silmek istediğinizden emin misiniz?')) return;
-    await templatesApi.delete(id);
-    load();
-  }
-
-  if (loading) return <div className="text-center py-5"><span className="spinner-border text-primary" /></div>;
-
-  return (
-    <div className="row g-4">
-      {/* Ekipler */}
-      <div className="col-lg-6">
-        <div className="card border-0 shadow-sm">
-          <div className="card-body">
-            <h6 className="fw-semibold d-flex align-items-center gap-2 mb-3">
-              <TbUsers size={16} /> Ekipler
-            </h6>
-            <p className="text-muted small">Konulara/işlere tek tek kişi yerine bir ekip atayabilirsiniz.</p>
-
-            {canManageTeams && (
-              <form className="d-flex gap-2 mb-3" onSubmit={createTeam}>
-                <input className="form-control form-control-sm" placeholder="Yeni ekip adı" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} />
-                <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 flex-shrink-0" type="submit">
-                  <TbPlus size={14} /> Ekle
-                </button>
-              </form>
-            )}
-
-            {teams.length === 0 ? (
-              <p className="text-muted small fst-italic">Henüz ekip oluşturulmadı.</p>
-            ) : (
-              teams.map((t) => (
-                <div key={t.id} className="border rounded-3 p-2 mb-2">
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <span className="fw-medium small">{t.name}</span>
-                    {canManageTeams && (
-                      <button className="btn btn-sm btn-link text-danger p-0" onClick={() => deleteTeam(t.id)} title="Ekibi sil">
-                        <TbTrash size={14} />
-                      </button>
-                    )}
-                  </div>
-                  <div className="d-flex flex-wrap gap-1 mb-2">
-                    {t.memberIds.length === 0 && <span className="text-muted" style={{ fontSize: 12 }}>Üye yok</span>}
-                    {t.memberIds.map((uid) => {
-                      const u = state.users.find((x) => x.id === uid);
-                      return (
-                        <span key={uid} className="badge text-bg-light border d-flex align-items-center gap-1" style={{ fontSize: 11 }}>
-                          {u?.name || uid}
-                          {canManageTeams && (
-                            <span role="button" onClick={() => removeMember(t.id, uid)} style={{ cursor: 'pointer' }}>×</span>
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  {canManageTeams && (
-                    <div className="d-flex gap-1">
-                      <select
-                        className="form-select form-select-sm"
-                        value={newMemberByTeam[t.id] || ''}
-                        onChange={(e) => setNewMemberByTeam((s) => ({ ...s, [t.id]: e.target.value }))}
-                      >
-                        <option value="">— Üye ekle —</option>
-                        {projectUsers.filter((u) => !t.memberIds.includes(u.id)).map((u) => (
-                          <option key={u.id} value={u.id}>{u.name}</option>
-                        ))}
-                      </select>
-                      <button className="btn btn-sm btn-outline-secondary flex-shrink-0" onClick={() => addMember(t.id)}>Ekle</button>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Cevap Şablonları */}
-      <div className="col-lg-6">
-        <div className="card border-0 shadow-sm">
-          <div className="card-body">
-            <h6 className="fw-semibold d-flex align-items-center gap-2 mb-3">
-              <TbTemplate size={16} /> Cevap Şablonları
-            </h6>
-            <p className="text-muted small">
-              Yorum kutusuna eklenebilecek hazır yanıtlar. Yer tutucular: <code>{'{TalepNo}'}</code>, <code>{'{TalepEdenAdı}'}</code>, <code>{'{ProjeAdı}'}</code>, <code>{'{BenimAdım}'}</code>.
-            </p>
-
-            {canManageTemplates && (
-              <form className="mb-3" onSubmit={createTemplate}>
-                <input
-                  className="form-control form-control-sm mb-2"
-                  placeholder="Şablon başlığı"
-                  value={tmplForm.title}
-                  onChange={(e) => setTmplForm((s) => ({ ...s, title: e.target.value }))}
-                />
-                <textarea
-                  className="form-control form-control-sm mb-2"
-                  rows={2}
-                  placeholder="Şablon metni"
-                  value={tmplForm.body}
-                  onChange={(e) => setTmplForm((s) => ({ ...s, body: e.target.value }))}
-                />
-                <button className="btn btn-primary btn-sm d-flex align-items-center gap-1" type="submit">
-                  <TbPlus size={14} /> Şablon Ekle
-                </button>
-              </form>
-            )}
-
-            {templates.length === 0 ? (
-              <p className="text-muted small fst-italic">Henüz şablon eklenmedi.</p>
-            ) : (
-              templates.map((t) => (
-                <div key={t.id} className="border rounded-3 p-2 mb-2" style={{ opacity: t.isActive ? 1 : 0.55 }}>
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span className="fw-medium small">{t.title}</span>
-                    {canManageTemplates && (
-                      <div className="d-flex gap-2">
-                        <button className="btn btn-sm btn-link p-0" style={{ fontSize: 11 }} onClick={() => toggleTemplateActive(t)}>
-                          {t.isActive ? 'Pasifleştir' : 'Aktifleştir'}
-                        </button>
-                        <button className="btn btn-sm btn-link text-danger p-0" onClick={() => deleteTemplate(t.id)}>
-                          <TbTrash size={13} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-muted mb-0" style={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{t.body}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -370,3 +370,91 @@ mark {
 * {
   box-sizing: border-box;
 }
+
+/* ── Request form question grid ─────────────────────────────────────────────
+   Questions carry a width (12/6/4/3 of a 12-column row, so at most 4 per row).
+   Breakpoints use a container query, not the viewport, so the same form
+   lays out correctly in the request modal, the builder's narrow preview
+   panel and on phones: narrow → stacked, medium → 2 per row, wide → as set. */
+.rq-grid { container-type: inline-size; }
+.rq-row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.25rem 1rem;
+}
+.rq-cell { grid-column: span 12; min-width: 0; }
+@container (min-width: 480px) {
+  .rq-w-6, .rq-w-4, .rq-w-3 { grid-column: span 6; }
+}
+@container (min-width: 720px) {
+  .rq-w-4 { grid-column: span 4; }
+  .rq-w-3 { grid-column: span 3; }
+}
+
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Raporlar: chart tokens (reference data-viz palette, light) ───────────── */
+.viz-root {
+  --viz-surface: #fcfcfb;
+  --viz-text-primary: #0b0b0b;
+  --viz-text-secondary: #52514e;
+  --viz-text-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-series-1: #2a78d6;   /* blue  — açılan / tek seri */
+  --viz-series-2: #eb6834;   /* orange */
+  --viz-series-3: #1baf7a;   /* aqua */
+  --viz-seq-0: #f0efec;      /* heatmap "0" cell */
+}
+.viz-card { background: var(--viz-surface); }
+.viz-tooltip {
+  position: fixed; z-index: 2000; pointer-events: none;
+  background: #fff; color: var(--viz-text-primary);
+  border: 1px solid rgba(11,11,11,0.10); border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  padding: 6px 10px; font-size: 0.78rem; line-height: 1.35; max-width: 260px;
+}
+.viz-tooltip .viz-key { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.viz-table td.num, .viz-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.viz-table th[role="button"] { cursor: pointer; user-select: none; white-space: nowrap; }
+.viz-heat td { text-align: center; font-variant-numeric: tabular-nums; font-size: 0.75rem; padding: 4px 2px; border: 2px solid var(--viz-surface); }
+
+/* ── Raporlar: summary banner, section headers ───────────────────────────── */
+.report-banner {
+  background: linear-gradient(120deg, #1d4ed8 0%, #2563eb 55%, #3b82f6 100%);
+  color: #fff; border-radius: 12px; padding: 14px 18px;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.25);
+}
+.report-banner .chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 999px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; color: #fff;
+}
+.report-banner .chip-strong { background: #fff; color: #1d4ed8; border-color: #fff; }
+.report-banner .chip button { background: none; border: 0; color: inherit; padding: 0; line-height: 1; opacity: .85; }
+.report-section {
+  display: flex; align-items: center; gap: 8px; margin: 28px 0 12px;
+  padding-left: 10px; border-left: 4px solid #2563eb;
+}
+.report-section h5 { margin: 0; font-weight: 700; }
+.report-section small { color: #6b7280; }
+.report-help {
+  background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a;
+  border-radius: 10px; padding: 10px 14px; font-size: 0.85rem;
+}
+.print-only { display: none; }
+
+/* ── Print / PDF ─────────────────────────────────────────────────────────── */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body, .app-shell { background: #fff !important; }
+  .sidebar, .topbar, .no-print, .viz-tooltip { display: none !important; }
+  .print-only { display: block !important; }
+  main { padding: 0 !important; }
+  .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5e7eb !important; }
+  .report-section { break-after: avoid; }
+  .table-responsive { max-height: none !important; overflow: visible !important; }
+  .report-banner { box-shadow: none; }
+}

@@ -43,6 +43,8 @@ export const issuesApi = {
   delete: (id) => api.delete(`/issues/${id}`),
   updateStatus: (id, status) => api.patch(`/issues/${id}/status`, { status }),
   complete: (id, data) => api.post(`/issues/${id}/complete`, data),
+  approveCompletion: (id) => api.post(`/issues/${id}/approve-completion`, {}),
+  rejectCompletion: (id, reason) => api.post(`/issues/${id}/reject-completion`, { reason }),
   updateAssignee: (id, assigneeId) => api.patch(`/issues/${id}/assignee`, { assigneeId, assigneeTeamId: null }),
   assignTeam: (id, assigneeTeamId) => api.patch(`/issues/${id}/assignee`, { assigneeId: null, assigneeTeamId }),
   clone: (id) => api.post(`/issues/${id}/clone`),
@@ -64,10 +66,45 @@ export const teamsApi = {
 };
 
 export const templatesApi = {
-  listByProject: (projectId, all = false) => api.get(`/projects/${projectId}/reply-templates${all ? '?all=1' : ''}`),
+  // kind: 'reply' (comment answers) | 'resolution' (completion notes) | omitted = both;
+  // all: also inactive ones (management screen)
+  listByProject: (projectId, { all = false, kind } = {}) => {
+    const qs = new URLSearchParams({ ...(all ? { all: '1' } : {}), ...(kind ? { kind } : {}) }).toString();
+    return api.get(`/projects/${projectId}/reply-templates${qs ? `?${qs}` : ''}`);
+  },
   create: (projectId, data) => api.post(`/projects/${projectId}/reply-templates`, data),
   update: (id, data) => api.patch(`/reply-templates/${id}`, data),
   delete: (id) => api.delete(`/reply-templates/${id}`),
+};
+
+export const requestFormsApi = {
+  // all=true also returns inactive forms (management screen only)
+  listByProject: (projectId, all = false) => api.get(`/projects/${projectId}/request-forms${all ? '?all=1' : ''}`),
+  create: (projectId, data) => api.post(`/projects/${projectId}/request-forms`, data),
+  update: (id, data) => api.patch(`/request-forms/${id}`, data),
+  remove: (id) => api.delete(`/request-forms/${id}`),
+  saveQuestions: (id, questions) => api.put(`/request-forms/${id}/questions`, { questions }),
+  duplicate: (id) => api.post(`/request-forms/${id}/duplicate`, {}),
+};
+
+export const filesApi = {
+  upload: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.upload('/uploads', fd);
+  },
+  /** Fetches the file with auth and triggers the browser's save dialog. */
+  download: async (id, name) => {
+    const blob = await api.blob(`/files/${id}`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
 };
 
 export const notificationsApi = {

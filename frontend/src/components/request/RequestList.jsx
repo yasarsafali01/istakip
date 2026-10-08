@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { TbPlus, TbEye, TbFlag, TbCircleCheck, TbArrowsSort, TbBuilding, TbUpload, TbFileSpreadsheet, TbPrinter } from 'react-icons/tb';
+import { TbPlus, TbEye, TbFlag, TbCircleCheck, TbArrowsSort, TbBuilding, TbUpload, TbFileSpreadsheet, TbPrinter, TbClock } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -18,6 +18,7 @@ import Modal from '../common/Modal';
 import EmptyState from '../common/EmptyState';
 import HelpGuide from '../common/HelpGuide';
 import { requestsToCsv, downloadCsv, printRequests } from '../../utils/exportUtils';
+import { requestDurations, averageMs, formatDuration } from '../../utils/durationUtils';
 
 /**
  * Filters requests by searchQuery across title, description and number fields.
@@ -112,6 +113,12 @@ export default function RequestList() {
   const resolvedCount   = allVisibleRequests.filter(r => r.status === 'Done').length;
   const rejectedCount   = allVisibleRequests.filter(r => r.status === 'Geri Çevrildi').length;
 
+  // Average waiting / resolution / total time over resolved requests
+  const resolvedDurations = allVisibleRequests.filter(r => r.status === 'Done').map(r => requestDurations(r));
+  const avgWaiting    = averageMs(resolvedDurations.map(d => d.waiting));
+  const avgResolution = averageMs(resolvedDurations.map(d => d.resolution));
+  const avgTotal      = averageMs(resolvedDurations.map(d => d.total));
+
   return (
     <div>
       {/* Header */}
@@ -126,23 +133,23 @@ export default function RequestList() {
             title="Talepler Sayfası — Yardım Kılavuzu"
             sections={currentUser?.role === ROLES.EXTERNAL_USER ? [
               { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz ve size görünür yapılan talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.', 'Geri çevrilen talepler kırmızı, tamamlananlar yeşil ile işaretlenir.'] },
-              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı birimlere açılan taleplerin doğru birime tekrar açılması gerekmektedir.'] },
+              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı daire başkanlıklarına açılan taleplerin doğru daire başkanlığına tekrar açılması gerekmektedir.'] },
               { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep başlığı, açıklaması veya numarasına göre filtreleyin.', 'Durum filtresinden açık, kapanan veya geri çevrilen talepleri görüntüleyin.'] },
               { icon: '📄', title: 'Talep Detayı', items: ['Bir talep kartına tıklayarak detaylarını görüntüleyin.', 'Kendi oluşturduğunuz talepleri düzenleyebilir veya silebilirsiniz.'] },
             ] : currentUser?.role === ROLES.WORKER ? [
               { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.'] },
-              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı birimlere açılan taleplerin doğru birime tekrar açılması gerekmektedir.'] },
-              { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep arayabilirsiniz.', 'Durum, öncelik ve birim filtrelerini kullanabilirsiniz.'] },
+              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı daire başkanlıklarına açılan taleplerin doğru daire başkanlığına tekrar açılması gerekmektedir.'] },
+              { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep arayabilirsiniz.', 'Durum, öncelik ve daire başkanlığı filtrelerini kullanabilirsiniz.'] },
             ] : currentUser?.role === ROLES.PROJECT_MANAGER ? [
-              { icon: '📋', title: 'Talep Yönetimi', items: ['Projenize gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve birime göre filtreleyebilirsiniz.'] },
+              { icon: '📋', title: 'Talep Yönetimi', items: ['Müdürlüğünüze gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve daire başkanlığına göre filtreleyebilirsiniz.'] },
               { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevirme sırasında neden belirtmeniz gerekir.'] },
               { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
             ] : currentUser?.role === ROLES.DEPARTMENT_HEAD ? [
-              { icon: '📋', title: 'Talep Yönetimi', items: ['Biriminize gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve birime göre filtreleyebilirsiniz.'] },
-              { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri proje yöneticilerine atayabilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevrilen talepler açan kişiye geri gönderilir.'] },
+              { icon: '📋', title: 'Talep Yönetimi', items: ['Daire başkanlığınıza gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve daire başkanlığına göre filtreleyebilirsiniz.'] },
+              { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri müdürlere atayabilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevrilen talepler açan kişiye geri gönderilir.'] },
               { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.'] },
             ] : [
-              { icon: '📋', title: 'Tüm Talepleri Yönetme', items: ['Sistemdeki tüm talepler listelenir.', 'Birim, durum, öncelik filtrelerini kullanabilirsiniz.'] },
+              { icon: '📋', title: 'Tüm Talepleri Yönetme', items: ['Sistemdeki tüm talepler listelenir.', 'Daire Başkanlığı, durum, öncelik filtrelerini kullanabilirsiniz.'] },
               { icon: '✅', title: 'Talep İşlemleri', items: ['Tüm talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.'] },
               { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
             ]}
@@ -223,7 +230,7 @@ export default function RequestList() {
             <div className="fw-bold" style={{ fontSize: '2rem', color: '#FF991F', lineHeight: 1 }}>
               {inProgressCount}
             </div>
-            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>In Progress + In Review</div>
+            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Devam eden talepler</div>
           </div>
         </div>
 
@@ -272,6 +279,28 @@ export default function RequestList() {
         </div>
       </div>
 
+      {/* Ortalama süreler — çözülmüş talepler üzerinden */}
+      {resolvedCount > 0 && (
+        <div className="card border-0 shadow-sm mb-4">
+          <div className="card-body py-2 d-flex flex-wrap align-items-center gap-4">
+            <span className="text-muted small fw-semibold d-flex align-items-center gap-1">
+              <TbClock size={15} /> Ortalama süreler
+              <span className="fw-normal">({resolvedCount} çözülmüş talep)</span>
+            </span>
+            {[
+              ['Bekleme', avgWaiting, 'Açılıştan işleme alınana kadar', '#D4A000'],
+              ['Çözüm', avgResolution, 'İşleme alınmadan çözülene kadar', '#FF991F'],
+              ['Toplam', avgTotal, 'Açılıştan çözülene kadar', '#00875A'],
+            ].map(([label, ms, hint, color]) => (
+              <span key={label} className="d-flex align-items-baseline gap-2" title={hint}>
+                <span className="text-muted small">{label}</span>
+                <span className="fw-bold" style={{ color }}>{formatDuration(ms)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Filter chips row */}
       <div className="d-flex flex-wrap gap-2 mb-3">
 
@@ -279,11 +308,11 @@ export default function RequestList() {
         {availableUnits.length > 0 && (
           <FilterChip
             icon={<TbBuilding size={14} />}
-            label={selectedUnitId ? (availableUnits.find(u => u.id === selectedUnitId)?.unitCode ?? 'Birim') : 'Birim'}
+            label={selectedUnitId ? (availableUnits.find(u => u.id === selectedUnitId)?.unitCode ?? 'Daire Başkanlığı') : 'Daire Başkanlığı'}
             active={!!selectedUnitId}
           >
             <FilterChipOption selected={!selectedUnitId} onClick={() => setSelectedUnitId(null)}>
-              Tüm Birimler
+              Tüm Daire Başkanlıkları
             </FilterChipOption>
             {availableUnits.map(unit => (
               <FilterChipOption
@@ -401,7 +430,7 @@ export default function RequestList() {
           description={
             searchQuery.trim()
               ? `"${searchQuery}" için sonuç bulunamadı.`
-              : 'Seçili birimde talep bulunamadı.'
+              : 'Seçili daire başkanlığında talep bulunamadı.'
           }
         />
       ) : filteredRequests.length === 0 ? (
@@ -457,7 +486,8 @@ export default function RequestList() {
       />
 
       {/* New request modal */}
-      <Modal isOpen={showForm} title="Yeni Talep Oluştur" onClose={() => setShowForm(false)}>
+      {/* lg: müdürlük questions can sit up to 4 per row */}
+      <Modal isOpen={showForm} title="Yeni Talep Oluştur" onClose={() => setShowForm(false)} size="lg">
         <RequestForm
           onClose={() => setShowForm(false)}
           defaultUnitId={selectedUnitId}

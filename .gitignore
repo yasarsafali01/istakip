@@ -42,6 +42,9 @@ CLAUDE.md
 backend/bin/
 backend/*.exe
 
+# Talep formlarına yüklenen dosyalar (UPLOAD_DIR)
+backend/uploads/
+
 # React Native / Expo
 mobile/ios/
 mobile/android/

@@ -27,9 +27,9 @@ function BacklogPage() {
   if (!project) {
     return (
       <EmptyState
-        title="Proje bulunamadı"
-        description="Bu proje mevcut değil veya silinmiş olabilir."
-        action={<Link to="/projects" className="btn btn-primary">Projelere Dön</Link>}
+        title="Müdürlük bulunamadı"
+        description="Bu müdürlük mevcut değil veya silinmiş olabilir."
+        action={<Link to="/projects" className="btn btn-primary">Müdürlüklere Dön</Link>}
       />
     );
   }
@@ -58,20 +58,20 @@ function BacklogPage() {
         <div className="d-flex align-items-center gap-2 mb-0">
           <h4 className="fw-bold mb-0">{project.name}</h4>
           <HelpGuide
-            title="Backlog & Aylık Dönemler — Yardım Kılavuzu"
+            title="Bekleyen Talepler & Aylık Dönemler — Yardım Kılavuzu"
             sections={
               currentUser?.role === ROLES.PROJECT_MANAGER ? [
                 { icon: '📅', title: 'Aylık Dönem Yönetimi', items: ['Sol tarafta aylık dönemleri (sprint) oluşturabilir ve yönetebilirsiniz.', 'Dönem başlatabilir, tamamlayabilirsiniz.', 'Tamamlanan dönemler salt okunur modda görüntülenir.'] },
-                { icon: '📋', title: 'Backlog Yönetimi', items: ['Sağ tarafta backlog\'daki bekleyen işleri görürsünüz.', 'İşleri aylık dönemlere atayabilirsiniz.', 'Ay filtresi ile belirli bir döneme ait işleri görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Bekleyen Talepler Yönetimi', items: ['Sağ tarafta bekleyen talepleri görürsünüz.', 'İşleri aylık dönemlere atayabilirsiniz.', 'Ay filtresi ile belirli bir döneme ait işleri görüntüleyebilirsiniz.'] },
                 { icon: '🔒', title: 'Kapalı Dönemler', items: ['Tamamlanan dönemler kilit ikonu ile işaretlenir.', 'Kapalı dönemlerdeki işler değiştirilemez.'] },
               ] : [
-                { icon: '📅', title: 'Aylık Dönemler', items: ['Projenin aylık dönemlerini (sprint) görüntüleyebilirsiniz.', 'Ay filtresi ile belirli bir döneme ait işleri görüntüleyebilirsiniz.'] },
-                { icon: '📋', title: 'Backlog', items: ['Henüz bir aya atanmamış bekleyen işleri görürsünüz.'] },
+                { icon: '📅', title: 'Aylık Dönemler', items: ['Müdürlüğün aylık dönemlerini (sprint) görüntüleyebilirsiniz.', 'Ay filtresi ile belirli bir döneme ait işleri görüntüleyebilirsiniz.'] },
+                { icon: '📋', title: 'Bekleyen Talepler', items: ['Henüz bir aya atanmamış bekleyen talepleri görürsünüz.'] },
               ]
             }
           />
         </div>
-        <p className="text-muted small mb-0">Backlog & Aylık Dönemler</p>
+        <p className="text-muted small mb-0">Bekleyen Talepler & Aylık Dönemler</p>
       </div>
 
       {/* Month filter */}
@@ -84,7 +84,7 @@ function BacklogPage() {
             value={selectedSprintId}
             onChange={e => setSelectedSprintId(e.target.value)}
           >
-            <option value="all">Tüm Backlog</option>
+            <option value="all">Tüm Bekleyen Talepler</option>
             {allSprints.map(sprint => {
               const label = sprint.name ||
                 (sprint.month ? `${MONTH_NAMES[sprint.month - 1]} ${sprint.year}` : sprint.id);
@@ -135,8 +135,7 @@ function BacklogPage() {
                           <span className="small fw-semibold flex-grow-1">{issue.title}</span>
                           <span className={`badge bg-${
                             issue.status === 'Done' ? 'success' :
-                            issue.status === 'In Progress' ? 'primary' :
-                            issue.status === 'In Review' ? 'warning' : 'secondary'
+                            issue.status === 'In Progress' ? 'primary' : 'secondary'
                           }`} style={{ fontSize: '0.65rem' }}>
                             {issue.status}
                           </span>

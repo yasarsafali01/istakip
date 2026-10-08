@@ -5,11 +5,9 @@
 
 // Default response-time budget per priority, in hours.
 const SLA_HOURS_BY_PRIORITY = {
-  Highest: 4,
   High: 8,
   Medium: 24,
   Low: 72,
-  Lowest: 168,
 };
 
 const TERMINAL_STATUSES = new Set(['Done', 'Geri Çevrildi', 'İptal Edildi']);

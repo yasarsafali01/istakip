@@ -35,23 +35,23 @@ function ProjectList() {
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div className="d-flex align-items-center gap-2">
-          <h4 className="fw-bold mb-0">Projeler</h4>
+          <h4 className="fw-bold mb-0">Müdürlükler</h4>
           <HelpGuide
-            title="Projeler Sayfası — Yardım Kılavuzu"
+            title="Müdürlükler Sayfası — Yardım Kılavuzu"
             sections={
               role === ROLES.SYSTEM_ADMIN ? [
-                { icon: '📁', title: 'Proje Listesi', items: ['Sistemdeki tüm projeleri birim bazında gruplandırılmış olarak görürsünüz.', 'Her proje kartında açık issue sayısı ve aktif sprint bilgisi yer alır.'] },
-                { icon: '➕', title: 'Proje Oluşturma', items: ['"Proje Oluştur" butonuyla yeni proje ekleyebilirsiniz.', 'Projeye birim, yönetici ve açıklama atayabilirsiniz.', 'Stok takibi gereken projeler için "Stok Takip" seçeneğini aktif edebilirsiniz.'] },
-                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.'] },
+                { icon: '📁', title: 'Müdürlük Listesi', items: ['Sistemdeki tüm müdürlükleri daire başkanlığı bazında gruplandırılmış olarak görürsünüz.', 'Her müdürlük kartında açık talep sayısı ve aktif sprint bilgisi yer alır.'] },
+                { icon: '➕', title: 'Müdürlük Oluşturma', items: ['"Müdürlük Oluştur" butonuyla yeni müdürlük ekleyebilirsiniz.', 'Müdürlüğe daire başkanlığı, müdür ve açıklama atayabilirsiniz.', 'Stok takibi gereken müdürlükler için "Stok Takip" seçeneğini aktif edebilirsiniz.'] },
+                { icon: '🔗', title: 'Müdürlük Detayı', items: ['Müdürlük kartına tıklayarak aktif talepler ve bekleyen talepler görünümlerine geçebilirsiniz.'] },
               ] : role === ROLES.DEPARTMENT_HEAD ? [
-                { icon: '📁', title: 'Proje Listesi', items: ['Biriminize bağlı projeleri görürsünüz.', 'Her proje kartında açık issue sayısı ve aktif sprint bilgisi yer alır.'] },
-                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.'] },
+                { icon: '📁', title: 'Müdürlük Listesi', items: ['Daire başkanlığınıza bağlı müdürlükleri görürsünüz.', 'Her müdürlük kartında açık talep sayısı ve aktif sprint bilgisi yer alır.'] },
+                { icon: '🔗', title: 'Müdürlük Detayı', items: ['Müdürlük kartına tıklayarak aktif talepler ve bekleyen talepler görünümlerine geçebilirsiniz.'] },
               ] : role === ROLES.PROJECT_MANAGER ? [
-                { icon: '📁', title: 'Proje Listesi', items: ['Yönettiğiniz projeyi burada görürsünüz.'] },
-                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.', 'Issue oluşturabilir, sprint yönetebilirsiniz.'] },
+                { icon: '📁', title: 'Müdürlük Listesi', items: ['Yönettiğiniz müdürlüğü burada görürsünüz.'] },
+                { icon: '🔗', title: 'Müdürlük Detayı', items: ['Müdürlük kartına tıklayarak aktif talepler ve bekleyen talepler görünümlerine geçebilirsiniz.', 'Talep oluşturabilir, sprint yönetebilirsiniz.'] },
               ] : [
-                { icon: '📁', title: 'Proje Listesi', items: ['Atandığınız projeyi burada görürsünüz.'] },
-                { icon: '🔗', title: 'Proje Detayı', items: ['Proje kartına tıklayarak board ve backlog görünümlerine geçebilirsiniz.'] },
+                { icon: '📁', title: 'Müdürlük Listesi', items: ['Atandığınız müdürlüğü burada görürsünüz.'] },
+                { icon: '🔗', title: 'Müdürlük Detayı', items: ['Müdürlük kartına tıklayarak aktif talepler ve bekleyen talepler görünümlerine geçebilirsiniz.'] },
               ]
             }
           />
@@ -62,7 +62,7 @@ function ProjectList() {
             onClick={() => setShowModal(true)}
           >
             <TbPlus size={18} aria-hidden="true" />
-            Proje Oluştur
+            Müdürlük Oluştur
           </button>
         )}
       </div>
@@ -70,12 +70,12 @@ function ProjectList() {
       {/* Project grid */}
       {visibleProjects.length === 0 ? (
         <EmptyState
-          title="Henüz proje yok"
-          description="İlk projenizi oluşturarak başlayın."
+          title="Henüz müdürlük yok"
+          description="İlk müdürlüğünüzü oluşturarak başlayın."
           action={
             canCreateProject ? (
               <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-                Proje Oluştur
+                Müdürlük Oluştur
               </button>
             ) : null
           }
@@ -119,7 +119,7 @@ function ProjectList() {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Yeni Proje Oluştur"
+        title="Yeni Müdürlük Oluştur"
         size="lg"
       >
         <ProjectForm onSuccess={handleSuccess} onCancel={() => setShowModal(false)} />

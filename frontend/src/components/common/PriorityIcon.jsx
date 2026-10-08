@@ -1,26 +1,22 @@
 import React from 'react';
 import {
   TbArrowBigUpFilled,
-  TbArrowBigUpLinesFilled,
   TbArrowBigDownFilled,
-  TbArrowBigDownLinesFilled,
   TbArrowBigRightFilled,
 } from 'react-icons/tb';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '../../constants';
 
 const PRIORITY_ICONS = {
-  Highest: TbArrowBigUpLinesFilled,
   High: TbArrowBigUpFilled,
   Medium: TbArrowBigRightFilled,
   Low: TbArrowBigDownFilled,
-  Lowest: TbArrowBigDownLinesFilled,
 };
 
 /**
  * Renders a coloured icon representing an issue priority level.
  *
  * @param {Object}  props
- * @param {string}  props.priority   - One of: Highest | High | Medium | Low | Lowest
+ * @param {string}  props.priority   - One of: High | Medium | Low
  * @param {number}  [props.size]     - Icon size in pixels (default: 16)
  * @param {boolean} [props.showLabel] - Whether to render the priority label next to the icon
  * @param {string}  [props.className] - Additional CSS classes on the wrapper

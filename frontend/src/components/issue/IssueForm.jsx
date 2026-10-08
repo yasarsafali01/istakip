@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
-import { ACTIONS, PRIORITIES, PRIORITY_LABELS, STATUSES, STATUS_LABELS, ISSUE_TYPES } from '../../constants';
+import { ACTIONS, PRIORITIES, PRIORITY_LABELS, MANUAL_STATUSES, STATUS_LABELS, ISSUE_TYPES } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 
 // "Done" always goes through the dedicated completion flow (resolution note
 // + optional inventory usage), not this general edit form.
-const EDITABLE_STATUSES = STATUSES.filter((s) => s !== 'Done');
+const EDITABLE_STATUSES = MANUAL_STATUSES.filter((s) => s !== 'Done');
 
 /**
  * Form for creating or editing an issue.
@@ -122,7 +122,7 @@ function IssueForm({ projectId, issue, onSuccess, onCancel }) {
           className={`form-control ${errors.title ? 'is-invalid' : ''}`}
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="Issue başlığı…"
+          placeholder="Talep başlığı…"
           autoFocus
           aria-required="true"
           aria-describedby={errors.title ? 'issue-title-error' : undefined}
@@ -143,7 +143,7 @@ function IssueForm({ projectId, issue, onSuccess, onCancel }) {
           value={description}
           onChange={e => setDescription(e.target.value)}
           rows={4}
-          placeholder="Issue hakkında detaylı açıklama…"
+          placeholder="Talep hakkında detaylı açıklama…"
         />
       </div>
 
@@ -221,7 +221,7 @@ function IssueForm({ projectId, issue, onSuccess, onCancel }) {
           value={sprintId}
           onChange={e => setSprintId(e.target.value)}
         >
-          <option value="">— Backlog —</option>
+          <option value="">— Bekleyen Talepler —</option>
           {projectSprints.map(sprint => (
             <option key={sprint.id} value={sprint.id}>
               {sprint.name} {sprint.status === 'Active' ? '(Aktif)' : ''}
@@ -238,7 +238,7 @@ function IssueForm({ projectId, issue, onSuccess, onCancel }) {
           </button>
         )}
         <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Kaydediliyor...' : isEdit ? 'Kaydet' : 'Issue Oluştur'}
+          {submitting ? 'Kaydediliyor...' : isEdit ? 'Kaydet' : 'Talep Oluştur'}
         </button>
       </div>
     </form>

@@ -38,8 +38,8 @@ function InventoryPage() {
           <HelpGuide
             title="Stok Durumu — Yardım Kılavuzu"
             sections={[
-              { icon: '📦', title: 'Stok Takibi', items: ['Bu sayfa projeye ait stok ve envanter bilgilerini gösterir.', 'Stok takibi özelliği yakında kullanıma açılacaktır.'] },
-              { icon: '🔗', title: 'Geri Dönüş', items: ['"Projeye Dön" butonuyla proje detay sayfasına geri dönebilirsiniz.'] },
+              { icon: '📦', title: 'Stok Takibi', items: ['Bu sayfa müdürlüğe ait stok ve envanter bilgilerini gösterir.', 'Stok takibi özelliği yakında kullanıma açılacaktır.'] },
+              { icon: '🔗', title: 'Geri Dönüş', items: ['"Müdürlüğe Dön" butonuyla müdürlük detay sayfasına geri dönebilirsiniz.'] },
             ]}
           />
         </div>
@@ -55,7 +55,7 @@ function InventoryPage() {
           <h5 className="fw-semibold mb-2">Stok Durumu</h5>
           <p className="text-muted mb-4">Bu özellik yakında gelecek.</p>
           <Link to={`/projects/${projectId}`} className="btn btn-outline-primary btn-sm">
-            Projeye Dön
+            Müdürlüğe Dön
           </Link>
         </div>
       </div>

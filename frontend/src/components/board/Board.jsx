@@ -71,8 +71,15 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
     const issue = state.issues.find(i => i.id === draggableId);
     if (!issue || issue.status === newStatus) return;
 
-    // Done sütununa sürüklenince modal aç
-    if (newStatus === 'Done') {
+    // Onay bekleyen işi yalnızca onay yetkisi olan taşıyabilir
+    if (issue.status === 'Onay Bekliyor' && !can('issue.approve')) {
+      window.alert('Onay bekleyen talebin durumunu yalnızca yönetici değiştirebilir.');
+      return;
+    }
+
+    // Done ya da Onay Bekliyor sütununa sürüklenince tamamlama modalı aç
+    // (onay yetkisi olmayan için modal işi onaya gönderir)
+    if (newStatus === 'Done' || newStatus === 'Onay Bekliyor') {
       setPendingDoneIssue(issue);
       return;
     }
@@ -123,7 +130,7 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
             onClick={() => setShowCreateModal(true)}
           >
             <TbPlus size={16} aria-hidden="true" />
-            Issue Oluştur
+            Talep Oluştur
           </button>
         )}
       </div>
@@ -132,14 +139,14 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
       {!sprintId && !currentSprint && (
         <EmptyState
           title="Aktif ay bulunmuyor"
-          description="Backlog sayfasından bir ay başlatın."
+          description="Bekleyen Talepler sayfasından bir ay başlatın."
         />
       )}
 
       {showEmptySprintMessage && (
         <EmptyState
           title="Bu ayda issue yok"
-          description="Backlog'dan issue atayabilirsiniz."
+          description="Bekleyen taleplerden talep atayabilirsiniz."
         />
       )}
 
@@ -188,7 +195,7 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
         <Modal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
-          title="Yeni Issue Oluştur"
+          title="Yeni Talep Oluştur"
           size="lg"
         >
           <IssueForm

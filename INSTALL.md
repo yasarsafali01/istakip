@@ -23,7 +23,10 @@ JWT_SECRET=değiştir-bu-gizli-anahtarı
 JWT_ACCESS_TTL=15m
 JWT_REFRESH_TTL=720h
 PORT=8080
+UPLOAD_DIR=uploads   # talep formu dosya yüklemelerinin diskteki yeri (varsayılan: backend/uploads)
 ```
+
+> Talep formlarındaki dosya sorularına yüklenen dosyalar `UPLOAD_DIR` klasöründe tutulur (dosya başına en fazla 10 MB; izinli türler: görsel, PDF, Office, metin/CSV, arşiv). Bu klasör `.gitignore`'dadır; üretimde kalıcı bir diske bağlanmalı ve yedeklenmelidir.
 
 ### Veritabanı Kurulumu
 

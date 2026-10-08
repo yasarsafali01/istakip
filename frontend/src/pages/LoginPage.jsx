@@ -16,7 +16,7 @@ const DEMO_ACCOUNTS = [
     color: '#00875A',
     accounts: [
       { label: 'Ayşe Kaya (Daire Başkanı)', email: 'bigd.baskan@example.com', password: 'pass123', badge: 'Dept. Head' },
-      { label: 'Mehmet Demir (Proje Yöneticisi)', email: 'bigd.pm@example.com', password: 'pass123', badge: 'PM' },
+      { label: 'Mehmet Demir (Müdür)', email: 'bigd.pm@example.com', password: 'pass123', badge: 'PM' },
       { label: 'Ali Yılmaz (Üye)', email: 'bigd.worker1@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Fatma Şahin (Üye)', email: 'bigd.worker2@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Hasan Çelik (Üye)', email: 'bigd.worker3@example.com', password: 'pass123', badge: 'Worker' },
@@ -27,7 +27,7 @@ const DEMO_ACCOUNTS = [
     group: 'Bilgi İşlem — Siber Güvenlik Projesi',
     color: '#8777D9',
     accounts: [
-      { label: 'Burak Yıldırım (Proje Yöneticisi)', email: 'bigd.pm2@example.com', password: 'pass123', badge: 'PM' },
+      { label: 'Burak Yıldırım (Müdür)', email: 'bigd.pm2@example.com', password: 'pass123', badge: 'PM' },
       { label: 'Murat Öztürk (Üye)', email: 'bigd.worker5@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Selin Aydın (Üye)', email: 'bigd.worker6@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Kemal Doğan (Üye)', email: 'bigd.worker7@example.com', password: 'pass123', badge: 'Worker' },
@@ -39,7 +39,7 @@ const DEMO_ACCOUNTS = [
     color: '#FF5630',
     accounts: [
       { label: 'Zeynep Çelik (Daire Başkanı)', email: 'odb.baskan@example.com', password: 'pass123', badge: 'Dept. Head' },
-      { label: 'Can Öztürk (Proje Yöneticisi)', email: 'odb.pm@example.com', password: 'pass123', badge: 'PM' },
+      { label: 'Can Öztürk (Müdür)', email: 'odb.pm@example.com', password: 'pass123', badge: 'PM' },
       { label: 'Deniz Yıldız (Üye)', email: 'odb.worker1@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Burak Kara (Üye)', email: 'odb.worker2@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Neslihan Güneş (Üye)', email: 'odb.worker3@example.com', password: 'pass123', badge: 'Worker' },
@@ -50,7 +50,7 @@ const DEMO_ACCOUNTS = [
     group: 'Öğrenci İşleri — Dijital Belge Yönetimi',
     color: '#FFAB00',
     accounts: [
-      { label: 'Seda Kılıç (Proje Yöneticisi)', email: 'odb.pm2@example.com', password: 'pass123', badge: 'PM' },
+      { label: 'Seda Kılıç (Müdür)', email: 'odb.pm2@example.com', password: 'pass123', badge: 'PM' },
       { label: 'Gizem Yılmaz (Üye)', email: 'odb.worker5@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Serkan Avcı (Üye)', email: 'odb.worker6@example.com', password: 'pass123', badge: 'Worker' },
       { label: 'Pınar Erdoğan (Üye)', email: 'odb.worker7@example.com', password: 'pass123', badge: 'Worker' },

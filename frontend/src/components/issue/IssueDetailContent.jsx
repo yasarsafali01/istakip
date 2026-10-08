@@ -16,7 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
 import {
   ACTIONS,
-  STATUSES,
+  MANUAL_STATUSES,
   STATUS_LABELS,
   PRIORITIES,
   ISSUE_TYPES,
@@ -34,6 +34,7 @@ import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import ConfirmDialog from '../common/ConfirmDialog';
 import TaskDoneModal from '../common/TaskDoneModal';
+import ApprovalPanel from './ApprovalPanel';
 
 /**
  * Unified Jira-style detail content for ALL issue types (Task, Bug, Story, Epic, Request).
@@ -98,8 +99,8 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
 
   const isOwnIssue = issue.reporterId === currentUser?.id;
   const canEdit = !readonly && can('issue.edit') && (!isExternalUser || isOwnIssue);
-  // Silme ayrı izne bağlı (issue.delete); dış kullanıcı yalnızca kendi talebini silebilir
-  const canDelete = !readonly && can('issue.delete') && (!isExternalUser || isOwnIssue);
+  // Silme ayrı izne bağlı (issue.delete) ve herkes yalnızca kendi açtığı talebi silebilir
+  const canDelete = !readonly && can('issue.delete') && isOwnIssue;
   // Geri çevirme: PM/DH/Admin tüm talepleri reddedebilir (backlog ve sprint içindeki işler dahil)
   // Ancak zaten "Geri Çevrildi" durumundaki işler için buton gösterilmez
   const canReject =
@@ -302,7 +303,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
       await issuesApi.updateStatus(issue.id, 'Geri Çevrildi');
       await issuesApi.updateAssignee(issue.id, reporter?.id || null);
       // Ret açıklamasını yorum olarak ekle
-      await commentsApi.create(issue.id, `🚫 **Issue Geri Çevrildi**\n\n${rejectReason.trim()}`);
+      await commentsApi.create(issue.id, `🚫 **Talep Geri Çevrildi**\n\n${rejectReason.trim()}`);
       await refreshIssue();
       setShowRejectModal(false);
       setRejectReason('');
@@ -338,7 +339,8 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
       {/* Action toolbar */}
       <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
         {/* Status transition buttons (non-edit-mode, non-readonly, non-external) */}
-        {!readonly && !editMode && !isExternalUser && can('issue.status') && (
+        {!readonly && !editMode && !isExternalUser && can('issue.status')
+          && (issue.status !== 'Onay Bekliyor' || can('issue.approve')) && (
           editingStatus ? (
             <select
               className="form-select form-select-sm"
@@ -348,10 +350,10 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
               onBlur={() => setEditingStatus(false)}
               autoFocus
             >
-              {STATUSES.filter((s) => s !== 'Geri Çevrildi').map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+              {MANUAL_STATUSES.filter((s) => s !== 'Geri Çevrildi').map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           ) : (
-            STATUSES.filter((s) => s !== issue.status && s !== 'Geri Çevrildi').map((s) => (
+            MANUAL_STATUSES.filter((s) => s !== issue.status && s !== 'Geri Çevrildi').map((s) => (
               <button key={s} className="btn btn-sm btn-outline-secondary" onClick={() => handleStatusChange(s)}>
                 {STATUS_LABELS[s]}
               </button>
@@ -393,7 +395,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
             <button
               className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
               onClick={() => setShowRejectModal(true)}
-              title="Issue'yu geri çevir"
+              title="Talebi geri çevir"
             >
               <TbX size={14} /> Geri Çevir
             </button>
@@ -410,6 +412,9 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
           )}
         </div>
       </div>
+
+      {/* Onay bekleyen tamamlama — yönetici onaylar/reddeder */}
+      <ApprovalPanel issue={issue} />
 
       {/* Two-column layout */}
       <div className="row g-4">
@@ -458,7 +463,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
               <div className="col-8 col-md-9">
                 {editMode ? (
                   <select className="form-select form-select-sm" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
-                    {STATUSES.filter((s) => s !== 'Done').map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                    {MANUAL_STATUSES.filter((s) => s !== 'Done').map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
                 ) : (
                   <Badge label={issue.status} type="status" />
@@ -469,7 +474,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
               {editMode && (
                 <>
                   <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                    🏢 Birim
+                    🏢 Daire Başkanlığı
                   </div>
                   <div className="col-8 col-md-9">
                     <select
@@ -478,7 +483,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
                       value={editUnitId}
                       onChange={(e) => { setEditUnitId(e.target.value); setEditProjectId(''); setEditAssigneeId(''); }}
                     >
-                      <option value="">— Birim seçin —</option>
+                      <option value="">— Daire başkanlığı seçin —</option>
                       {state.units.map((u) => (
                         <option key={u.id} value={u.id}>{u.name} ({u.unitCode})</option>
                       ))}
@@ -487,7 +492,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
                 </>
               )}
               <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                📁 Proje
+                📁 Müdürlük
               </div>
               <div className="col-8 col-md-9">
                 {editMode ? (
@@ -498,7 +503,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
                     value={editProjectId}
                     onChange={(e) => { setEditProjectId(e.target.value); setEditAssigneeId(''); }}
                   >
-                    <option value="">— Proje seçin —</option>
+                    <option value="">— Müdürlük seçin —</option>
                     {unitProjects.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
@@ -781,8 +786,8 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDelete}
-        title="Issue'yu Sil"
-        message={`"${issue.title}" issue'sunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        title="Talebi Sil"
+        message={`"${issue.title}" talebini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
         confirmText="Sil"
       />
 
@@ -794,7 +799,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
           onClick={(e) => { if (e.target === e.currentTarget) setAssignModal(false); }}
         >
           <div className="bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: 460 }}>
-            <h6 className="fw-semibold mb-3">Issue'yu Ata</h6>
+            <h6 className="fw-semibold mb-3">Talebi Ata</h6>
             <p className="text-muted small mb-3">
               <strong>{state.users.find(u => u.id === pendingAssigneeId)?.name ?? 'Atanmamış'}</strong> kişisine atanacak.
             </p>
@@ -848,9 +853,9 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
           onClick={(e) => { if (e.target === e.currentTarget) { setShowRejectModal(false); setRejectReason(''); } }}
         >
           <div className="bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: 500 }}>
-            <h6 className="fw-semibold mb-3">Issue'yu Geri Çevir</h6>
+            <h6 className="fw-semibold mb-3">Talebi Geri Çevir</h6>
             <p className="text-muted small mb-3">
-              Bu issue <strong>{reporter?.name || 'açan kişiye'}</strong> geri gönderilecek ve durumu <strong>"Geri Çevrildi"</strong> olarak ayarlanacak.
+              Bu talep <strong>{reporter?.name || 'açan kişiye'}</strong> geri gönderilecek ve durumu <strong>"Geri Çevrildi"</strong> olarak ayarlanacak.
             </p>
 
             <div className="mb-4">
@@ -860,12 +865,12 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
               <textarea
                 className="form-control"
                 rows={4}
-                placeholder="Issue'nun neden geri çevrildiğini açıklayın (örn: Yanlış ekibe yönlendirildi, eksik bilgi, vb.)"
+                placeholder="Talebin neden geri çevrildiğini açıklayın (örn: Yanlış ekibe yönlendirildi, eksik bilgi, vb.)"
                 value={rejectReason}
                 onChange={e => setRejectReason(e.target.value)}
                 autoFocus
               />
-              <small className="text-muted">Bu açıklama issue'ya yorum olarak eklenecektir.</small>
+              <small className="text-muted">Bu açıklama talebe yorum olarak eklenecektir.</small>
             </div>
 
             <div className="d-flex justify-content-end gap-2">
