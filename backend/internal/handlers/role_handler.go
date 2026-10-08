@@ -214,6 +214,8 @@ type assignRoleRequest struct {
 	Role      models.Role `json:"role"`
 	UnitID    *uuid.UUID  `json:"unitId"`
 	ProjectID *uuid.UUID  `json:"projectId"`
+	// Additional roles; nil keeps the user's current extra roles unchanged.
+	ExtraRoles *[]models.Role `json:"extraRoles"`
 }
 
 // AssignUserRole gives a user a role, delegated down the org chart: the
@@ -274,17 +276,40 @@ func (h *RoleHandler) AssignUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hierarchy check: both the new role and the user's current role must be
-	// strictly weaker than the caller's own — reject role-definition-level
-	// escalation attempts before touching anything.
-	currentDef, ok := h.store.Get(user.Role)
+	// Hierarchy check: the new role(s) and the user's current effective level
+	// (highest of all their roles) must be strictly weaker than the caller's
+	// own — reject escalation attempts before touching anything.
+	current, ok := h.store.Resolve(user.Role, user.ExtraRoles)
 	if !ok {
 		response.Error(w, http.StatusInternalServerError, "failed to resolve current role")
 		return
 	}
-	if !services.CanAssignRoleLevel(claims.Level, def.Level, currentDef.Level) {
+	if !services.CanAssignRoleLevel(claims.Level, def.Level, current.Level) {
 		response.Error(w, http.StatusForbidden, "Bu rolü atamak için yetkiniz yetersiz")
 		return
+	}
+
+	// Extra roles: de-duplicated, never repeating the primary, each one also
+	// strictly below the caller's level.
+	var extras []models.Role
+	if req.ExtraRoles != nil {
+		seen := map[models.Role]bool{req.Role: true}
+		for _, key := range *req.ExtraRoles {
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			d, ok := h.store.Get(key)
+			if !ok {
+				response.Error(w, http.StatusBadRequest, "Geçersiz ek rol")
+				return
+			}
+			if d.Level >= claims.Level {
+				response.Error(w, http.StatusForbidden, "\""+d.Name+"\" rolünü atamak için yetkiniz yetersiz")
+				return
+			}
+			extras = append(extras, key)
+		}
 	}
 
 	// Only a system-wide (scope=all) caller may relocate the user between
@@ -299,15 +324,40 @@ func (h *RoleHandler) AssignUserRole(w http.ResponseWriter, r *http.Request) {
 	if req.ProjectID != nil {
 		projectID = req.ProjectID
 	}
-	if def.Scope == models.ScopeUnit && unitID == nil {
-		response.Error(w, http.StatusBadRequest, "Bu rol için kullanıcının bir birimi olmalı")
+	needsUnit, needsProject := def.Scope == models.ScopeUnit, def.Scope == models.ScopeProject
+	for _, key := range extras {
+		d, _ := h.store.Get(key)
+		needsUnit = needsUnit || d.Scope == models.ScopeUnit
+		needsProject = needsProject || d.Scope == models.ScopeProject
+	}
+	if needsUnit && unitID == nil {
+		response.Error(w, http.StatusBadRequest, "Bu rol için kullanıcının bir daire başkanlığı olmalı")
 		return
 	}
-	if def.Scope == models.ScopeProject && projectID == nil {
-		response.Error(w, http.StatusBadRequest, "Bu rol için kullanıcının bir projesi olmalı")
+	if needsProject && projectID == nil {
+		response.Error(w, http.StatusBadRequest, "Bu rol için kullanıcının bir müdürlüğü olmalı")
 		return
 	}
 
+	if req.ExtraRoles != nil {
+		if err := h.users.SetExtraRoles(r.Context(), id, extras); err != nil {
+			response.Error(w, http.StatusInternalServerError, "failed to assign extra roles")
+			return
+		}
+	} else {
+		// Keep current extras, minus the new primary so it isn't listed twice.
+		for _, key := range user.ExtraRoles {
+			if key != req.Role {
+				extras = append(extras, key)
+			}
+		}
+		if len(extras) != len(user.ExtraRoles) {
+			if err := h.users.SetExtraRoles(r.Context(), id, extras); err != nil {
+				response.Error(w, http.StatusInternalServerError, "failed to assign extra roles")
+				return
+			}
+		}
+	}
 	updated, err := h.users.SetRole(r.Context(), id, req.Role, req.UnitID, req.ProjectID)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to assign role")

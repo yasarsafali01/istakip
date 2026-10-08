@@ -104,7 +104,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Name == "" {
-		response.Error(w, http.StatusBadRequest, "Proje adı zorunludur")
+		response.Error(w, http.StatusBadRequest, "Müdürlük adı zorunludur")
 		return
 	}
 

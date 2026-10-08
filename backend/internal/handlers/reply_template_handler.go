@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	authmw "github.com/yasarsafali01/istakip/backend/internal/middleware"
+	"github.com/yasarsafali01/istakip/backend/internal/models"
 	"github.com/yasarsafali01/istakip/backend/internal/repository"
 	"github.com/yasarsafali01/istakip/backend/internal/response"
 	"github.com/yasarsafali01/istakip/backend/internal/services"
@@ -48,7 +49,12 @@ func (h *ReplyTemplateHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	includeInactive := claims.Can(services.PermTemplateManage) && r.URL.Query().Get("all") == "1"
-	templates, err := h.templates.ListByProject(r.Context(), projectID, includeInactive)
+	kind := r.URL.Query().Get("kind")
+	if kind != "" && kind != models.TemplateReply && kind != models.TemplateResolution {
+		response.Error(w, http.StatusBadRequest, "geçersiz şablon türü")
+		return
+	}
+	templates, err := h.templates.ListByProject(r.Context(), projectID, kind, includeInactive)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to list templates")
 		return
@@ -57,6 +63,7 @@ func (h *ReplyTemplateHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type templateRequest struct {
+	Kind      string `json:"kind"` // create only; "" = reply
 	Title     string `json:"title"`
 	Body      string `json:"body"`
 	SortOrder int    `json:"sortOrder"`
@@ -100,7 +107,15 @@ func (h *ReplyTemplateHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.templates.Create(r.Context(), projectID, title, body, req.SortOrder)
+	kind := req.Kind
+	if kind == "" {
+		kind = models.TemplateReply
+	}
+	if kind != models.TemplateReply && kind != models.TemplateResolution {
+		response.Error(w, http.StatusBadRequest, "geçersiz şablon türü")
+		return
+	}
+	created, err := h.templates.Create(r.Context(), projectID, kind, title, body, req.SortOrder)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to create template")
 		return

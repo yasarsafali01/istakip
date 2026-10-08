@@ -19,23 +19,24 @@ func NewReplyTemplateRepo(pool *pgxpool.Pool) *ReplyTemplateRepo {
 	return &ReplyTemplateRepo{pool: pool}
 }
 
-const templateColumns = "id, project_id, title, body, sort_order, is_active, created_at"
+const templateColumns = "id, project_id, kind, title, body, sort_order, is_active, created_at"
 
 func scanTemplate(row pgx.Row) (models.ReplyTemplate, error) {
 	var t models.ReplyTemplate
-	err := row.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Body, &t.SortOrder, &t.IsActive, &t.CreatedAt)
+	err := row.Scan(&t.ID, &t.ProjectID, &t.Kind, &t.Title, &t.Body, &t.SortOrder, &t.IsActive, &t.CreatedAt)
 	return t, err
 }
 
-// ListByProject returns active templates by default; includeInactive=true for the management screen.
-func (r *ReplyTemplateRepo) ListByProject(ctx context.Context, projectID uuid.UUID, includeInactive bool) ([]models.ReplyTemplate, error) {
-	query := "SELECT " + templateColumns + " FROM reply_templates WHERE project_id = $1"
+// ListByProject returns active templates by default; includeInactive=true for
+// the management screen. kind "" returns both kinds.
+func (r *ReplyTemplateRepo) ListByProject(ctx context.Context, projectID uuid.UUID, kind string, includeInactive bool) ([]models.ReplyTemplate, error) {
+	query := "SELECT " + templateColumns + " FROM reply_templates WHERE project_id = $1 AND ($2 = '' OR kind = $2)"
 	if !includeInactive {
 		query += " AND is_active = true"
 	}
 	query += " ORDER BY sort_order, title"
 
-	rows, err := r.pool.Query(ctx, query, projectID)
+	rows, err := r.pool.Query(ctx, query, projectID, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +62,11 @@ func (r *ReplyTemplateRepo) GetByID(ctx context.Context, id uuid.UUID) (models.R
 	return t, err
 }
 
-func (r *ReplyTemplateRepo) Create(ctx context.Context, projectID uuid.UUID, title, body string, sortOrder int) (models.ReplyTemplate, error) {
+func (r *ReplyTemplateRepo) Create(ctx context.Context, projectID uuid.UUID, kind, title, body string, sortOrder int) (models.ReplyTemplate, error) {
 	var id uuid.UUID
 	if err := r.pool.QueryRow(ctx,
-		`INSERT INTO reply_templates (project_id, title, body, sort_order) VALUES ($1,$2,$3,$4) RETURNING id`,
-		projectID, title, body, sortOrder,
+		`INSERT INTO reply_templates (project_id, kind, title, body, sort_order) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+		projectID, kind, title, body, sortOrder,
 	).Scan(&id); err != nil {
 		return models.ReplyTemplate{}, err
 	}

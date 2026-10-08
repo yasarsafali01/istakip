@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -22,10 +23,12 @@ type IssueHandler struct {
 	activities *repository.ActivityRepo
 	users      *repository.UserRepo
 	notifier   *services.Notifier
+	forms      *repository.RequestFormRepo
+	files      *repository.FileRepo
 }
 
-func NewIssueHandler(issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo, users *repository.UserRepo, notifier *services.Notifier) *IssueHandler {
-	return &IssueHandler{issues: issues, projects: projects, activities: activities, users: users, notifier: notifier}
+func NewIssueHandler(issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo, users *repository.UserRepo, notifier *services.Notifier, forms *repository.RequestFormRepo, files *repository.FileRepo) *IssueHandler {
+	return &IssueHandler{issues: issues, projects: projects, activities: activities, users: users, notifier: notifier, forms: forms, files: files}
 }
 
 // canModifyIssue: the role must hold the permission (issue.edit / issue.delete)
@@ -134,6 +137,10 @@ type createIssueRequest struct {
 	// actually needs help, since that person has no account of their own.
 	ContactName  string `json:"contactName"`
 	ContactPhone string `json:"contactPhone"`
+	// Requests only: the chosen request form (talep türü) and its answers
+	// keyed by question id.
+	RequestFormID *uuid.UUID                 `json:"requestFormId"`
+	Answers       map[string]json.RawMessage `json:"answers"`
 }
 
 func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -217,18 +224,117 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if req.IsRequest {
+		forms, err := h.forms.ListByProject(r.Context(), project.ID, false)
+		if err != nil {
+			response.Error(w, http.StatusInternalServerError, "failed to load request forms")
+			return
+		}
+		// A project with active forms requires picking one — otherwise its
+		// required questions could be skipped by simply not choosing a form.
+		if len(forms) > 0 {
+			if req.RequestFormID == nil {
+				response.Error(w, http.StatusBadRequest, "Lütfen talep türünü seçin")
+				return
+			}
+			var form *models.RequestForm
+			for i := range forms {
+				if forms[i].ID == *req.RequestFormID {
+					form = &forms[i]
+					break
+				}
+			}
+			if form == nil {
+				response.Error(w, http.StatusBadRequest, "Seçilen talep türü bu müdürlükte bulunamadı")
+				return
+			}
+			answers, err := services.BuildAnswers(form.Questions, req.Answers)
+			if err != nil {
+				response.Error(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			attach, err := h.resolveFileAnswers(r, claims, form, answers)
+			var formErr services.FormError
+			if errors.As(err, &formErr) {
+				response.Error(w, http.StatusBadRequest, formErr.Msg)
+				return
+			}
+			if err != nil {
+				response.Error(w, http.StatusInternalServerError, "failed to load files")
+				return
+			}
+			newIssue.AttachFileIDs = attach
+			newIssue.RequestFormID = &form.ID
+			newIssue.RequestFormName = &form.Name
+			newIssue.RequestAnswers = answers
+		}
+	}
+
 	created, err := h.issues.Create(r.Context(), newIssue)
+	if errors.Is(err, repository.ErrFileAlreadyAttached) {
+		response.Error(w, http.StatusConflict, "Yüklenen dosyalardan biri başka bir talebe eklenmiş, lütfen yeniden yükleyin")
+		return
+	}
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to create issue")
 		return
 	}
 
-	if err := h.activities.Create(r.Context(), created.ID, claims.UserID, "created", "Issue oluşturuldu"); err != nil {
+	if err := h.activities.Create(r.Context(), created.ID, claims.UserID, "created", "Talep oluşturuldu"); err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
 	}
 
 	response.JSON(w, http.StatusCreated, created)
+}
+
+// resolveFileAnswers turns file-question answers (uploaded file ids) into
+// FileRefs in place and returns the ids to attach to the new request. Each
+// file must be the caller's own, not yet attached, and of a category the
+// question accepts.
+func (h *IssueHandler) resolveFileAnswers(r *http.Request, claims *services.Claims, form *models.RequestForm, answers []models.RequestAnswer) ([]uuid.UUID, error) {
+	var attach []uuid.UUID
+	for i, a := range answers {
+		if a.Type != models.QuestionFile {
+			continue
+		}
+		var question models.RequestQuestion
+		for _, q := range form.Questions {
+			if q.ID == a.QuestionID {
+				question = q
+			}
+		}
+		raw, _ := a.Value.([]string)
+		ids := make([]uuid.UUID, 0, len(raw))
+		for _, s := range raw {
+			ids = append(ids, uuid.MustParse(s)) // validated by services.BuildAnswers
+		}
+		found, err := h.files.GetMany(r.Context(), ids)
+		if err != nil {
+			return nil, err
+		}
+		refs := make([]models.FileRef, 0, len(ids))
+		for _, id := range ids {
+			f, ok := found[id]
+			if !ok || f.UploaderID != claims.UserID || f.IssueID != nil {
+				return nil, services.FormError{Msg: "\"" + question.Label + "\": dosya bulunamadı, lütfen yeniden yükleyin"}
+			}
+			if accept := question.Settings.Accept; len(accept) > 0 {
+				cat := services.FileCategory(f.OriginalName)
+				ok := false
+				for _, c := range accept {
+					ok = ok || c == cat
+				}
+				if !ok {
+					return nil, services.FormError{Msg: "\"" + question.Label + "\": " + f.OriginalName + " bu soru için izin verilen bir dosya türü değil"}
+				}
+			}
+			refs = append(refs, models.FileRef{ID: f.ID, Name: f.OriginalName, Size: f.SizeBytes})
+			attach = append(attach, f.ID)
+		}
+		answers[i].Value = refs
+	}
+	return attach, nil
 }
 
 type updateIssueRequest struct {
@@ -314,6 +420,11 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if issue.Status == models.StatusPendingApproval && !claims.Can(services.PermIssueApprove) {
+		response.Error(w, http.StatusForbidden, "Onay bekleyen talebin durumunu yalnızca yönetici değiştirebilir")
+		return
+	}
+
 	var req updateStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.Error(w, http.StatusBadRequest, "invalid request body")
@@ -323,7 +434,7 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "Done durumuna geçiş için POST /issues/{id}/complete kullanın")
 		return
 	}
-	validStatuses := map[string]bool{"To Do": true, "In Progress": true, "In Review": true, "Geri Çevrildi": true}
+	validStatuses := map[string]bool{"To Do": true, "In Progress": true, "Geri Çevrildi": true}
 	if !validStatuses[req.Status] {
 		response.Error(w, http.StatusBadRequest, "geçersiz status")
 		return
@@ -426,12 +537,12 @@ func (h *IssueHandler) Forward(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.TargetProjectID == uuid.Nil || req.TargetProjectID == issue.ProjectID {
-		response.Error(w, http.StatusBadRequest, "geçerli bir hedef proje seçin")
+		response.Error(w, http.StatusBadRequest, "geçerli bir hedef müdürlük seçin")
 		return
 	}
 	targetProject, err := h.projects.GetByID(r.Context(), req.TargetProjectID)
 	if errors.Is(err, repository.ErrNotFound) {
-		response.Error(w, http.StatusBadRequest, "geçersiz hedef proje")
+		response.Error(w, http.StatusBadRequest, "geçersiz hedef müdürlük")
 		return
 	}
 	if err != nil {
@@ -444,7 +555,7 @@ func (h *IssueHandler) Forward(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to forward issue")
 		return
 	}
-	desc := `"` + project.Name + `" → "` + targetProject.Name + `" birimine yönlendirildi`
+	desc := `"` + project.Name + `" → "` + targetProject.Name + `" müdürlüğüne yönlendirildi`
 	if req.Note != "" {
 		desc += ": " + req.Note
 	}
@@ -562,13 +673,37 @@ func (h *IssueHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.UsedEquipment {
 		if !project.HasInventory {
-			response.Error(w, http.StatusBadRequest, "bu projede envanter takibi etkin değil")
+			response.Error(w, http.StatusBadRequest, "bu müdürlükte envanter takibi etkin değil")
 			return
 		}
 		if req.EquipmentID == nil || req.Quantity <= 0 {
 			response.Error(w, http.StatusBadRequest, "teçhizat seçildiğinde equipmentId ve pozitif bir quantity zorunludur")
 			return
 		}
+	}
+
+	// Without issue.approve the work isn't closed yet: it waits for a
+	// manager, with the resolution (and any inventory use) parked until then.
+	if !claims.Can(services.PermIssueApprove) {
+		if issue.Status == models.StatusPendingApproval {
+			response.Error(w, http.StatusBadRequest, "Bu iş zaten yönetici onayı bekliyor")
+			return
+		}
+		pc := models.PendingCompletion{ResolutionNote: note, SubmittedBy: claims.UserID, SubmittedAt: time.Now()}
+		if req.UsedEquipment {
+			pc.EquipmentID, pc.Quantity = req.EquipmentID, req.Quantity
+		}
+		updated, err := h.issues.SubmitCompletion(r.Context(), id, pc)
+		if err != nil {
+			response.Error(w, http.StatusInternalServerError, "failed to submit completion")
+			return
+		}
+		if project.ManagerID != claims.UserID {
+			h.notifier.Notify(r.Context(), project.ManagerID, claims.UserID, services.NotifyStatus,
+				"Onayınızı bekleyen bir iş var", updated.Title, &updated.ID)
+		}
+		response.JSON(w, http.StatusOK, map[string]interface{}{"issue": updated, "pendingApproval": true})
+		return
 	}
 
 	params := repository.CompleteParams{
@@ -592,6 +727,96 @@ func (h *IssueHandler) Complete(w http.ResponseWriter, r *http.Request) {
 		"issue":        result.Issue,
 		"stockWarning": result.StockWarning,
 	})
+}
+
+// loadPendingApproval loads an issue awaiting approval and checks the caller
+// may decide on it (issue.approve and the issue within their scope).
+func (h *IssueHandler) loadPendingApproval(w http.ResponseWriter, r *http.Request) (models.Issue, *services.Claims, bool) {
+	claims, _ := authmw.CurrentClaims(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid issue id")
+		return models.Issue{}, nil, false
+	}
+	issue, project, err := h.loadWithProject(r, id)
+	if errors.Is(err, repository.ErrNotFound) {
+		response.Error(w, http.StatusNotFound, "issue not found")
+		return models.Issue{}, nil, false
+	}
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load issue")
+		return models.Issue{}, nil, false
+	}
+	if !claims.Can(services.PermIssueApprove) || !services.CanAccessIssue(claims, issue, project) {
+		response.Error(w, http.StatusForbidden, "Bu işi onaylama yetkiniz yok")
+		return models.Issue{}, nil, false
+	}
+	if issue.Status != models.StatusPendingApproval || issue.PendingCompletion == nil {
+		response.Error(w, http.StatusBadRequest, "Bu iş onay beklemiyor")
+		return models.Issue{}, nil, false
+	}
+	return issue, claims, true
+}
+
+// ApproveCompletion closes a pending completion: applies the parked
+// resolution (comment by the worker, inventory deduction) and marks it Done.
+func (h *IssueHandler) ApproveCompletion(w http.ResponseWriter, r *http.Request) {
+	issue, claims, ok := h.loadPendingApproval(w, r)
+	if !ok {
+		return
+	}
+	pc := issue.PendingCompletion
+	approver := claims.UserID
+	result, err := h.issues.Complete(r.Context(), repository.CompleteParams{
+		IssueID:          issue.ID,
+		ResolutionNote:   pc.ResolutionNote,
+		ResolverID:       pc.SubmittedBy,
+		ApprovedBy:       &approver,
+		InventoryItemID:  pc.EquipmentID,
+		InventoryUsedQty: pc.Quantity,
+	})
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to approve completion")
+		return
+	}
+	h.notifier.Notify(r.Context(), result.Issue.ReporterID, claims.UserID, services.NotifyStatus,
+		"Talebiniz tamamlandı", result.Issue.Title, &result.Issue.ID)
+	h.notifier.Notify(r.Context(), pc.SubmittedBy, claims.UserID, services.NotifyStatus,
+		"Tamamladığınız iş onaylandı", result.Issue.Title, &result.Issue.ID)
+	response.JSON(w, http.StatusOK, map[string]interface{}{
+		"issue":        result.Issue,
+		"stockWarning": result.StockWarning,
+	})
+}
+
+type rejectCompletionRequest struct {
+	Reason string `json:"reason"`
+}
+
+// RejectCompletion sends a pending completion back to In Progress.
+func (h *IssueHandler) RejectCompletion(w http.ResponseWriter, r *http.Request) {
+	issue, claims, ok := h.loadPendingApproval(w, r)
+	if !ok {
+		return
+	}
+	var req rejectCompletionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	reason := strings.TrimSpace(req.Reason)
+	if len([]rune(reason)) < 5 {
+		response.Error(w, http.StatusBadRequest, "Lütfen ret gerekçesini yazın (en az 5 karakter)")
+		return
+	}
+	updated, err := h.issues.RejectCompletion(r.Context(), issue.ID, claims.UserID, reason)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to reject completion")
+		return
+	}
+	h.notifier.Notify(r.Context(), issue.PendingCompletion.SubmittedBy, claims.UserID, services.NotifyStatus,
+		"Tamamladığınız iş onaylanmadı", updated.Title, &updated.ID)
+	response.JSON(w, http.StatusOK, updated)
 }
 
 type updateAssigneeRequest struct {
@@ -631,6 +856,10 @@ func (h *IssueHandler) UpdateAssignee(w http.ResponseWriter, r *http.Request) {
 		updated, err = h.issues.SetAssigneeTeam(r.Context(), id, req.AssigneeTeamID)
 	} else {
 		updated, err = h.issues.SetAssignee(r.Context(), id, req.AssigneeID)
+	}
+	if errors.Is(err, repository.ErrTeamNotInProject) {
+		response.Error(w, http.StatusBadRequest, "Seçilen ekip bu müdürlüğe ait değil")
+		return
 	}
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to update assignee")
@@ -679,7 +908,7 @@ func (h *IssueHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to clone issue")
 		return
 	}
-	if err := h.activities.Create(r.Context(), cloned.ID, claims.UserID, "created", "Issue klonlandı"); err != nil {
+	if err := h.activities.Create(r.Context(), cloned.ID, claims.UserID, "created", "Talep klonlandı"); err != nil {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
 	}
@@ -865,6 +1094,11 @@ func (h *IssueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	if !canModifyIssue(claims, services.PermIssueDelete, issue, project) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
+		return
+	}
+	// Only the person who opened it may delete it — managers included.
+	if issue.ReporterID != claims.UserID {
+		response.Error(w, http.StatusForbidden, "Yalnızca kendi açtığınız talebi silebilirsiniz")
 		return
 	}
 

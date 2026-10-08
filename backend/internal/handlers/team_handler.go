@@ -181,6 +181,10 @@ func (h *TeamHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.teams.AddMember(r.Context(), teamID, req.UserID); err != nil {
+		if errors.Is(err, repository.ErrNotProjectStaff) {
+			response.Error(w, http.StatusBadRequest, "Ekibe yalnızca bu müdürlüğün personeli eklenebilir")
+			return
+		}
 		response.Error(w, http.StatusInternalServerError, "failed to add member")
 		return
 	}

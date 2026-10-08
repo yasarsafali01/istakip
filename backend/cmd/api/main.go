@@ -40,7 +40,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORSOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -84,7 +84,9 @@ func main() {
 		notificationRepo := repository.NewNotificationRepo(pool)
 		notifier := services.NewNotifier(notificationRepo, userRepo)
 
-		issueHandler := handlers.NewIssueHandler(issueRepo, projectRepo, activityRepo, userRepo, notifier)
+		formRepo := repository.NewRequestFormRepo(pool)
+		fileRepo := repository.NewFileRepo(pool)
+		issueHandler := handlers.NewIssueHandler(issueRepo, projectRepo, activityRepo, userRepo, notifier, formRepo, fileRepo)
 		commentHandler := handlers.NewCommentHandler(commentRepo, issueRepo, projectRepo, activityRepo, notifier)
 		activityHandler := handlers.NewActivityHandler(activityRepo, issueRepo, projectRepo)
 		inventoryHandler := handlers.NewInventoryHandler(inventoryRepo, projectRepo)
@@ -92,6 +94,8 @@ func main() {
 		teamHandler := handlers.NewTeamHandler(teamRepo, projectRepo)
 		templateHandler := handlers.NewReplyTemplateHandler(templateRepo, projectRepo)
 		notificationHandler := handlers.NewNotificationHandler(notificationRepo)
+		formHandler := handlers.NewRequestFormHandler(formRepo, projectRepo)
+		fileHandler := handlers.NewFileHandler(fileRepo, issueRepo, projectRepo, cfg.UploadDir)
 
 		r.Group(func(r chi.Router) {
 			r.Use(authmw.RequireAuth(authService, roleStore))
@@ -119,6 +123,9 @@ func main() {
 
 				r.Get("/{id}/reply-templates", templateHandler.List)
 				r.Post("/{id}/reply-templates", templateHandler.Create)
+
+				r.Get("/{id}/request-forms", formHandler.List)
+				r.Post("/{id}/request-forms", formHandler.Create)
 			})
 
 			r.Route("/teams", func(r chi.Router) {
@@ -132,6 +139,16 @@ func main() {
 				r.Patch("/{id}", templateHandler.Update)
 				r.Delete("/{id}", templateHandler.Delete)
 			})
+
+			r.Route("/request-forms", func(r chi.Router) {
+				r.Patch("/{id}", formHandler.Update)
+				r.Delete("/{id}", formHandler.Delete)
+				r.Put("/{id}/questions", formHandler.ReplaceQuestions)
+				r.Post("/{id}/duplicate", formHandler.Duplicate)
+			})
+
+			r.Post("/uploads", fileHandler.Upload)
+			r.Get("/files/{id}", fileHandler.Download)
 
 			r.Route("/notifications", func(r chi.Router) {
 				r.Get("/", notificationHandler.List)
@@ -153,6 +170,8 @@ func main() {
 				r.Delete("/{id}", issueHandler.Delete)
 				r.Patch("/{id}/status", issueHandler.UpdateStatus)
 				r.Post("/{id}/complete", issueHandler.Complete)
+				r.Post("/{id}/approve-completion", issueHandler.ApproveCompletion)
+				r.Post("/{id}/reject-completion", issueHandler.RejectCompletion)
 				r.Patch("/{id}/assignee", issueHandler.UpdateAssignee)
 				r.Patch("/{id}/dates", issueHandler.UpdateDates)
 				r.Post("/{id}/visible-users", issueHandler.AddVisibleUser)

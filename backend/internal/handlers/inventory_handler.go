@@ -85,7 +85,7 @@ func (h *InventoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !project.HasInventory {
-		response.Error(w, http.StatusBadRequest, "bu projede envanter takibi etkin değil")
+		response.Error(w, http.StatusBadRequest, "bu müdürlükte envanter takibi etkin değil")
 		return
 	}
 

@@ -87,7 +87,25 @@ func (r *TeamRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+// ErrNotProjectStaff: the user is neither assigned to the team's project nor its manager.
+var ErrNotProjectStaff = errors.New("user is not staff of the team's project")
+
+// AddMember adds a user to a team. Only the team's own müdürlük staff (users
+// assigned to the project, or its manager) can be members.
 func (r *TeamRepo) AddMember(ctx context.Context, teamID, userID uuid.UUID) error {
+	var staff bool
+	if err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+		  SELECT 1 FROM teams t
+		  JOIN projects p ON p.id = t.project_id
+		  JOIN users u ON u.id = $2
+		  WHERE t.id = $1 AND (u.project_id = t.project_id OR p.manager_id = u.id))`,
+		teamID, userID).Scan(&staff); err != nil {
+		return err
+	}
+	if !staff {
+		return ErrNotProjectStaff
+	}
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, teamID, userID)
 	return err

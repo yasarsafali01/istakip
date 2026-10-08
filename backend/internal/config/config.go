@@ -15,6 +15,8 @@ type Config struct {
 	JWTAccessTTL  time.Duration
 	JWTRefreshTTL time.Duration
 	CORSOrigins   []string
+	// Where request-form uploads are stored on disk.
+	UploadDir string
 }
 
 func Load() Config {
@@ -28,6 +30,7 @@ func Load() Config {
 		JWTAccessTTL:  getDuration("JWT_ACCESS_TTL", 15*time.Minute),
 		JWTRefreshTTL: getDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
 		CORSOrigins:   strings.Split(getEnv("CORS_ORIGINS", "http://localhost:3000,http://localhost:19006"), ","),
+		UploadDir:     getEnv("UPLOAD_DIR", "uploads"),
 	}
 }
 

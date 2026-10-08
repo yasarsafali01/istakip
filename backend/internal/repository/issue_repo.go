@@ -24,9 +24,9 @@ func NewIssueRepo(pool *pgxpool.Pool) *IssueRepo {
 const issueSelectBase = `
 	SELECT i.id, i.number, i.project_id, p.key, i.sprint_id, i.title, i.description, i.type,
 	       i.priority, i.status, i.assignee_id, i.reporter_id, i.is_request, i.time_spent,
-	       i.created_at, i.updated_at, i.resolved_at,
+	       i.created_at, i.updated_at, i.resolved_at, i.started_at,
 	       i.rating, i.rating_comment, i.rated_at, i.contact_name, i.contact_phone,
-	       i.forwarded_from_project_id, i.assignee_team_id,
+	       i.forwarded_from_project_id, i.assignee_team_id, i.request_form_id, i.request_form_name, i.request_answers, i.pending_completion,
 	       COALESCE(array_agg(v.user_id) FILTER (WHERE v.user_id IS NOT NULL), '{}')
 	FROM issues i
 	JOIN projects p ON p.id = i.project_id
@@ -39,10 +39,13 @@ func scanIssue(row pgx.Row) (models.Issue, error) {
 	var iss models.Issue
 	err := row.Scan(&iss.ID, &iss.Number, &iss.ProjectID, &iss.ProjectKey, &iss.SprintID, &iss.Title, &iss.Description,
 		&iss.Type, &iss.Priority, &iss.Status, &iss.AssigneeID, &iss.ReporterID, &iss.IsRequest, &iss.TimeSpent,
-		&iss.CreatedAt, &iss.UpdatedAt, &iss.ResolvedAt,
+		&iss.CreatedAt, &iss.UpdatedAt, &iss.ResolvedAt, &iss.StartedAt,
 		&iss.Rating, &iss.RatingComment, &iss.RatedAt, &iss.ContactName, &iss.ContactPhone,
-		&iss.ForwardedFromProjectID, &iss.AssigneeTeamID,
+		&iss.ForwardedFromProjectID, &iss.AssigneeTeamID, &iss.RequestFormID, &iss.RequestFormName, &iss.RequestAnswers, &iss.PendingCompletion,
 		&iss.VisibleTo)
+	if err == nil && iss.RequestAnswers == nil {
+		iss.RequestAnswers = []models.RequestAnswer{}
+	}
 	if err == nil {
 		iss.Key = fmt.Sprintf("%s-%d", iss.ProjectKey, iss.Number)
 	}
@@ -164,6 +167,12 @@ type NewIssue struct {
 	IsRequest    bool
 	ContactName  *string
 	ContactPhone *string
+	// Request-form answers, already validated against the project's questions.
+	RequestFormID   *uuid.UUID
+	RequestFormName *string
+	RequestAnswers  []models.RequestAnswer
+	// Uploaded request files to attach to the new issue in the same transaction.
+	AttachFileIDs []uuid.UUID
 }
 
 // Create atomically reserves the next issue number for the project and
@@ -184,15 +193,34 @@ func (r *IssueRepo) Create(ctx context.Context, in NewIssue) (models.Issue, erro
 		return models.Issue{}, err
 	}
 
+	answers := in.RequestAnswers
+	if answers == nil {
+		answers = []models.RequestAnswer{}
+	}
+
 	var id uuid.UUID
 	if err := tx.QueryRow(ctx,
 		`INSERT INTO issues (number, project_id, sprint_id, title, description, type, priority, status,
-		                     assignee_id, reporter_id, is_request, contact_name, contact_phone)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,'To Do',$8,$9,$10,$11,$12) RETURNING id`,
+		                     assignee_id, reporter_id, is_request, contact_name, contact_phone, request_answers,
+		                     request_form_id, request_form_name)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,'To Do',$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
 		number, in.ProjectID, in.SprintID, in.Title, in.Description, in.Type, in.Priority,
-		in.AssigneeID, in.ReporterID, in.IsRequest, in.ContactName, in.ContactPhone,
+		in.AssigneeID, in.ReporterID, in.IsRequest, in.ContactName, in.ContactPhone, answers,
+		in.RequestFormID, in.RequestFormName,
 	).Scan(&id); err != nil {
 		return models.Issue{}, err
+	}
+
+	if len(in.AttachFileIDs) > 0 {
+		// issue_id IS NULL guards against a file being claimed by two requests at once.
+		tag, err := tx.Exec(ctx,
+			`UPDATE request_files SET issue_id = $1 WHERE id = ANY($2) AND issue_id IS NULL`, id, in.AttachFileIDs)
+		if err != nil {
+			return models.Issue{}, err
+		}
+		if tag.RowsAffected() != int64(len(in.AttachFileIDs)) {
+			return models.Issue{}, ErrFileAlreadyAttached
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -200,6 +228,9 @@ func (r *IssueRepo) Create(ctx context.Context, in NewIssue) (models.Issue, erro
 	}
 	return r.GetByID(ctx, id)
 }
+
+// ErrFileAlreadyAttached: a file was attached to another request meanwhile.
+var ErrFileAlreadyAttached = errors.New("file already attached")
 
 type IssueUpdate struct {
 	Title         *string
@@ -233,7 +264,14 @@ func (r *IssueRepo) Update(ctx context.Context, id uuid.UUID, u IssueUpdate) (mo
 // SetStatus changes status for any transition other than "Done" (that flow
 // is handled separately by Complete, which also records resolution details).
 func (r *IssueRepo) SetStatus(ctx context.Context, id uuid.UUID, status string) (models.Issue, error) {
-	_, err := r.pool.Exec(ctx, `UPDATE issues SET status = $2, updated_at = now() WHERE id = $1`, id, status)
+	// started_at records only the FIRST move into progress; moving back and
+	// forth later doesn't reset the waiting time.
+	_, err := r.pool.Exec(ctx, `
+		UPDATE issues SET status = $2, updated_at = now(),
+		  started_at = CASE WHEN $2 = 'In Progress' THEN COALESCE(started_at, now()) ELSE started_at END,
+		  -- leaving "Onay Bekliyor" any other way discards the parked completion
+		  pending_completion = NULL
+		WHERE id = $1`, id, status)
 	if err != nil {
 		return models.Issue{}, err
 	}
@@ -252,12 +290,21 @@ func (r *IssueRepo) SetAssignee(ctx context.Context, id uuid.UUID, assigneeID *u
 }
 
 // SetAssigneeTeam assigns a whole team, clearing any individual assignment.
+// ErrTeamNotInProject: the team belongs to a different project than the issue.
+var ErrTeamNotInProject = errors.New("team not in issue's project")
+
 func (r *IssueRepo) SetAssigneeTeam(ctx context.Context, id uuid.UUID, teamID *uuid.UUID) (models.Issue, error) {
-	_, err := r.pool.Exec(ctx,
-		`UPDATE issues SET assignee_team_id = $2, assignee_id = NULL, updated_at = now() WHERE id = $1`,
+	// Only a team of the issue's own project may be assigned.
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE issues SET assignee_team_id = $2, assignee_id = NULL, updated_at = now()
+		 WHERE id = $1 AND ($2::uuid IS NULL OR EXISTS (
+		   SELECT 1 FROM teams t WHERE t.id = $2 AND t.project_id = issues.project_id))`,
 		id, teamID)
 	if err != nil {
 		return models.Issue{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return models.Issue{}, ErrTeamNotInProject
 	}
 	return r.GetByID(ctx, id)
 }
@@ -357,7 +404,9 @@ func (r *IssueRepo) AddVisibleUser(ctx context.Context, issueID, userID uuid.UUI
 type CompleteParams struct {
 	IssueID          uuid.UUID
 	ResolutionNote   string
-	ResolverID       uuid.UUID
+	ResolverID       uuid.UUID // who did the work: authors the resolution comment
+	// Set when a manager approves someone else's pending completion.
+	ApprovedBy       *uuid.UUID
 	InventoryItemID  *uuid.UUID
 	InventoryUsedQty int
 }
@@ -380,7 +429,8 @@ func (r *IssueRepo) Complete(ctx context.Context, p CompleteParams) (CompleteRes
 
 	now := time.Now()
 	if _, err := tx.Exec(ctx,
-		`UPDATE issues SET status = 'Done', resolved_at = COALESCE(resolved_at, $2), updated_at = $2 WHERE id = $1`,
+		`UPDATE issues SET status = 'Done', resolved_at = COALESCE(resolved_at, $2),
+		   started_at = COALESCE(started_at, $2), pending_completion = NULL, updated_at = $2 WHERE id = $1`,
 		p.IssueID, now,
 	); err != nil {
 		return CompleteResult{}, err
@@ -392,9 +442,13 @@ func (r *IssueRepo) Complete(ctx context.Context, p CompleteParams) (CompleteRes
 	); err != nil {
 		return CompleteResult{}, err
 	}
+	actor, desc := p.ResolverID, `Durum "Done" olarak değiştirildi`
+	if p.ApprovedBy != nil {
+		actor, desc = *p.ApprovedBy, `Tamamlama onaylandı, durum "Done" olarak değiştirildi`
+	}
 	if _, err := tx.Exec(ctx,
 		`INSERT INTO activities (issue_id, user_id, type, description, created_at) VALUES ($1, $2, 'status_change', $3, $4)`,
-		p.IssueID, p.ResolverID, `Durum "Done" olarak değiştirildi`, now,
+		p.IssueID, actor, desc, now,
 	); err != nil {
 		return CompleteResult{}, err
 	}
@@ -432,6 +486,64 @@ func (r *IssueRepo) Complete(ctx context.Context, p CompleteParams) (CompleteRes
 	return result, err
 }
 
+// SubmitCompletion parks a completion for manager approval: status becomes
+// "Onay Bekliyor" and the resolution waits in pending_completion (nothing is
+// deducted from inventory yet).
+func (r *IssueRepo) SubmitCompletion(ctx context.Context, id uuid.UUID, pc models.PendingCompletion) (models.Issue, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return models.Issue{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE issues SET status = 'Onay Bekliyor', pending_completion = $2,
+		   started_at = COALESCE(started_at, $3), updated_at = $3 WHERE id = $1`,
+		id, pc, pc.SubmittedAt); err != nil {
+		return models.Issue{}, err
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO activities (issue_id, user_id, type, description, created_at) VALUES ($1, $2, 'status_change', $3, $4)`,
+		id, pc.SubmittedBy, `Tamamlandı olarak işaretlendi, yönetici onayı bekleniyor`, pc.SubmittedAt); err != nil {
+		return models.Issue{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return models.Issue{}, err
+	}
+	return r.GetByID(ctx, id)
+}
+
+// RejectCompletion sends a pending completion back to In Progress with the
+// manager's reason recorded as a comment.
+func (r *IssueRepo) RejectCompletion(ctx context.Context, id, managerID uuid.UUID, reason string) (models.Issue, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return models.Issue{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	now := time.Now()
+	if _, err := tx.Exec(ctx,
+		`UPDATE issues SET status = 'In Progress', pending_completion = NULL, updated_at = $2 WHERE id = $1`,
+		id, now); err != nil {
+		return models.Issue{}, err
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO comments (issue_id, author_id, text, created_at) VALUES ($1, $2, $3, $4)`,
+		id, managerID, "↩️ **Tamamlama onaylanmadı**\n\n"+reason, now); err != nil {
+		return models.Issue{}, err
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO activities (issue_id, user_id, type, description, created_at) VALUES ($1, $2, 'status_change', $3, $4)`,
+		id, managerID, `Tamamlama onaylanmadı, durum "In Progress" olarak değiştirildi`, now); err != nil {
+		return models.Issue{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return models.Issue{}, err
+	}
+	return r.GetByID(ctx, id)
+}
+
 // Clone duplicates a request: new number, title suffixed "(Kopya)", status
 // reset to To Do, resolvedAt/timeSpent/assignee/visibleTo cleared.
 func (r *IssueRepo) Clone(ctx context.Context, sourceID uuid.UUID) (models.Issue, error) {
@@ -444,9 +556,12 @@ func (r *IssueRepo) Clone(ctx context.Context, sourceID uuid.UUID) (models.Issue
 	var projectID, reporterID uuid.UUID
 	var title, description, itype, priority string
 	var isRequest bool
+	var answers []byte
+	var formID *uuid.UUID
+	var formName *string
 	if err := tx.QueryRow(ctx,
-		`SELECT project_id, title, description, type, priority, is_request, reporter_id FROM issues WHERE id = $1`, sourceID,
-	).Scan(&projectID, &title, &description, &itype, &priority, &isRequest, &reporterID); err != nil {
+		`SELECT project_id, title, description, type, priority, is_request, reporter_id, request_answers, request_form_id, request_form_name FROM issues WHERE id = $1`, sourceID,
+	).Scan(&projectID, &title, &description, &itype, &priority, &isRequest, &reporterID, &answers, &formID, &formName); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.Issue{}, ErrNotFound
 		}
@@ -464,9 +579,9 @@ func (r *IssueRepo) Clone(ctx context.Context, sourceID uuid.UUID) (models.Issue
 
 	var newID uuid.UUID
 	if err := tx.QueryRow(ctx,
-		`INSERT INTO issues (number, project_id, title, description, type, priority, status, is_request, reporter_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, 'To Do', $7, $8) RETURNING id`,
-		number, projectID, title+" (Kopya)", description, itype, priority, isRequest, reporterID,
+		`INSERT INTO issues (number, project_id, title, description, type, priority, status, is_request, reporter_id, request_answers, request_form_id, request_form_name)
+		 VALUES ($1, $2, $3, $4, $5, $6, 'To Do', $7, $8, $9::jsonb, $10, $11) RETURNING id`,
+		number, projectID, title+" (Kopya)", description, itype, priority, isRequest, reporterID, string(answers), formID, formName,
 	).Scan(&newID); err != nil {
 		return models.Issue{}, err
 	}

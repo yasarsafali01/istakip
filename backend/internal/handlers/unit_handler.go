@@ -76,7 +76,7 @@ func (h *UnitHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if exists {
-		response.Error(w, http.StatusConflict, "Bu birim kodu zaten kullanılıyor")
+		response.Error(w, http.StatusConflict, "Bu daire başkanlığı kodu zaten kullanılıyor")
 		return
 	}
 

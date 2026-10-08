@@ -25,6 +25,8 @@ const (
 	PermTeamManage      = "team.manage"
 	PermTemplateManage  = "template.manage"
 	PermAssignUserRole  = "user.assign_role"
+	PermRequestForm     = "request_form.manage"
+	PermIssueApprove    = "issue.approve"
 )
 
 type PermissionInfo struct {
@@ -44,18 +46,20 @@ var PermissionCatalog = []PermissionInfo{
 	{PermIssueDelete, "İş/talep sil", "İşler", "İş veya talebi silebilir"},
 	{PermIssueStatus, "Durum değiştir", "İşler", "İşin durumunu değiştirebilir ve tamamlayabilir"},
 	{PermIssueAssign, "Atama yap", "İşler", "İşi bir çalışana atayabilir veya atamayı değiştirebilir"},
+	{PermIssueApprove, "Tamamlamayı onayla", "İşler", "İşleri doğrudan kapatabilir ve başkalarının tamamladığı işleri onaylayıp reddedebilir; bu izni olmayanların tamamladığı işler onaya düşer"},
 	{PermIssueDates, "Tarih/süre düzenle", "İşler", "Çözüm tarihi ve harcanan süreyi düzenleyebilir"},
-	{PermIssueSprint, "Aya/backlog'a taşı", "İşler", "İşi bir aya atayabilir veya backlog'a alabilir"},
-	{PermIssueForward, "Talebi yönlendir", "Talepler", "Talebi başka bir projeye/birime yönlendirebilir"},
+	{PermIssueSprint, "Aya/bekleyen taleplere taşı", "İşler", "İşi bir aya atayabilir veya bekleyen taleplere alabilir"},
+	{PermIssueForward, "Talebi yönlendir", "Talepler", "Talebi başka bir müdürlüğe/daire başkanlığına yönlendirebilir"},
 	{PermHelpdeskCreate, "Başkası adına talep aç", "Talepler", "Telefon/yüz yüze gelen biri için onun adına talep açabilir"},
-	{PermSprintManage, "Aylık dönem yönet", "Projeler", "Aylık dönem oluşturabilir, başlatabilir ve kapatabilir"},
-	{PermTeamManage, "Ekip yönet", "Projeler", "Ekip oluşturabilir ve üyelerini düzenleyebilir"},
-	{PermTemplateManage, "Cevap şablonu yönet", "Projeler", "Hazır yanıt şablonları oluşturabilir ve düzenleyebilir"},
-	{PermProjectCreate, "Proje oluştur", "Projeler", "Yeni proje açabilir"},
-	{PermProjectEdit, "Proje düzenle", "Projeler", "Proje bilgilerini ve yöneticisini değiştirebilir"},
+	{PermSprintManage, "Aylık dönem yönet", "Müdürlükler", "Aylık dönem oluşturabilir, başlatabilir ve kapatabilir"},
+	{PermTeamManage, "Ekip yönet", "Müdürlükler", "Ekip oluşturabilir ve üyelerini düzenleyebilir"},
+	{PermTemplateManage, "Cevap şablonu yönet", "Müdürlükler", "Hazır yanıt şablonları oluşturabilir ve düzenleyebilir"},
+	{PermRequestForm, "Talep formu yönet", "Müdürlükler", "Talep açılırken sorulacak müdürlüğe özel soruları hazırlayabilir"},
+	{PermProjectCreate, "Müdürlük oluştur", "Müdürlükler", "Yeni müdürlük açabilir"},
+	{PermProjectEdit, "Müdürlük düzenle", "Müdürlükler", "Müdürlük bilgilerini ve müdürünü değiştirebilir"},
 	{PermInventoryManage, "Envanter yönet", "Envanter", "Envanter kalemi ekleyebilir ve stok düzenleyebilir"},
 	{PermInventoryUse, "Envanter kullan", "Envanter", "İş tamamlarken envanterden düşüm yapabilir"},
-	{PermUnitManage, "Birim yönet", "Yönetim", "Birim oluşturabilir ve düzenleyebilir"},
+	{PermUnitManage, "Daire başkanlığı yönet", "Yönetim", "Daire başkanlığı oluşturabilir ve düzenleyebilir"},
 	{PermRoleManage, "Rol ve izinleri yönet", "Yönetim", "Rol tanımlarını (izin kümesi, veri kapsamı, seviye) oluşturabilir ve düzenleyebilir"},
 	{PermAssignUserRole, "Kullanıcıya rol ata", "Yönetim", "Kendi yönetim alanındaki kullanıcılara, kendi rol seviyesinin altındaki rolleri atayabilir"},
 }

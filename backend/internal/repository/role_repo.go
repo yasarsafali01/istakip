@@ -25,7 +25,8 @@ func NewRoleRepo(pool *pgxpool.Pool) *RoleRepo {
 func (r *RoleRepo) List(ctx context.Context) ([]models.RoleDef, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT r.key, r.name, r.description, r.scope, r.level, r.is_system,
-		       COALESCE((SELECT count(*) FROM users u WHERE u.role = r.key), 0)
+		       (SELECT count(*) FROM users u WHERE u.role = r.key
+			   OR EXISTS (SELECT 1 FROM user_extra_roles x WHERE x.user_id = u.id AND x.role_key = r.key))
 		FROM roles r ORDER BY r.level DESC, r.name`)
 	if err != nil {
 		return nil, err
@@ -136,7 +137,7 @@ func setPermissions(ctx context.Context, tx pgx.Tx, key models.Role, permissions
 // Delete removes a custom role that no user holds.
 func (r *RoleRepo) Delete(ctx context.Context, key models.Role) error {
 	var inUse bool
-	if err := r.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE role = $1)", key).Scan(&inUse); err != nil {
+	if err := r.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE role = $1) OR EXISTS(SELECT 1 FROM user_extra_roles WHERE role_key = $1)", key).Scan(&inUse); err != nil {
 		return err
 	}
 	if inUse {
@@ -152,22 +153,31 @@ func (r *RoleRepo) Delete(ctx context.Context, key models.Role) error {
 	return nil
 }
 
-// UserRoles returns every user's current role so the auth layer can honour a
-// role change without waiting for the user's access token to expire.
-func (r *RoleRepo) UserRoles(ctx context.Context) (map[uuid.UUID]models.Role, error) {
-	rows, err := r.pool.Query(ctx, "SELECT id, role FROM users")
+// UserRoles returns every user's current roles — primary first, then the
+// extra roles — so the auth layer can honour a role change without waiting
+// for the user's access token to expire.
+func (r *RoleRepo) UserRoles(ctx context.Context) (map[uuid.UUID][]models.Role, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.id, u.role,
+		       COALESCE((SELECT array_agg(x.role_key) FROM user_extra_roles x WHERE x.user_id = u.id), '{}')
+		FROM users u`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := map[uuid.UUID]models.Role{}
+	out := map[uuid.UUID][]models.Role{}
 	for rows.Next() {
 		var id uuid.UUID
-		var role models.Role
-		if err := rows.Scan(&id, &role); err != nil {
+		var primary string
+		var extra []string
+		if err := rows.Scan(&id, &primary, &extra); err != nil {
 			return nil, err
 		}
-		out[id] = role
+		roles := []models.Role{models.Role(primary)}
+		for _, k := range extra {
+			roles = append(roles, models.Role(k))
+		}
+		out[id] = roles
 	}
 	return out, rows.Err()
 }

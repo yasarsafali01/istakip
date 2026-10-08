@@ -48,6 +48,8 @@ type User struct {
 	Email        string     `json:"email"`
 	PasswordHash string     `json:"-"`
 	Role         Role       `json:"role"`
+	// Additional roles on top of Role; effective access is the union.
+	ExtraRoles []Role `json:"extraRoles"`
 	UnitID       *uuid.UUID `json:"unitId,omitempty"`
 	ProjectID    *uuid.UUID `json:"projectId,omitempty"`
 	AvatarColor  string     `json:"avatarColor"`
@@ -126,6 +128,9 @@ type Issue struct {
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
 	ResolvedAt  *time.Time  `json:"resolvedAt,omitempty"`
+	// First move to In Progress — splits the total time into waiting
+	// (created→started) and resolution (started→resolved).
+	StartedAt *time.Time `json:"startedAt,omitempty"`
 
 	// Requester's satisfaction rating for a resolved request (1-5), set once.
 	Rating        *int16     `json:"rating,omitempty"`
@@ -142,6 +147,117 @@ type Issue struct {
 
 	// Alternative to AssigneeID — assign a whole team instead of one person.
 	AssigneeTeamID *uuid.UUID `json:"assigneeTeamId,omitempty"`
+
+	// The request form (talep türü) the request was opened with, and the
+	// answers to its questions — both snapshots captured at creation.
+	RequestFormID   *uuid.UUID      `json:"requestFormId,omitempty"`
+	RequestFormName *string         `json:"requestFormName,omitempty"`
+	RequestAnswers  []RequestAnswer `json:"requestAnswers"`
+
+	// Set while the issue is "Onay Bekliyor": the completion a user without
+	// issue.approve submitted, applied only when a manager approves it.
+	PendingCompletion *PendingCompletion `json:"pendingCompletion,omitempty"`
+}
+
+// StatusPendingApproval: completed by someone who can't close work alone;
+// waits for a manager (issue.approve) to approve or reject.
+const StatusPendingApproval = "Onay Bekliyor"
+
+type PendingCompletion struct {
+	ResolutionNote string     `json:"resolutionNote"`
+	EquipmentID    *uuid.UUID `json:"equipmentId,omitempty"`
+	Quantity       int        `json:"quantity,omitempty"`
+	SubmittedBy    uuid.UUID  `json:"submittedBy"`
+	SubmittedAt    time.Time  `json:"submittedAt"`
+}
+
+// RequestForm is one "talep türü" of a project: a named list of questions.
+// A project may have several; a requester picks one after the project.
+type RequestForm struct {
+	ID          uuid.UUID         `json:"id"`
+	ProjectID   uuid.UUID         `json:"projectId"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	IsActive    bool              `json:"isActive"`
+	SortOrder   int               `json:"sortOrder"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	Questions   []RequestQuestion `json:"questions"`
+}
+
+// Request form question types.
+const (
+	QuestionText     = "text"     // single-line input
+	QuestionTextarea = "textarea" // multi-line input
+	QuestionNumber   = "number"
+	QuestionDate     = "date"
+	QuestionSelect   = "select"   // dropdown, one option
+	QuestionRadio    = "radio"    // radio buttons, one option
+	QuestionCheckbox = "checkbox" // checkbox group, any number of options
+	QuestionBoolean  = "boolean"  // single yes/no checkbox (e.g. consent)
+	QuestionFile     = "file"     // file upload(s)
+)
+
+// QuestionSettings holds type-specific options. File questions: MaxFiles
+// (1-10) and Accept (file categories, see services.FileCategories; empty =
+// any allowed category).
+type QuestionSettings struct {
+	MaxFiles int      `json:"maxFiles,omitempty"`
+	Accept   []string `json:"accept,omitempty"`
+}
+
+// QuestionCondition shows a question only when an earlier select/radio/
+// boolean question's answer equals Value ("true"/"false" for boolean).
+type QuestionCondition struct {
+	QuestionID uuid.UUID `json:"questionId"`
+	Value      string    `json:"value"`
+}
+
+// RequestQuestion is one field of a request form, designed by the project's
+// manager and shown to requesters after they pick that form.
+type RequestQuestion struct {
+	ID          uuid.UUID          `json:"id"`
+	FormID      uuid.UUID          `json:"formId"`
+	Label       string             `json:"label"`
+	HelpText    string             `json:"helpText"`
+	Placeholder string             `json:"placeholder"`
+	Type        string             `json:"type"`
+	Options     []string           `json:"options"`
+	Required    bool               `json:"required"`
+	SortOrder   int                `json:"sortOrder"`
+	ShowIf      *QuestionCondition `json:"showIf"`
+	// Share of a 12-column row: 12 full, 6 half, 4 third, 3 quarter.
+	Width    int              `json:"width"`
+	Settings QuestionSettings `json:"settings"`
+}
+
+// RequestFile is a file uploaded for a file question; IssueID is set once the
+// request is created (until then only the uploader can see it).
+type RequestFile struct {
+	ID           uuid.UUID  `json:"id"`
+	UploaderID   uuid.UUID  `json:"uploaderId"`
+	IssueID      *uuid.UUID `json:"issueId,omitempty"`
+	OriginalName string     `json:"name"`
+	ContentType  string     `json:"contentType"`
+	SizeBytes    int64      `json:"size"`
+	StorageName  string     `json:"-"`
+	CreatedAt    time.Time  `json:"createdAt"`
+}
+
+// FileRef is how a file answer is stored in a request's answer snapshot.
+type FileRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	Size int64     `json:"size"`
+}
+
+// RequestAnswer is a snapshot (label + type copied in) so a request keeps
+// reading correctly after its question is edited or deleted. Value is a
+// string, []string (checkbox) or bool (boolean).
+type RequestAnswer struct {
+	QuestionID uuid.UUID   `json:"questionId"`
+	Label      string      `json:"label"`
+	Type       string      `json:"type"`
+	Value      interface{} `json:"value"`
 }
 
 type Team struct {
@@ -152,9 +268,17 @@ type Team struct {
 	MemberIDs []uuid.UUID `json:"memberIds"`
 }
 
+// Template kinds: canned comment replies, and resolution notes used when
+// completing a request.
+const (
+	TemplateReply      = "reply"
+	TemplateResolution = "resolution"
+)
+
 type ReplyTemplate struct {
 	ID        uuid.UUID `json:"id"`
 	ProjectID uuid.UUID `json:"projectId"`
+	Kind      string    `json:"kind"`
 	Title     string    `json:"title"`
 	Body      string    `json:"body"`
 	SortOrder int       `json:"sortOrder"`

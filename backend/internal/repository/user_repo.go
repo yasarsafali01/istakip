@@ -22,14 +22,20 @@ func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
 }
 
 const userColumns = "id, name, email, password_hash, role, unit_id, project_id, avatar_color, created_at, " +
-	"building, floor, room, notify_email, notify_sms, notify_push"
+	"building, floor, room, notify_email, notify_sms, notify_push, " +
+	"COALESCE((SELECT array_agg(x.role_key ORDER BY x.role_key) FROM user_extra_roles x WHERE x.user_id = users.id), '{}')"
 
 func scanUser(row pgx.Row) (models.User, error) {
 	var u models.User
+	var extra []string
 	err := row.Scan(
 		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &u.UnitID, &u.ProjectID, &u.AvatarColor, &u.CreatedAt,
-		&u.Building, &u.Floor, &u.Room, &u.NotifyEmail, &u.NotifySMS, &u.NotifyPush,
+		&u.Building, &u.Floor, &u.Room, &u.NotifyEmail, &u.NotifySMS, &u.NotifyPush, &extra,
 	)
+	u.ExtraRoles = make([]models.Role, len(extra))
+	for i, k := range extra {
+		u.ExtraRoles[i] = models.Role(k)
+	}
 	return u, err
 }
 
@@ -81,6 +87,25 @@ func (r *UserRepo) SetRole(ctx context.Context, id uuid.UUID, role models.Role, 
 		return models.User{}, ErrNotFound
 	}
 	return u, err
+}
+
+// SetExtraRoles replaces the user's additional roles.
+func (r *UserRepo) SetExtraRoles(ctx context.Context, id uuid.UUID, roles []models.Role) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `DELETE FROM user_extra_roles WHERE user_id = $1`, id); err != nil {
+		return err
+	}
+	for _, role := range roles {
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO user_extra_roles (user_id, role_key) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, role); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 // UpdateProfile updates a user's own editable profile fields.
