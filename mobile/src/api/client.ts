@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 const REFRESH_TOKEN_KEY = 'istakip_refresh_token';
 
 // Access token lives only in memory — lost on app restart, re-derived from
@@ -9,6 +9,11 @@ let accessToken: string | null = null;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+}
+
+/** Current access token — needed for authenticated file downloads. */
+export function getAccessToken() {
+  return accessToken;
 }
 
 export async function getRefreshToken(): Promise<string | null> {
@@ -77,13 +82,15 @@ interface RequestOptions {
  */
 export async function request<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, retry = true } = opts;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // FormData (file upload) sets its own multipart Content-Type with boundary.
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  const headers: Record<string, string> = isForm ? {} : { 'Content-Type': 'application/json' };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
   });
 
   if (res.status === 401 && retry && (await getRefreshToken())) {
@@ -112,6 +119,8 @@ export async function request<T = unknown>(path: string, opts: RequestOptions = 
 export const api = {
   get: <T = unknown>(path: string) => request<T>(path),
   post: <T = unknown>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
+  put: <T = unknown>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body }),
   patch: <T = unknown>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
+  upload: <T = unknown>(path: string, form: FormData) => request<T>(path, { method: 'POST', body: form }),
   delete: <T = unknown>(path: string) => request<T>(path, { method: 'DELETE' }),
 };

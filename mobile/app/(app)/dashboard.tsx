@@ -150,9 +150,9 @@ export default function DashboardScreen() {
 
         <View style={styles.grid}>
           {(isSystemAdmin || isDepartmentHead) && (
-            <StatCard label="Birim Sayısı" value={unitsQuery.data?.length ?? '—'} color="#6554C0" />
+            <StatCard label="Daire Başkanlığı Sayısı" value={unitsQuery.data?.length ?? '—'} color="#6554C0" />
           )}
-          <StatCard label="Bağlı Proje" value={isProjectManager || isWorker ? (myProject ? 1 : 0) : projects.length} color="#0052CC" />
+          <StatCard label="Bağlı Müdürlük" value={isProjectManager || isWorker ? (myProject ? 1 : 0) : projects.length} color="#0052CC" />
           <ActivePeriodCard sprint={activeSprint} />
           <StatCard label={isWorker ? 'Bana Atanan' : 'Toplam İş'} value={scopedIssues.length} color="#FF7700" />
           <StatCard label="Açık İşler" value={openCount} color="#DE350B" />
@@ -203,9 +203,9 @@ export default function DashboardScreen() {
           </>
         )}
 
-        <Text style={styles.sectionTitle}>Projeler</Text>
+        <Text style={styles.sectionTitle}>Müdürlükler</Text>
         {projects.length === 0 ? (
-          <Text style={styles.emptyText}>Erişilebilir proje bulunamadı.</Text>
+          <Text style={styles.emptyText}>Erişilebilir müdürlük bulunamadı.</Text>
         ) : (
           projects.map((p) => (
             <TouchableOpacity

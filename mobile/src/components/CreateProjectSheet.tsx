@@ -59,7 +59,7 @@ export default function CreateProjectSheet({ visible, project, onCreated, onCanc
 
   async function handleSubmit() {
     if (!name.trim() || (!isEdit && !unitId) || !managerId) {
-      Alert.alert('Uyarı', 'Proje adı, birim ve yönetici zorunludur.');
+      Alert.alert('Uyarı', 'Müdürlük adı, daire başkanlığı ve müdür zorunludur.');
       return;
     }
     setSubmitting(true);
@@ -88,23 +88,23 @@ export default function CreateProjectSheet({ visible, project, onCreated, onCanc
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <ScrollView style={styles.card} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>{isEdit ? 'Projeyi Düzenle' : 'Yeni Proje'}</Text>
+          <Text style={styles.title}>{isEdit ? 'Müdürlüğü Düzenle' : 'Yeni Müdürlük'}</Text>
 
-          <Text style={styles.label}>Proje Adı *</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Proje adı..." />
+          <Text style={styles.label}>Müdürlük Adı *</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Müdürlük adı..." />
 
           {isSystemAdmin && !isEdit && (
             <>
-              <Text style={styles.label}>Birim *</Text>
+              <Text style={styles.label}>Daire Başkanlığı *</Text>
               <TouchableOpacity style={styles.selectInput} onPress={() => setUnitPickerOpen(true)}>
                 <Text style={unitId ? styles.selectValue : styles.selectPlaceholder}>
-                  {unitId ? getUnitName(unitId) : '— Birim seçin —'}
+                  {unitId ? getUnitName(unitId) : '— Daire başkanlığı seçin —'}
                 </Text>
               </TouchableOpacity>
             </>
           )}
 
-          <Text style={styles.label}>Proje Yöneticisi *</Text>
+          <Text style={styles.label}>Müdür *</Text>
           <TouchableOpacity style={styles.selectInput} onPress={() => setManagerPickerOpen(true)}>
             <Text style={managerId ? styles.selectValue : styles.selectPlaceholder}>
               {managerId ? getUserName(managerId) : '— Yönetici seçin —'}
@@ -132,14 +132,14 @@ export default function CreateProjectSheet({ visible, project, onCreated, onCanc
 
       <PickerSheet
         visible={unitPickerOpen}
-        title="Birim Seçin"
+        title="Daire Başkanlığı Seçin"
         options={(unitsQuery.data || []).map((u) => ({ key: u.id, label: `${u.name} (${u.unitCode})` }))}
         onSelect={(key) => { setUnitId(key); setManagerId(''); setUnitPickerOpen(false); }}
         onClose={() => setUnitPickerOpen(false)}
       />
       <PickerSheet
         visible={managerPickerOpen}
-        title="Proje Yöneticisi Seçin"
+        title="Müdür Seçin"
         options={managers.map((u) => ({ key: u.id, label: u.name }))}
         onSelect={(key) => { setManagerId(key); setManagerPickerOpen(false); }}
         onClose={() => setManagerPickerOpen(false)}

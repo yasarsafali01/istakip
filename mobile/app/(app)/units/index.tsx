@@ -104,7 +104,7 @@ export default function UnitsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={unitsQuery.isFetching} onRefresh={() => unitsQuery.refetch()} />}
-          ListEmptyComponent={<Text style={styles.emptyText}>Henüz birim yok.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>Henüz daire başkanlığı yok.</Text>}
         />
       )}
 
@@ -117,12 +117,12 @@ export default function UnitsScreen() {
       <Modal visible={formOpen} animationType="slide" transparent onRequestClose={() => { setFormOpen(false); resetForm(); }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>{isEdit ? 'Birimi Düzenle' : 'Yeni Birim'}</Text>
+            <Text style={styles.formTitle}>{isEdit ? 'Daire Başkanlığını Düzenle' : 'Yeni Daire Başkanlığı'}</Text>
 
-            <Text style={styles.label}>Birim Adı *</Text>
+            <Text style={styles.label}>Daire Başkanlığı Adı *</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Bilgi İşlem Daire Başkanlığı" />
 
-            <Text style={styles.label}>Birim Kodu *</Text>
+            <Text style={styles.label}>Daire Başkanlığı Kodu *</Text>
             <TextInput
               style={[styles.input, isEdit && styles.inputDisabled]}
               value={unitCode}
@@ -132,7 +132,7 @@ export default function UnitsScreen() {
               autoCapitalize="characters"
               editable={!isEdit}
             />
-            {isEdit && <Text style={styles.hint}>Birim kodu oluşturulduktan sonra değiştirilemez.</Text>}
+            {isEdit && <Text style={styles.hint}>Daire başkanlığı kodu oluşturulduktan sonra değiştirilemez.</Text>}
 
             <Text style={styles.label}>Daire Başkanı *</Text>
             <TouchableOpacity style={styles.selectInput} onPress={() => setHeadPickerOpen(true)}>

@@ -51,10 +51,10 @@ export default function CreateIssueSheet({ visible, projectId, onCreated, onCanc
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleCancel}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <ScrollView style={styles.card} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Yeni Issue Oluştur</Text>
+          <Text style={styles.title}>Yeni Talep Oluştur</Text>
 
           <Text style={styles.label}>Başlık *</Text>
-          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Issue başlığı..." />
+          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Talep başlığı..." />
 
           <Text style={styles.label}>Açıklama</Text>
           <TextInput

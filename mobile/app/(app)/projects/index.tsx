@@ -36,7 +36,7 @@ export default function ProjectsScreen() {
       {projectsQuery.isLoading ? (
         <View style={styles.center}><ActivityIndicator size="large" color="#0052CC" /></View>
       ) : (projectsQuery.data || []).length === 0 ? (
-        <View style={styles.center}><Text style={styles.emptyText}>Erişilebilir proje bulunamadı.</Text></View>
+        <View style={styles.center}><Text style={styles.emptyText}>Erişilebilir müdürlük bulunamadı.</Text></View>
       ) : (
         <FlatList
           data={projectsQuery.data}

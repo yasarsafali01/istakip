@@ -12,6 +12,8 @@ import CreateRequestSheet from '../../../src/components/CreateRequestSheet';
 import { PRIORITIES, PRIORITY_LABELS } from '../../../src/utils/constants';
 import { usePermissions } from '../../../src/hooks/usePermissions';
 import type { Issue } from '../../../src/api/types';
+import { getSlaInfo, SLA_RISK_COLORS } from '../../../src/utils/slaUtils';
+import { requestDurations, averageMs, formatDuration } from '../../../src/utils/durationUtils';
 
 export default function RequestsScreen() {
   const router = useRouter();
@@ -60,6 +62,14 @@ export default function RequestsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestsQuery.data, search, priorityFilter, unitFilter, projectsQuery.data]);
 
+  // Average waiting / resolution / total over resolved requests (same as the web list header)
+  const resolved = (requestsQuery.data || []).filter((r) => r.status === 'Done').map((r) => requestDurations(r));
+  const avg = {
+    waiting: averageMs(resolved.map((d: any) => d.waiting)),
+    resolution: averageMs(resolved.map((d: any) => d.resolution)),
+    total: averageMs(resolved.map((d: any) => d.total)),
+  };
+
   function getUserName(id?: string | null) {
     if (!id) return null;
     return usersQuery.data?.find((u) => u.id === id)?.name;
@@ -67,6 +77,8 @@ export default function RequestsScreen() {
 
   function renderItem({ item }: { item: Issue }) {
     const assigneeName = getUserName(item.assigneeId);
+    const sla = getSlaInfo(item);
+    const slaColors = sla ? (SLA_RISK_COLORS as Record<string, { bg: string; text: string }>)[sla.risk] : null;
     return (
       <TouchableOpacity style={styles.card} onPress={() => router.push(`/(app)/issues/${item.id}`)}>
         <View style={styles.cardHeader}>
@@ -74,8 +86,14 @@ export default function RequestsScreen() {
           <StatusBadge status={item.status} />
         </View>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+        {item.requestFormName ? <Text style={styles.formName}>{item.requestFormName}</Text> : null}
         <View style={styles.cardFooter}>
-          <PriorityBadge priority={item.priority} />
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <PriorityBadge priority={item.priority} />
+            {sla && slaColors && sla.risk !== 'done' ? (
+              <View style={[styles.sla, { backgroundColor: slaColors.bg }]}><Text style={[styles.slaText, { color: slaColors.text }]}>{sla.label}</Text></View>
+            ) : null}
+          </View>
           <Text style={styles.assignee}>{assigneeName || 'Atanmamış'}</Text>
         </View>
       </TouchableOpacity>
@@ -114,6 +132,16 @@ export default function RequestsScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {resolved.length > 0 && (
+        <View style={styles.avgStrip}>
+          <Ionicons name="time-outline" size={14} color="#42526E" />
+          <Text style={styles.avgLabel}>Ort. ({resolved.length} çözülmüş)</Text>
+          <Text style={styles.avgItem}>Bekleme <Text style={{ color: '#B45309', fontWeight: '800' }}>{formatDuration(avg.waiting)}</Text></Text>
+          <Text style={styles.avgItem}>Çözüm <Text style={{ color: '#C2410C', fontWeight: '800' }}>{formatDuration(avg.resolution)}</Text></Text>
+          <Text style={styles.avgItem}>Toplam <Text style={{ color: '#047857', fontWeight: '800' }}>{formatDuration(avg.total)}</Text></Text>
+        </View>
+      )}
 
       <Text style={styles.resultCount}>{filtered.length} talep bulundu</Text>
 
@@ -179,6 +207,12 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14, fontWeight: '600', color: '#172B4D', marginBottom: 8 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   assignee: { fontSize: 12, color: '#6B7280' },
+  formName: { fontSize: 11, color: '#0052CC', fontWeight: '700', marginTop: -4, marginBottom: 8 },
+  sla: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  slaText: { fontSize: 10, fontWeight: '700' },
+  avgStrip: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 6, padding: 8, borderRadius: 8, backgroundColor: '#F4F5F7' },
+  avgLabel: { fontSize: 11, color: '#42526E', fontWeight: '700' },
+  avgItem: { fontSize: 11, color: '#42526E' },
   fab: {
     position: 'absolute', right: 20, bottom: 20, width: 52, height: 52, borderRadius: 26,
     backgroundColor: '#0052CC', alignItems: 'center', justifyContent: 'center',
