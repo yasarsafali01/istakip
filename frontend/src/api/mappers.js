@@ -1,5 +1,5 @@
 // The backend's Issue shape differs slightly from the old in-memory model:
-// `number` is a per-project integer and the Jira-style "BIGD-1" string is
+// `number` is a per-project integer and the "BIDB-DM-1" string (unit code + project key + number) is
 // `key`, and `unitCode` isn't stored on the issue at all (it's derived via
 // project → unit). The rest of the app still expects `number` to be that
 // display string and `unitCode` to be present directly on the issue, so we

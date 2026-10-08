@@ -61,9 +61,9 @@ export default function UnitForm({ onClose, existingUnit }) {
       <div className="mb-3">
         <label htmlFor="unit-code" className="form-label fw-medium">Daire Başkanlığı Kodu <span className="text-danger">*</span></label>
         <input id="unit-code" type="text" className={`form-control ${errors.unitCode ? 'is-invalid' : ''}`}
-          value={unitCode} onChange={e => setUnitCode(e.target.value.toUpperCase())} placeholder="BIGD" maxLength={10} />
+          value={unitCode} onChange={e => setUnitCode(e.target.value.toUpperCase())} placeholder="BIDB" maxLength={10} />
         {errors.unitCode ? <div className="invalid-feedback">{errors.unitCode}</div>
-          : <div className="form-text">Büyük harf ve rakamlardan oluşan kısa kod (örn. BIGD, ODB)</div>}
+          : <div className="form-text">Büyük harf ve rakamlardan oluşan kısa kod (örn. BIDB, OIDB)</div>}
       </div>
       <div className="mb-4">
         <label htmlFor="unit-head" className="form-label fw-medium">Daire Başkanı <span className="text-danger">*</span></label>

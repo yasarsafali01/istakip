@@ -19,7 +19,7 @@ import { ROLES } from '../../constants';
 
 // ─── Shared test data ─────────────────────────────────────────────────────────
 
-// A request belonging to project-bigd-1 (BIGD unit)
+// A request belonging to project-bigd-1 (BIDB unit)
 const requestBigd1 = seedIssues.find((i) => i.id === 'issue-bigd1-req1');
 
 // project-bigd-1 and project-odb-1 objects
@@ -152,10 +152,10 @@ describe('Hata 2 — unitCode Güncellenmemesi', () => {
     expect(payload.unitCode).not.toBeUndefined();
 
     // Mevcut proje değişmediğinde unitCode mevcut değerle eşleşmeli
-    expect(payload.unitCode).toBe(requestBigd1.unitCode); // 'BIGD'
+    expect(payload.unitCode).toBe(requestBigd1.unitCode); // 'BIDB'
   });
 
-  test('Farklı bir projeye (project-odb-1) geçildiğinde unitCode ODB olmalı', () => {
+  test('Farklı bir projeye (project-odb-1) geçildiğinde unitCode OIDB olmalı', () => {
     /**
      * Bu test, handleSave'in unitCode hesaplama mantığını doğrudan test eder.
      * Mevcut IssueDetailContent'te editProjectId state'i olmadığından
@@ -179,13 +179,13 @@ describe('Hata 2 — unitCode Güncellenmemesi', () => {
     // Yeni proje için beklenen unitCode
     const newProject = state.projects.find((p) => p.id === 'project-odb-1');
     const newUnit = state.units.find((u) => u.id === newProject.unitId);
-    const expectedUnitCode = newUnit.unitCode; // 'ODB'
+    const expectedUnitCode = newUnit.unitCode; // 'OIDB'
 
     // Düzeltilmemiş payload'da unitCode undefined olmalı (hatanın kanıtı)
     expect(buggyPayload.unitCode).toBeUndefined();
 
-    // Beklenen unitCode 'ODB' olmalı (düzeltilmiş kodda bu değer payload'da olacak)
-    expect(expectedUnitCode).toBe('ODB');
+    // Beklenen unitCode 'OIDB' olmalı (düzeltilmiş kodda bu değer payload'da olacak)
+    expect(expectedUnitCode).toBe('OIDB');
 
     // Düzeltilmemiş payload'da unitCode eksik olduğundan,
     // yeni unitCode ile eşleşmez — bu hatanın kanıtı
@@ -327,13 +327,13 @@ describe('Koruma Testleri (Preservation)', () => {
       const updatedIssue = { ...currentIssue, ...buggyPayload };
 
       // Mevcut unitCode değeri korunmalı (spread ile undefined üzerine yazılmaz)
-      expect(updatedIssue.unitCode).toBe(requestBigd1.unitCode); // 'BIGD'
+      expect(updatedIssue.unitCode).toBe(requestBigd1.unitCode); // 'BIDB'
       expect(updatedIssue.unitCode).toBeDefined();
     });
 
     test('UPDATE_ISSUE payload\'ında unitCode undefined olsa bile reducer mevcut değeri korur', () => {
       // AppReducer'ın UPDATE_ISSUE case'ini simüle et
-      const initialIssue = { ...requestBigd1 }; // unitCode: 'BIGD'
+      const initialIssue = { ...requestBigd1 }; // unitCode: 'BIDB'
 
       // Düzeltilmemiş payload — unitCode yok
       const payloadWithoutUnitCode = {
@@ -350,7 +350,7 @@ describe('Koruma Testleri (Preservation)', () => {
       const result = { ...initialIssue, ...payloadWithoutUnitCode };
 
       // unitCode payload'da olmadığından mevcut değer korunur
-      expect(result.unitCode).toBe('BIGD');
+      expect(result.unitCode).toBe('BIDB');
       expect(result.title).toBe('Güncellenmiş Başlık');
       expect(result.priority).toBe('High');
     });
@@ -420,7 +420,7 @@ describe('Koruma Testleri (Preservation)', () => {
           (u.unitId === project?.unitId || currentUser?.role === ROLES.SYSTEM_ADMIN)
       );
 
-      // ODB biriminden kullanıcılar da listede olmalı (System_Admin tüm kullanıcıları görebilir)
+      // OIDB biriminden kullanıcılar da listede olmalı (System_Admin tüm kullanıcıları görebilir)
       const odbUsersInList = assignableUsers.filter((u) => u.unitId === 'unit-odb');
       expect(odbUsersInList.length).toBeGreaterThan(0);
 

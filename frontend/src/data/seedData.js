@@ -8,14 +8,14 @@ export const seedUnits = [
   {
     id: 'unit-bigd',
     name: 'Bilgi İşlem Daire Başkanlığı',
-    unitCode: 'BIGD',
+    unitCode: 'BIDB',
     departmentHeadId: 'user-bigd-head',
     createdAt: '2025-01-01T09:00:00.000Z',
   },
   {
     id: 'unit-odb',
     name: 'Öğrenci İşleri Daire Başkanlığı',
-    unitCode: 'ODB',
+    unitCode: 'OIDB',
     departmentHeadId: 'user-odb-head',
     createdAt: '2025-01-01T09:00:00.000Z',
   },
@@ -34,7 +34,7 @@ export const seedUsers = [
     unitId: null,
     avatarColor: '#0052CC',
   },
-  // BIGD Department Head
+  // BIDB Department Head
   {
     id: 'user-bigd-head',
     name: 'Ayşe Kaya',
@@ -44,7 +44,7 @@ export const seedUsers = [
     unitId: 'unit-bigd',
     avatarColor: '#00875A',
   },
-  // project-bigd-1: Ağ Altyapısı Yenileme — 1 PM + 3 Worker
+  // project-bigd-1: Donanım Müdürlüğü — 1 PM + 3 Worker
   {
     id: 'user-bigd-pm',
     name: 'Mehmet Demir',
@@ -126,7 +126,7 @@ export const seedUsers = [
     projectId: 'project-bigd-2',
     avatarColor: '#57D9A3',
   },
-  // ODB Department Head
+  // OIDB Department Head
   {
     id: 'user-odb-head',
     name: 'Zeynep Çelik',
@@ -234,9 +234,9 @@ export const seedUsers = [
 export const seedProjects = [
   {
     id: 'project-bigd-1',
-    key: 'BIGD',
-    name: 'Ağ Altyapısı Yenileme',
-    description: 'Kurumun ağ altyapısının modernizasyonu ve güvenlik iyileştirmeleri',
+    key: 'DM',
+    name: 'Donanım Müdürlüğü',
+    description: 'Bilgisayar ve donanım arıza, bakım ve onarım hizmetleri',
     unitId: 'unit-bigd',
     managerId: 'user-bigd-pm',
     hasInventory: true,
@@ -244,7 +244,7 @@ export const seedProjects = [
   },
   {
     id: 'project-bigd-2',
-    key: 'BIGD2',
+    key: 'SG',
     name: 'Siber Güvenlik Projesi',
     description: 'Kurumsal siber güvenlik altyapısının güçlendirilmesi ve güvenlik politikalarının oluşturulması',
     unitId: 'unit-bigd',
@@ -253,7 +253,7 @@ export const seedProjects = [
   },
   {
     id: 'project-odb-1',
-    key: 'ODB',
+    key: 'OBS',
     name: 'Öğrenci Bilgi Sistemi',
     description: 'Öğrenci kayıt, not ve belge işlemlerinin dijitalleştirilmesi',
     unitId: 'unit-odb',
@@ -262,7 +262,7 @@ export const seedProjects = [
   },
   {
     id: 'project-odb-2',
-    key: 'ODB2',
+    key: 'DBY',
     name: 'Dijital Belge Yönetimi',
     description: 'Kurumsal belge yönetim sisteminin dijitalleştirilmesi ve arşivlenmesi',
     unitId: 'unit-odb',
@@ -360,11 +360,11 @@ export const seedSprints = [
 // ─── Issues ───────────────────────────────────────────────────────────────────
 // Talepler (isRequest: true) kaldırıldı. Her projede sadece normal issue'lar var.
 export const seedIssues = [
-  // ── project-bigd-1: Ağ Altyapısı Yenileme ──────────────────────────────────
+  // ── project-bigd-1: Donanım Müdürlüğü ──────────────────────────────────────
   {
     id: 'issue-bigd1-1',
-    number: 'BIGD-1',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-1',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-apr',
     title: 'Ağ topolojisi analizi',
@@ -383,8 +383,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-2',
-    number: 'BIGD-2',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-2',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-apr',
     title: 'Güvenlik duvarı yapılandırması',
@@ -403,8 +403,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-3',
-    number: 'BIGD-3',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-3',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-apr',
     title: 'Switch ve router yenileme',
@@ -423,8 +423,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-4',
-    number: 'BIGD-4',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-4',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-apr',
     title: 'VPN altyapısı kurulumu',
@@ -443,8 +443,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-5',
-    number: 'BIGD-5',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-5',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-apr',
     title: 'Ağ kesintisi hatası',
@@ -465,8 +465,8 @@ export const seedIssues = [
   // ── project-bigd-2: Siber Güvenlik Projesi ──────────────────────────────────
   {
     id: 'issue-bigd2-1',
-    number: 'BIGD2-1',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-1',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-apr',
     title: 'Güvenlik açığı taraması',
@@ -485,8 +485,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-2',
-    number: 'BIGD2-2',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-2',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-apr',
     title: 'Güvenlik politikası dokümantasyonu',
@@ -505,8 +505,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-3',
-    number: 'BIGD2-3',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-3',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-apr',
     title: 'Sızma testi planlaması',
@@ -525,8 +525,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-4',
-    number: 'BIGD2-4',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-4',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-apr',
     title: 'Antivirüs yazılımı güncelleme',
@@ -547,8 +547,8 @@ export const seedIssues = [
   // ── project-odb-1: Öğrenci Bilgi Sistemi ───────────────────────────────────
   {
     id: 'issue-odb1-1',
-    number: 'ODB-1',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-1',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-apr',
     title: 'Öğrenci kayıt modülü',
@@ -567,8 +567,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-2',
-    number: 'ODB-2',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-2',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-apr',
     title: 'Not giriş sistemi',
@@ -587,8 +587,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-3',
-    number: 'ODB-3',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-3',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-apr',
     title: 'Transkript üretim modülü',
@@ -607,8 +607,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-4',
-    number: 'ODB-4',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-4',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-apr',
     title: 'Öğrenci portal giriş hatası',
@@ -629,8 +629,8 @@ export const seedIssues = [
   // ── project-odb-2: Dijital Belge Yönetimi ──────────────────────────────────
   {
     id: 'issue-odb2-1',
-    number: 'ODB2-1',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-1',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-apr',
     title: 'Belge arşivleme sistemi',
@@ -649,8 +649,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-2',
-    number: 'ODB2-2',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-2',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-apr',
     title: 'Elektronik imza entegrasyonu',
@@ -669,8 +669,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-3',
-    number: 'ODB2-3',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-3',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-apr',
     title: 'Belge arama motoru',
@@ -689,8 +689,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-4',
-    number: 'ODB2-4',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-4',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-apr',
     title: 'Belge şablonları oluşturma',
@@ -711,8 +711,8 @@ export const seedIssues = [
   // ── Mayıs 2025: project-bigd-1 (sprint-bigd1-may) ──────────────────────────────────────────────
   {
     id: 'issue-bigd1-7',
-    number: 'BIGD-7',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-7',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'Ağ izleme sistemi kurulumu',
@@ -731,8 +731,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-8',
-    number: 'BIGD-8',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-8',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'Bandwidth analiz raporu',
@@ -751,8 +751,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-9',
-    number: 'BIGD-9',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-9',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'Yedekleme prosedürü güncelleme',
@@ -771,8 +771,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-10',
-    number: 'BIGD-10',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-10',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'Firewall kural seti revizyonu',
@@ -791,8 +791,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-11',
-    number: 'BIGD-11',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-11',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'DMZ yapılandırması',
@@ -811,8 +811,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-12',
-    number: 'BIGD-12',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-12',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'SSL sertifika yenileme',
@@ -831,8 +831,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-13',
-    number: 'BIGD-13',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-13',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'Core switch firmware güncelleme',
@@ -851,8 +851,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-14',
-    number: 'BIGD-14',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-14',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'Kablosuz ağ genişletme',
@@ -871,8 +871,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd1-15',
-    number: 'BIGD-15',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-15',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: 'sprint-bigd1-may',
     title: 'Ağ dokümantasyonu hazırlama',
@@ -892,8 +892,8 @@ export const seedIssues = [
   // ── Mayıs 2025: project-bigd-2 (sprint-bigd2-may) ──────────────────────────────────────────────
   {
     id: 'issue-bigd2-5',
-    number: 'BIGD2-5',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-5',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'SIEM entegrasyonu',
@@ -912,8 +912,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-6',
-    number: 'BIGD2-6',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-6',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'Log analiz otomasyonu',
@@ -932,8 +932,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-7',
-    number: 'BIGD2-7',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-7',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'Güvenlik dashboard tasarımı',
@@ -952,8 +952,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-8',
-    number: 'BIGD2-8',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-8',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'Phishing simülasyonu',
@@ -972,8 +972,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-9',
-    number: 'BIGD2-9',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-9',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'Kullanıcı farkındalık eğitimi',
@@ -992,8 +992,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-10',
-    number: 'BIGD2-10',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-10',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'Güvenlik politikası güncellemesi',
@@ -1012,8 +1012,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-11',
-    number: 'BIGD2-11',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-11',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'Endpoint koruma yazılımı dağıtımı',
@@ -1032,8 +1032,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-12',
-    number: 'BIGD2-12',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-12',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'Zafiyet yönetim süreci',
@@ -1052,8 +1052,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-13',
-    number: 'BIGD2-13',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-13',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: 'sprint-bigd2-may',
     title: 'İki faktörlü kimlik doğrulama',
@@ -1073,8 +1073,8 @@ export const seedIssues = [
   // ── Mayıs 2025: project-odb-1 (sprint-odb1-may) ──────────────────────────────────────────────
   {
     id: 'issue-odb1-5',
-    number: 'ODB-6',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-6',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Öğrenci danışmanlık modülü',
@@ -1093,8 +1093,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-6',
-    number: 'ODB-7',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-7',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Ders programı entegrasyonu',
@@ -1113,8 +1113,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-7',
-    number: 'ODB-8',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-8',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Mobil uygulama API geliştirme',
@@ -1133,8 +1133,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-8',
-    number: 'ODB-9',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-9',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Sınav sonuç bildirimi',
@@ -1153,8 +1153,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-9',
-    number: 'ODB-10',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-10',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Öğrenci performans raporu',
@@ -1173,8 +1173,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-10',
-    number: 'ODB-11',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-11',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Veri yedekleme otomasyonu',
@@ -1193,8 +1193,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-11',
-    number: 'ODB-12',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-12',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Mezuniyet başvuru formu',
@@ -1213,8 +1213,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-12',
-    number: 'ODB-13',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-13',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'Belge doğrulama sistemi',
@@ -1233,8 +1233,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-13',
-    number: 'ODB-14',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-14',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: 'sprint-odb1-may',
     title: 'E-posta bildirim servisi',
@@ -1254,8 +1254,8 @@ export const seedIssues = [
   // ── Mayıs 2025: project-odb-2 (sprint-odb2-may) ──────────────────────────────────────────────
   {
     id: 'issue-odb2-5',
-    number: 'ODB2-5',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-5',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'OCR entegrasyonu',
@@ -1274,8 +1274,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-6',
-    number: 'ODB2-6',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-6',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Belge versiyon kontrolü',
@@ -1294,8 +1294,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-7',
-    number: 'ODB2-7',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-7',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Toplu belge içe aktarma',
@@ -1314,8 +1314,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-8',
-    number: 'ODB2-8',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-8',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Dijital imza doğrulama',
@@ -1334,8 +1334,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-9',
-    number: 'ODB2-9',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-9',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Belge erişim yetkilendirme',
@@ -1354,8 +1354,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-10',
-    number: 'ODB2-10',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-10',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Arşiv arama optimizasyonu',
@@ -1374,8 +1374,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-11',
-    number: 'ODB2-11',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-11',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Belge şifreleme modülü',
@@ -1394,8 +1394,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-12',
-    number: 'ODB2-12',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-12',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Audit log sistemi',
@@ -1414,8 +1414,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb2-13',
-    number: 'ODB2-13',
-    unitCode: 'ODB',
+    number: 'OIDB-DBY-13',
+    unitCode: 'OIDB',
     projectId: 'project-odb-2',
     sprintId: 'sprint-odb2-may',
     title: 'Raporlama dashboard',
@@ -1435,8 +1435,8 @@ export const seedIssues = [
   // ── Talepler (isRequest: true) ─────────────────────────────────────────────
   {
     id: 'issue-bigd1-req1',
-    number: 'BIGD-6',
-    unitCode: 'BIGD',
+    number: 'BIDB-DM-6',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-1',
     sprintId: null,
     title: 'VPN erişim talebi',
@@ -1455,8 +1455,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-odb1-req1',
-    number: 'ODB-5',
-    unitCode: 'ODB',
+    number: 'OIDB-OBS-5',
+    unitCode: 'OIDB',
     projectId: 'project-odb-1',
     sprintId: null,
     title: 'Transkript belgesi talebi',
@@ -1475,8 +1475,8 @@ export const seedIssues = [
   },
   {
     id: 'issue-bigd2-req1',
-    number: 'BIGD2-14',
-    unitCode: 'BIGD',
+    number: 'BIDB-SG-14',
+    unitCode: 'BIDB',
     projectId: 'project-bigd-2',
     sprintId: null,
     title: 'Uzaktan erişim yetkisi talebi',

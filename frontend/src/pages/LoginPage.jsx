@@ -12,7 +12,7 @@ const DEMO_ACCOUNTS = [
     ],
   },
   {
-    group: 'Bilgi İşlem — Ağ Altyapısı Yenileme',
+    group: 'Bilgi İşlem — Donanım Müdürlüğü',
     color: '#00875A',
     accounts: [
       { label: 'Ayşe Kaya (Daire Başkanı)', email: 'bigd.baskan@example.com', password: 'pass123', badge: 'Dept. Head' },

@@ -7,27 +7,27 @@ import { ROLE_DEFAULT_ROUTES } from '../../constants';
 const DEMO_ACCOUNTS = [
   // ── Yönetim ──────────────────────────────────────────────────────────────
   { name: 'Sistem Yöneticisi',   email: 'admin@example.com',          password: 'admin123', role: 'Sistem Admin',      color: '#0052CC' },
-  // ── BIGD — Ağ Altyapısı Yenileme ─────────────────────────────────────────
+  // ── BIDB — Donanım Müdürlüğü ─────────────────────────────────────────────
   { name: 'Ayşe Kaya',           email: 'bigd.baskan@example.com',    password: 'pass123',  role: 'Daire Başkanı',     color: '#00875A' },
-  { name: 'Mehmet Demir',        email: 'bigd.pm@example.com',        password: 'pass123',  role: 'PM (Ağ Altyapısı)', color: '#FF5630' },
+  { name: 'Mehmet Demir',        email: 'bigd.pm@example.com',        password: 'pass123',  role: 'PM (Donanım)', color: '#FF5630' },
   { name: 'Ali Yılmaz',          email: 'bigd.worker1@example.com',   password: 'pass123',  role: 'Üye',               color: '#6554C0' },
   { name: 'Fatma Şahin',         email: 'bigd.worker2@example.com',   password: 'pass123',  role: 'Üye',               color: '#6554C0' },
   { name: 'Hasan Çelik',         email: 'bigd.worker3@example.com',   password: 'pass123',  role: 'Üye',               color: '#6554C0' },
   { name: 'Elif Arslan',         email: 'bigd.worker4@example.com',   password: 'pass123',  role: 'Üye',               color: '#6554C0' },
-  // ── BIGD — Siber Güvenlik Projesi ─────────────────────────────────────────
+  // ── BIDB2 — Siber Güvenlik Projesi ─────────────────────────────────────────
   { name: 'Burak Yıldırım',      email: 'bigd.pm2@example.com',       password: 'pass123',  role: 'PM (Siber Güvenlik)', color: '#8777D9' },
   { name: 'Murat Öztürk',        email: 'bigd.worker5@example.com',   password: 'pass123',  role: 'Üye',               color: '#8777D9' },
   { name: 'Selin Aydın',         email: 'bigd.worker6@example.com',   password: 'pass123',  role: 'Üye',               color: '#8777D9' },
   { name: 'Kemal Doğan',         email: 'bigd.worker7@example.com',   password: 'pass123',  role: 'Üye',               color: '#8777D9' },
   { name: 'Zehra Koç',           email: 'bigd.worker8@example.com',   password: 'pass123',  role: 'Üye',               color: '#8777D9' },
-  // ── ODB — Öğrenci Bilgi Sistemi ───────────────────────────────────────────
+  // ── OIDB — Öğrenci Bilgi Sistemi──────────────────────────────────────────
   { name: 'Zeynep Çelik',        email: 'odb.baskan@example.com',     password: 'pass123',  role: 'Daire Başkanı',     color: '#FF5630' },
   { name: 'Can Öztürk',          email: 'odb.pm@example.com',         password: 'pass123',  role: 'PM (Öğrenci Bilgi)', color: '#FF5630' },
   { name: 'Deniz Yıldız',        email: 'odb.worker1@example.com',    password: 'pass123',  role: 'Üye',               color: '#FF5630' },
   { name: 'Burak Kara',          email: 'odb.worker2@example.com',    password: 'pass123',  role: 'Üye',               color: '#FF5630' },
   { name: 'Neslihan Güneş',      email: 'odb.worker3@example.com',    password: 'pass123',  role: 'Üye',               color: '#FF5630' },
   { name: 'Tarık Polat',         email: 'odb.worker4@example.com',    password: 'pass123',  role: 'Üye',               color: '#FF5630' },
-  // ── ODB — Dijital Belge Yönetimi ──────────────────────────────────────────
+  // ── OIDB2 — Dijital Belge Yönetimi─────────────────────────────────────────
   { name: 'Seda Kılıç',          email: 'odb.pm2@example.com',        password: 'pass123',  role: 'PM (Dijital Belge)', color: '#FFAB00' },
   { name: 'Gizem Yılmaz',        email: 'odb.worker5@example.com',    password: 'pass123',  role: 'Üye',               color: '#FFAB00' },
   { name: 'Serkan Avcı',         email: 'odb.worker6@example.com',    password: 'pass123',  role: 'Üye',               color: '#FFAB00' },

@@ -22,7 +22,7 @@ func NewIssueRepo(pool *pgxpool.Pool) *IssueRepo {
 }
 
 const issueSelectBase = `
-	SELECT i.id, i.number, i.project_id, p.key, i.sprint_id, i.title, i.description, i.type,
+	SELECT i.id, i.number, i.project_id, p.key, u.unit_code, i.sprint_id, i.title, i.description, i.type,
 	       i.priority, i.status, i.assignee_id, i.reporter_id, i.is_request, i.time_spent,
 	       i.created_at, i.updated_at, i.resolved_at, i.started_at,
 	       i.rating, i.rating_comment, i.rated_at, i.contact_name, i.contact_phone,
@@ -30,14 +30,16 @@ const issueSelectBase = `
 	       COALESCE(array_agg(v.user_id) FILTER (WHERE v.user_id IS NOT NULL), '{}')
 	FROM issues i
 	JOIN projects p ON p.id = i.project_id
+	JOIN units u ON u.id = p.unit_id
 	LEFT JOIN issue_visible_users v ON v.issue_id = i.id
 `
 
-const issueGroupBy = " GROUP BY i.id, p.key "
+const issueGroupBy = " GROUP BY i.id, p.key, u.unit_code "
 
 func scanIssue(row pgx.Row) (models.Issue, error) {
 	var iss models.Issue
-	err := row.Scan(&iss.ID, &iss.Number, &iss.ProjectID, &iss.ProjectKey, &iss.SprintID, &iss.Title, &iss.Description,
+	var unitCode string
+	err := row.Scan(&iss.ID, &iss.Number, &iss.ProjectID, &iss.ProjectKey, &unitCode, &iss.SprintID, &iss.Title, &iss.Description,
 		&iss.Type, &iss.Priority, &iss.Status, &iss.AssigneeID, &iss.ReporterID, &iss.IsRequest, &iss.TimeSpent,
 		&iss.CreatedAt, &iss.UpdatedAt, &iss.ResolvedAt, &iss.StartedAt,
 		&iss.Rating, &iss.RatingComment, &iss.RatedAt, &iss.ContactName, &iss.ContactPhone,
@@ -47,7 +49,9 @@ func scanIssue(row pgx.Row) (models.Issue, error) {
 		iss.RequestAnswers = []models.RequestAnswer{}
 	}
 	if err == nil {
-		iss.Key = fmt.Sprintf("%s-%d", iss.ProjectKey, iss.Number)
+		// Unit code + project key + per-project number: project keys are unique,
+		// so the combined key is unique across the whole system.
+		iss.Key = fmt.Sprintf("%s-%s-%d", unitCode, iss.ProjectKey, iss.Number)
 	}
 	return iss, err
 }

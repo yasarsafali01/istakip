@@ -113,7 +113,7 @@ type Issue struct {
 	Number      int         `json:"number"`
 	ProjectID   uuid.UUID   `json:"projectId"`
 	ProjectKey  string      `json:"projectKey"`
-	Key         string      `json:"key"` // ProjectKey + "-" + Number, computed via join
+	Key         string      `json:"key"` // UnitCode + "-" + ProjectKey + "-" + Number, computed via join
 	SprintID    *uuid.UUID  `json:"sprintId,omitempty"`
 	Title       string      `json:"title"`
 	Description string      `json:"description"`

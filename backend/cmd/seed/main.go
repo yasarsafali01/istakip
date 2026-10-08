@@ -30,8 +30,8 @@ type unitSeed struct {
 }
 
 var units = []unitSeed{
-	{"unit-bigd", "Bilgi İşlem Daire Başkanlığı", "BIGD", "user-bigd-head", "2025-01-01T09:00:00Z"},
-	{"unit-odb", "Öğrenci İşleri Daire Başkanlığı", "ODB", "user-odb-head", "2025-01-01T09:00:00Z"},
+	{"unit-bigd", "Bilgi İşlem Daire Başkanlığı", "BIDB", "user-bigd-head", "2025-01-01T09:00:00Z"},
+	{"unit-odb", "Öğrenci İşleri Daire Başkanlığı", "OIDB", "user-odb-head", "2025-01-01T09:00:00Z"},
 }
 
 type userSeed struct {
@@ -67,10 +67,10 @@ type projectSeed struct {
 }
 
 var projects = []projectSeed{
-	{"project-bigd-1", "BIGD", "Ağ Altyapısı Yenileme", "Kurumun ağ altyapısının modernizasyonu ve güvenlik iyileştirmeleri", "unit-bigd", "user-bigd-pm", "2025-01-15T09:00:00Z", true},
-	{"project-bigd-2", "BIGD2", "Siber Güvenlik Projesi", "Kurumsal siber güvenlik altyapısının güçlendirilmesi ve güvenlik politikalarının oluşturulması", "unit-bigd", "user-bigd-pm2", "2025-01-20T09:00:00Z", false},
-	{"project-odb-1", "ODB", "Öğrenci Bilgi Sistemi", "Öğrenci kayıt, not ve belge işlemlerinin dijitalleştirilmesi", "unit-odb", "user-odb-pm", "2025-01-20T10:00:00Z", false},
-	{"project-odb-2", "ODB2", "Dijital Belge Yönetimi", "Kurumsal belge yönetim sisteminin dijitalleştirilmesi ve arşivlenmesi", "unit-odb", "user-odb-pm2", "2025-02-01T10:00:00Z", false},
+	{"project-bigd-1", "DM", "Donanım Müdürlüğü", "Bilgisayar ve donanım arıza, bakım ve onarım hizmetleri", "unit-bigd", "user-bigd-pm", "2025-01-15T09:00:00Z", true},
+	{"project-bigd-2", "SG", "Siber Güvenlik Projesi", "Kurumsal siber güvenlik altyapısının güçlendirilmesi ve güvenlik politikalarının oluşturulması", "unit-bigd", "user-bigd-pm2", "2025-01-20T09:00:00Z", false},
+	{"project-odb-1", "OBS", "Öğrenci Bilgi Sistemi", "Öğrenci kayıt, not ve belge işlemlerinin dijitalleştirilmesi", "unit-odb", "user-odb-pm", "2025-01-20T10:00:00Z", false},
+	{"project-odb-2", "DBY", "Dijital Belge Yönetimi", "Kurumsal belge yönetim sisteminin dijitalleştirilmesi ve arşivlenmesi", "unit-odb", "user-odb-pm2", "2025-02-01T10:00:00Z", false},
 }
 
 type sprintSeed struct {
