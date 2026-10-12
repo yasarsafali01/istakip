@@ -60,3 +60,6 @@ yarn-error.log*
 
 # testing
 /coverage
+
+# Yerel log dosyaları
+*.log

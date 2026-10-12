@@ -20,7 +20,7 @@ Yetkilendirme sabit rol adlarına değil **izinlere** bağlıdır. Bir rol = bir
 
 - **Veri kapsamı** rolün neyi görebileceğini belirler: `all` (tüm sistem), `unit` (kendi daire başkanlığı), `manager` (yönettiği müdürlükler), `project` (atandığı müdürlük), `own` (yalnızca kendi talepleri).
 - **İzinler** rolün neleri yapabileceğini belirler: talep aç, iş oluştur/düzenle/sil, durum değiştir, atama yap, tarih düzenle, aya taşı, aylık dönem yönet, envanter yönet/kullan, müdürlük/daire başkanlığı yönet, rol yönet (tam liste: `GET /permissions`).
-- 5 yerleşik rol (Sistem Yöneticisi, Daire Başkanı, Müdür, Çalışan, Dış Kullanıcı) önceki davranışı birebir korur. Örnek özel roller de gelir (Daire Başkan Yardımcısı, Talep Karşılama Personeli, Envanter Sorumlusu, İzleyici); bunlar düzenlenebilir veya silinebilir.
+- Yerleşik roller (Sistem Yöneticisi, Daire Başkanı, Müdür, Çalışan ve talep sahibi olarak Üniversite Personeli / Öğrenci) önceki davranışı birebir korur. Örnek özel roller de gelir (Daire Başkan Yardımcısı, Talep Karşılama Personeli, Envanter Sorumlusu, İzleyici); bunlar düzenlenebilir veya silinebilir.
 - **Roller ve İzinler** ekranından (web: menüde *Yönetim → Roller ve İzinler*, mobil: *Roller* sekmesi) yeni rol oluşturulur, izinleri işaretlenir ve kullanıcılara atanır. Bu ekran `role.manage` iznini gerektirir; Sistem Yöneticisi rolü kilitlidir (kimse kendini dışarıda bırakamaz) ve kimse kendi rolünü değiştiremez.
 - Bir kullanıcının bir **ana rolü** ve istediği kadar **ek rolü** olabilir (ör. Çalışan + Envanter Sorumlusu). Etkin yetki tüm rollerin birleşimidir: izinlerin hepsi, en geniş veri kapsamı ve en yüksek seviye. Ek roller *Yönetim → Kullanıcılar* ekranından, aynı hiyerarşi kuralıyla (yalnızca kendi seviyenizin altındaki roller) atanır.
 - Rol veya izin değişikliği kullanıcının bir sonraki isteğinde geçerli olur (token yenilemeyi beklemez). Rol tanımlarını mobilde görüntüleme ve kullanıcıya atama yapılır; izin düzenleme web'dedir.
@@ -32,6 +32,7 @@ istakip/
   frontend/   # React web app (bkz. frontend/README.md)
   backend/    # Go API (bkz. backend/README.md)
   mobile/     # React Native app (bkz. mobile/README.md)
+  docs/       # Windows ve Ubuntu için adım adım kurulum rehberleri
 ```
 
 ## Teknolojiler
@@ -56,4 +57,8 @@ cd frontend && npm start
 cd mobile && npx expo start
 ```
 
-Ortam değişkenleri, veritabanı kurulumu ve platform-spesifik notlar için **[INSTALL.md](INSTALL.md)** dosyasına bakın.
+Sıfırdan kurulum (programların kurulumu, veritabanı, backend testleri, web ve mobil) için:
+
+- **Windows:** [docs/KURULUM-WINDOWS.md](docs/KURULUM-WINDOWS.md)
+- **Ubuntu:** [docs/KURULUM-UBUNTU.md](docs/KURULUM-UBUNTU.md)
+- Kısa özet ve ortam değişkenleri: [INSTALL.md](INSTALL.md)
