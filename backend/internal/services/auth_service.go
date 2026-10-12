@@ -36,6 +36,47 @@ type Claims struct {
 	Scope models.Scope    `json:"-"`
 	Perms map[string]bool `json:"-"`
 	Level int             `json:"-"`
+
+	// Teams the user serves on and their müdürlükler, loaded per request.
+	// Membership grants access to issues assigned to those teams even when
+	// the team belongs to another müdürlük than the user's own.
+	TeamIDs        []uuid.UUID `json:"-"`
+	TeamProjectIDs []uuid.UUID `json:"-"`
+	// Every müdürlük the user serves in, loaded per request.
+	ProjectIDs []uuid.UUID `json:"-"`
+}
+
+// InProject reports whether the user serves in the müdürlük.
+func (c *Claims) InProject(projectID uuid.UUID) bool {
+	for _, id := range c.ProjectIDs {
+		if id == projectID {
+			return true
+		}
+	}
+	return false
+}
+
+// InTeam reports whether the user is a member of the given team.
+func (c *Claims) InTeam(teamID *uuid.UUID) bool {
+	if teamID == nil {
+		return false
+	}
+	for _, id := range c.TeamIDs {
+		if id == *teamID {
+			return true
+		}
+	}
+	return false
+}
+
+// InTeamOfProject reports whether the user serves on any team of the project.
+func (c *Claims) InTeamOfProject(projectID uuid.UUID) bool {
+	for _, id := range c.TeamProjectIDs {
+		if id == projectID {
+			return true
+		}
+	}
+	return false
 }
 
 type AuthService struct {
@@ -73,6 +114,9 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (models
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return models.User{}, TokenPair{}, ErrInvalidCredentials
 	}
+	if !user.IsActive {
+		return models.User{}, TokenPair{}, ErrInvalidCredentials
+	}
 
 	pair, err := s.issueTokenPair(ctx, user)
 	if err != nil {
@@ -95,6 +139,9 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPa
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return TokenPair{}, err
+	}
+	if !user.IsActive {
+		return TokenPair{}, ErrInvalidRefreshToken
 	}
 
 	// Rotate: revoke the used refresh token and issue a new pair.

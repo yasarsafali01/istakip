@@ -25,33 +25,41 @@ type IssueHandler struct {
 	notifier   *services.Notifier
 	forms      *repository.RequestFormRepo
 	files      *repository.FileRepo
+	teams      *repository.TeamRepo
 }
 
-func NewIssueHandler(issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo, users *repository.UserRepo, notifier *services.Notifier, forms *repository.RequestFormRepo, files *repository.FileRepo) *IssueHandler {
-	return &IssueHandler{issues: issues, projects: projects, activities: activities, users: users, notifier: notifier, forms: forms, files: files}
+func NewIssueHandler(issues *repository.IssueRepo, projects *repository.ProjectRepo, activities *repository.ActivityRepo, users *repository.UserRepo, notifier *services.Notifier, forms *repository.RequestFormRepo, files *repository.FileRepo, teams *repository.TeamRepo) *IssueHandler {
+	return &IssueHandler{issues: issues, projects: projects, activities: activities, users: users, notifier: notifier, forms: forms, files: files, teams: teams}
 }
 
 // canModifyIssue: the role must hold the permission (issue.edit / issue.delete)
 // and the issue must be in its scope. An "own"-scope role (external requester)
 // may only touch a request it opened itself.
 func canModifyIssue(claims *services.Claims, permission string, issue models.Issue, project models.Project) bool {
-	if !claims.Can(permission) {
-		return false
-	}
-	isOwnRequest := issue.IsRequest && issue.ReporterID == claims.UserID
-	if claims.Scope == models.ScopeOwn && !isOwnRequest {
-		return false
-	}
-	return services.CanAccessIssue(claims, issue, project)
+	return services.CanModifyIssue(claims, permission, issue, project)
 }
 
 func canEditIssue(claims *services.Claims, issue models.Issue, project models.Project) bool {
-	return canModifyIssue(claims, services.PermIssueEdit, issue, project)
+	return services.CanModifyIssue(claims, services.PermIssueEdit, issue, project)
 }
 
-// canChangeStatus needs the issue.status permission on an issue in scope.
 func canChangeStatus(claims *services.Claims, issue models.Issue, project models.Project) bool {
-	return claims.Can(services.PermIssueStatus) && services.CanAccessIssue(claims, issue, project)
+	return services.CanChangeStatus(claims, issue, project)
+}
+
+// withActions attaches the caller's allowed actions to an issue response.
+func (h *IssueHandler) withActions(r *http.Request, claims *services.Claims, issue models.Issue) models.Issue {
+	project, err := h.projects.GetByID(r.Context(), issue.ProjectID)
+	if err == nil {
+		actions := services.IssueActionsFor(claims, issue, project)
+		issue.AllowedActions = &actions
+	}
+	return issue
+}
+
+func (h *IssueHandler) respondIssue(w http.ResponseWriter, r *http.Request, status int, issue models.Issue) {
+	claims, _ := authmw.CurrentClaims(r.Context())
+	response.JSON(w, status, h.withActions(r, claims, issue))
 }
 
 func (h *IssueHandler) loadWithProject(r *http.Request, id uuid.UUID) (models.Issue, models.Project, error) {
@@ -98,6 +106,20 @@ func (h *IssueHandler) List(w http.ResponseWriter, r *http.Request) {
 	if issues == nil {
 		issues = []models.Issue{}
 	}
+	projects := map[uuid.UUID]*models.Project{}
+	for i := range issues {
+		p, seen := projects[issues[i].ProjectID]
+		if !seen {
+			if loaded, err := h.projects.GetByID(r.Context(), issues[i].ProjectID); err == nil {
+				p = &loaded
+			}
+			projects[issues[i].ProjectID] = p
+		}
+		if p != nil {
+			actions := services.IssueActionsFor(claims, issues[i], *p)
+			issues[i].AllowedActions = &actions
+		}
+	}
 	response.JSON(w, http.StatusOK, issues)
 }
 
@@ -121,7 +143,7 @@ func (h *IssueHandler) Get(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
-	response.JSON(w, http.StatusOK, issue)
+	h.respondIssue(w, r, http.StatusOK, issue)
 }
 
 type createIssueRequest struct {
@@ -161,12 +183,11 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Title == "" {
-		msg := "Başlık zorunludur"
-		if req.IsRequest {
-			msg = "Talep başlığı zorunludur"
-		}
-		response.Error(w, http.StatusBadRequest, msg)
+	req.Title = strings.TrimSpace(req.Title)
+	// A request opened through a müdürlük's form has no title field; it is
+	// named after the chosen talep türü further down.
+	if req.Title == "" && !req.IsRequest {
+		response.Error(w, http.StatusBadRequest, "Başlık zorunludur")
 		return
 	}
 	if req.ProjectID == uuid.Nil {
@@ -267,6 +288,13 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 			newIssue.RequestFormID = &form.ID
 			newIssue.RequestFormName = &form.Name
 			newIssue.RequestAnswers = answers
+			if newIssue.Title == "" {
+				newIssue.Title = form.Name
+			}
+		}
+		if newIssue.Title == "" {
+			response.Error(w, http.StatusBadRequest, "Talep başlığı zorunludur")
+			return
 		}
 	}
 
@@ -285,7 +313,7 @@ func (h *IssueHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.JSON(w, http.StatusCreated, created)
+	h.respondIssue(w, r, http.StatusCreated, created)
 }
 
 // resolveFileAnswers turns file-question answers (uploaded file ids) into
@@ -392,7 +420,7 @@ func (h *IssueHandler) Update(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
 	}
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 type updateStatusRequest struct {
@@ -453,7 +481,7 @@ func (h *IssueHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	h.notifier.Notify(r.Context(), updated.ReporterID, claims.UserID, services.NotifyStatus,
 		"Talebinizin durumu değişti", updated.Title+": "+req.Status, &updated.ID)
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 // Cancel lets a requester withdraw their own request while it's still open.
@@ -481,8 +509,7 @@ func (h *IssueHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusForbidden, "Yalnızca kendi talebinizi iptal edebilirsiniz")
 		return
 	}
-	terminal := map[string]bool{"Done": true, "Geri Çevrildi": true, "İptal Edildi": true}
-	if terminal[issue.Status] {
+	if services.IsTerminalStatus(issue.Status) {
 		response.Error(w, http.StatusBadRequest, "Bu talep zaten sonuçlanmış")
 		return
 	}
@@ -496,7 +523,7 @@ func (h *IssueHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
 	}
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 type forwardRequest struct {
@@ -565,7 +592,7 @@ func (h *IssueHandler) Forward(w http.ResponseWriter, r *http.Request) {
 	}
 	h.notifier.Notify(r.Context(), updated.ReporterID, claims.UserID, services.NotifyForwarded,
 		"Talebiniz yönlendirildi", updated.Title+" → "+targetProject.Name, &updated.ID)
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 type rateRequest struct {
@@ -630,7 +657,7 @@ func (h *IssueHandler) Rate(w http.ResponseWriter, r *http.Request) {
 		h.notifier.Notify(r.Context(), *updated.AssigneeID, claims.UserID, services.NotifyRated,
 			"Çözümünüz puanlandı", updated.Title, &updated.ID)
 	}
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 type completeRequest struct {
@@ -702,7 +729,7 @@ func (h *IssueHandler) Complete(w http.ResponseWriter, r *http.Request) {
 			h.notifier.Notify(r.Context(), project.ManagerID, claims.UserID, services.NotifyStatus,
 				"Onayınızı bekleyen bir iş var", updated.Title, &updated.ID)
 		}
-		response.JSON(w, http.StatusOK, map[string]interface{}{"issue": updated, "pendingApproval": true})
+		response.JSON(w, http.StatusOK, map[string]interface{}{"issue": h.withActions(r, claims, updated), "pendingApproval": true})
 		return
 	}
 
@@ -724,7 +751,7 @@ func (h *IssueHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	h.notifier.Notify(r.Context(), result.Issue.ReporterID, claims.UserID, services.NotifyStatus,
 		"Talebiniz tamamlandı", result.Issue.Title, &result.Issue.ID)
 	response.JSON(w, http.StatusOK, map[string]interface{}{
-		"issue":        result.Issue,
+		"issue":        h.withActions(r, claims, result.Issue),
 		"stockWarning": result.StockWarning,
 	})
 }
@@ -784,7 +811,7 @@ func (h *IssueHandler) ApproveCompletion(w http.ResponseWriter, r *http.Request)
 	h.notifier.Notify(r.Context(), pc.SubmittedBy, claims.UserID, services.NotifyStatus,
 		"Tamamladığınız iş onaylandı", result.Issue.Title, &result.Issue.ID)
 	response.JSON(w, http.StatusOK, map[string]interface{}{
-		"issue":        result.Issue,
+		"issue":        h.withActions(r, claims, result.Issue),
 		"stockWarning": result.StockWarning,
 	})
 }
@@ -816,7 +843,7 @@ func (h *IssueHandler) RejectCompletion(w http.ResponseWriter, r *http.Request) 
 	}
 	h.notifier.Notify(r.Context(), issue.PendingCompletion.SubmittedBy, claims.UserID, services.NotifyStatus,
 		"Tamamladığınız iş onaylanmadı", updated.Title, &updated.ID)
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 type updateAssigneeRequest struct {
@@ -851,6 +878,20 @@ func (h *IssueHandler) UpdateAssignee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A person must be eligible for the müdürlük (same rule as GET .../assignees);
+	// handing a request back to whoever opened it (Geri Çevir) is always allowed.
+	if req.AssigneeTeamID == nil && req.AssigneeID != nil && *req.AssigneeID != issue.ReporterID {
+		ok, err := h.users.IsAssignable(r.Context(), project.ID, *req.AssigneeID)
+		if err != nil {
+			response.Error(w, http.StatusInternalServerError, "failed to check assignee")
+			return
+		}
+		if !ok {
+			response.Error(w, http.StatusBadRequest, "Bu kişi bu müdürlüğün işlerine atanamaz")
+			return
+		}
+	}
+
 	var updated models.Issue
 	if req.AssigneeTeamID != nil {
 		updated, err = h.issues.SetAssigneeTeam(r.Context(), id, req.AssigneeTeamID)
@@ -874,7 +915,7 @@ func (h *IssueHandler) UpdateAssignee(w http.ResponseWriter, r *http.Request) {
 		h.notifier.Notify(r.Context(), *updated.AssigneeID, claims.UserID, services.NotifyAssigned,
 			"Size bir iş atandı", updated.Title, &updated.ID)
 	}
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 func (h *IssueHandler) Clone(w http.ResponseWriter, r *http.Request) {
@@ -912,7 +953,7 @@ func (h *IssueHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
 	}
-	response.JSON(w, http.StatusCreated, cloned)
+	h.respondIssue(w, r, http.StatusCreated, cloned)
 }
 
 type moveSprintRequest struct {
@@ -955,7 +996,7 @@ func (h *IssueHandler) MoveSprint(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to move issue")
 		return
 	}
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 type updateDatesRequest struct {
@@ -1024,7 +1065,7 @@ func (h *IssueHandler) UpdateDates(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to record activity")
 		return
 	}
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 type addVisibleUserRequest struct {
@@ -1073,7 +1114,7 @@ func (h *IssueHandler) AddVisibleUser(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to load issue")
 		return
 	}
-	response.JSON(w, http.StatusOK, updated)
+	h.respondIssue(w, r, http.StatusOK, updated)
 }
 
 func (h *IssueHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -1107,4 +1148,77 @@ func (h *IssueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type assigneeOption struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Email       string    `json:"email"`
+	AvatarColor string    `json:"avatarColor"`
+}
+
+type teamOption struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	MemberCount int       `json:"memberCount"`
+}
+
+// Assignees lists the people and teams an issue can be assigned to, so web
+// and mobile show exactly what UpdateAssignee accepts. ?projectId= asks for
+// another müdürlük (moving the issue in edit mode).
+func (h *IssueHandler) Assignees(w http.ResponseWriter, r *http.Request) {
+	claims, _ := authmw.CurrentClaims(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid issue id")
+		return
+	}
+	issue, project, err := h.loadWithProject(r, id)
+	if errors.Is(err, repository.ErrNotFound) {
+		response.Error(w, http.StatusNotFound, "issue not found")
+		return
+	}
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load issue")
+		return
+	}
+	if !services.CanAccessIssue(claims, issue, project) {
+		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
+		return
+	}
+	if v := r.URL.Query().Get("projectId"); v != "" {
+		pid, err := uuid.Parse(v)
+		if err != nil {
+			response.Error(w, http.StatusBadRequest, "invalid project id")
+			return
+		}
+		target, err := h.projects.GetByID(r.Context(), pid)
+		if err != nil || !services.CanAccessProject(claims, target) {
+			response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
+			return
+		}
+		project = target
+	}
+
+	users, err := h.users.AssignableUsers(r.Context(), project.ID)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to list assignees")
+		return
+	}
+	teams, err := h.teams.ListByProject(r.Context(), project.ID)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to list teams")
+		return
+	}
+	out := struct {
+		Users []assigneeOption `json:"users"`
+		Teams []teamOption     `json:"teams"`
+	}{Users: []assigneeOption{}, Teams: []teamOption{}}
+	for _, u := range users {
+		out.Users = append(out.Users, assigneeOption{ID: u.ID, Name: u.Name, Email: u.Email, AvatarColor: u.AvatarColor})
+	}
+	for _, t := range teams {
+		out.Teams = append(out.Teams, teamOption{ID: t.ID, Name: t.Name, MemberCount: len(t.MemberIDs)})
+	}
+	response.JSON(w, http.StatusOK, out)
 }

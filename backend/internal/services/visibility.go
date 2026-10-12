@@ -18,14 +18,14 @@ func IssueScopeFor(c *Claims) repository.VisibilityScope {
 		return repository.VisibilityScope{UnitID: c.UnitID}
 	case models.ScopeManager:
 		id := c.UserID
-		return repository.VisibilityScope{ManagerID: &id}
+		return repository.VisibilityScope{ManagerID: &id, TeamIDs: c.TeamIDs}
 	case models.ScopeProject:
-		return repository.VisibilityScope{ProjectID: c.ProjectID}
+		return repository.VisibilityScope{ProjectIDs: c.ProjectIDs, TeamIDs: c.TeamIDs}
 	case models.ScopeOwn:
 		id := c.UserID
-		return repository.VisibilityScope{OwnOrVisible: &id}
+		return repository.VisibilityScope{OwnOrVisible: &id, TeamIDs: c.TeamIDs}
 	default:
-		return repository.VisibilityScope{}
+		return repository.VisibilityScope{TeamIDs: c.TeamIDs}
 	}
 }
 
@@ -39,7 +39,7 @@ func CanAccessProject(c *Claims, project models.Project) bool {
 	case models.ScopeManager:
 		return c.UserID == project.ManagerID
 	case models.ScopeProject:
-		return c.ProjectID != nil && *c.ProjectID == project.ID
+		return c.InProject(project.ID)
 	default:
 		return false
 	}
@@ -47,8 +47,11 @@ func CanAccessProject(c *Claims, project models.Project) bool {
 
 // CanAccessIssue checks whether a role may see one specific issue: project
 // scoping for the all/unit/manager/project scopes, or reporter/visibleTo
-// membership for the "own" scope.
+// membership for the "own" scope. Members of the assigned team always see it.
 func CanAccessIssue(c *Claims, issue models.Issue, project models.Project) bool {
+	if c.InTeam(issue.AssigneeTeamID) {
+		return true
+	}
 	if c.Scope != models.ScopeOwn {
 		return CanAccessProject(c, project)
 	}

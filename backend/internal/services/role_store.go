@@ -107,15 +107,18 @@ func (s *RoleStore) Resolve(primary models.Role, extra []models.Role) (Effective
 }
 
 // Apply fills the claims' scope, level and permission set from the user's
-// current roles. It returns false when the primary role no longer exists.
+// current roles. It returns false when the primary role no longer exists or
+// the user has been deactivated (only active users are loaded into the store).
 func (s *RoleStore) Apply(c *Claims) bool {
 	var extra []models.Role
 	s.mu.RLock()
-	if current, ok := s.userRoles[c.UserID]; ok && len(current) > 0 {
-		c.Role = current[0]
-		extra = current[1:]
-	}
+	current, ok := s.userRoles[c.UserID]
 	s.mu.RUnlock()
+	if !ok || len(current) == 0 {
+		return false
+	}
+	c.Role = current[0]
+	extra = current[1:]
 
 	eff, ok := s.Resolve(c.Role, extra)
 	if !ok {

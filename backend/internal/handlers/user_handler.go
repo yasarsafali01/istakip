@@ -17,10 +17,11 @@ import (
 type UserHandler struct {
 	users *repository.UserRepo
 	roles *services.RoleStore
+	teams *repository.TeamRepo
 }
 
-func NewUserHandler(users *repository.UserRepo, roles *services.RoleStore) *UserHandler {
-	return &UserHandler{users: users, roles: roles}
+func NewUserHandler(users *repository.UserRepo, roles *services.RoleStore, teams *repository.TeamRepo) *UserHandler {
+	return &UserHandler{users: users, roles: roles, teams: teams}
 }
 
 // List returns every user's safe profile (no password hash). The original
@@ -47,6 +48,10 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.roles.Decorate(&user)
+	if user.Teams, err = h.teams.MembershipsOf(r.Context(), user.ID); err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load teams")
+		return
+	}
 	response.JSON(w, http.StatusOK, user)
 }
 
@@ -85,6 +90,10 @@ func (h *UserHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.roles.Decorate(&user)
+	if user.Teams, err = h.teams.MembershipsOf(r.Context(), user.ID); err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to load teams")
+		return
+	}
 	response.JSON(w, http.StatusOK, user)
 }
 

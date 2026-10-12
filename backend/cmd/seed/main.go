@@ -58,7 +58,8 @@ var users = []userSeed{
 	{"user-odb-w4", "Tarık Polat", "odb.worker4@example.com", "pass123", "Worker", "unit-odb", "project-odb-2", "#904EE2"},
 	{"user-odb-w5", "Gizem Yılmaz", "odb.worker5@example.com", "pass123", "Worker", "unit-odb", "project-odb-2", "#FF8B00"},
 	{"user-odb-w6", "Serkan Avcı", "odb.worker6@example.com", "pass123", "Worker", "unit-odb", "project-odb-2", "#E5493A"},
-	{"user-external", "Dış Kullanıcı", "dis.kullanici@example.com", "pass123", "External_User", "", "", "#36B37E"},
+	{"user-external", "Üniversite Personeli", "dis.kullanici@example.com", "pass123", "University_Staff", "", "", "#36B37E"},
+	{"user-student", "Öğrenci", "ogrenci@example.com", "pass123", "Student", "", "", "#6554C0"},
 }
 
 type projectSeed struct {
@@ -316,6 +317,11 @@ func main() {
 		}
 		if _, err := tx.Exec(ctx, `UPDATE users SET project_id = $1 WHERE id = $2`, projectIDs[u.projectKey], userIDs[u.key]); err != nil {
 			log.Fatalf("backfill user project %s: %v", u.key, err)
+		}
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO user_projects (user_id, project_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			userIDs[u.key], projectIDs[u.projectKey]); err != nil {
+			log.Fatalf("backfill user projects %s: %v", u.key, err)
 		}
 	}
 

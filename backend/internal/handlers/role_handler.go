@@ -265,10 +265,13 @@ func (h *RoleHandler) AssignUserRole(w http.ResponseWriter, r *http.Request) {
 
 	// Management-scope check: is this user even in the caller's org chart?
 	var targetProject *models.Project
-	if claims.Scope == models.ScopeManager && user.ProjectID != nil {
-		p, err := h.projects.GetByID(r.Context(), *user.ProjectID)
-		if err == nil {
-			targetProject = &p
+	if claims.Scope == models.ScopeManager {
+		for _, pid := range user.ProjectIDs {
+			p, err := h.projects.GetByID(r.Context(), pid)
+			if err == nil && p.ManagerID == claims.UserID {
+				targetProject = &p
+				break
+			}
 		}
 	}
 	if !services.CanManageUser(claims, user, targetProject) {

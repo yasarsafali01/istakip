@@ -160,7 +160,7 @@ func (r *RoleRepo) UserRoles(ctx context.Context) (map[uuid.UUID][]models.Role, 
 	rows, err := r.pool.Query(ctx, `
 		SELECT u.id, u.role,
 		       COALESCE((SELECT array_agg(x.role_key) FROM user_extra_roles x WHERE x.user_id = u.id), '{}')
-		FROM users u`)
+		FROM users u WHERE u.is_active`)
 	if err != nil {
 		return nil, err
 	}

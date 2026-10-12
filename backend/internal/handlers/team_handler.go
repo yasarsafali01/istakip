@@ -29,7 +29,8 @@ func (h *TeamHandler) loadProject(r *http.Request, idParam string) (uuid.UUID, e
 }
 
 // List returns a project's teams. Any role with project access may read them
-// (needed to show team options in the assignee picker).
+// (needed to show team options in the assignee picker), as may members of one
+// of its teams who belong to another müdürlük.
 func (h *TeamHandler) List(w http.ResponseWriter, r *http.Request) {
 	claims, _ := authmw.CurrentClaims(r.Context())
 	projectID, err := h.loadProject(r, "id")
@@ -46,7 +47,7 @@ func (h *TeamHandler) List(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "failed to load project")
 		return
 	}
-	if !services.CanAccessProject(claims, project) {
+	if !services.CanAccessProject(claims, project) && !claims.InTeamOfProject(projectID) {
 		response.Error(w, http.StatusForbidden, "Bu sayfaya erişim yetkiniz bulunmamaktadır")
 		return
 	}
@@ -181,8 +182,8 @@ func (h *TeamHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.teams.AddMember(r.Context(), teamID, req.UserID); err != nil {
-		if errors.Is(err, repository.ErrNotProjectStaff) {
-			response.Error(w, http.StatusBadRequest, "Ekibe yalnızca bu müdürlüğün personeli eklenebilir")
+		if errors.Is(err, repository.ErrNotUnitStaff) {
+			response.Error(w, http.StatusBadRequest, "Ekibe yalnızca bu daire başkanlığının personeli eklenebilir")
 			return
 		}
 		response.Error(w, http.StatusInternalServerError, "failed to add member")

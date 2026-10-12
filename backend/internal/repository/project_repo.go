@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -32,8 +33,10 @@ func scanProject(row pgx.Row) (models.Project, error) {
 type ProjectFilter struct {
 	UnitID    *uuid.UUID // Department_Head: own unit
 	ManagerID *uuid.UUID // Project_Manager: projects they manage
-	OnlyID    *uuid.UUID // Worker: their single assigned project
+	OnlyIDs   []uuid.UUID // Worker: the müdürlükler they serve in
 	None      bool       // External_User: no projects at all
+	// Müdürlükler of the user's teams, returned on top of the filter above.
+	AlsoIDs []uuid.UUID
 }
 
 func (r *ProjectRepo) List(ctx context.Context, filter ProjectFilter) ([]models.Project, error) {
@@ -43,16 +46,24 @@ func (r *ProjectRepo) List(ctx context.Context, filter ProjectFilter) ([]models.
 
 	query := "SELECT " + projectColumns + " FROM projects"
 	args := []interface{}{}
+	where := ""
 	switch {
 	case filter.UnitID != nil:
-		query += " WHERE unit_id = $1"
+		where = "unit_id = $1"
 		args = append(args, *filter.UnitID)
 	case filter.ManagerID != nil:
-		query += " WHERE manager_id = $1"
+		where = "manager_id = $1"
 		args = append(args, *filter.ManagerID)
-	case filter.OnlyID != nil:
-		query += " WHERE id = $1"
-		args = append(args, *filter.OnlyID)
+	case filter.OnlyIDs != nil:
+		where = "id = ANY($1)"
+		args = append(args, filter.OnlyIDs)
+	}
+	if where != "" && len(filter.AlsoIDs) > 0 {
+		args = append(args, filter.AlsoIDs)
+		where = fmt.Sprintf("(%s OR id = ANY($%d))", where, len(args))
+	}
+	if where != "" {
+		query += " WHERE " + where
 	}
 	query += " ORDER BY created_at"
 

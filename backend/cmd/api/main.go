@@ -63,7 +63,8 @@ func main() {
 		}
 		roleHandler := handlers.NewRoleHandler(roleRepo, userRepo, projectRepo, roleStore)
 
-		authHandler := handlers.NewAuthHandler(authService, roleStore)
+		teamRepo := repository.NewTeamRepo(pool)
+		authHandler := handlers.NewAuthHandler(authService, roleStore, teamRepo)
 
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", authHandler.Login)
@@ -79,26 +80,26 @@ func main() {
 		activityRepo := repository.NewActivityRepo(pool)
 		commentRepo := repository.NewCommentRepo(pool)
 		inventoryRepo := repository.NewInventoryRepo(pool)
-		teamRepo := repository.NewTeamRepo(pool)
 		templateRepo := repository.NewReplyTemplateRepo(pool)
 		notificationRepo := repository.NewNotificationRepo(pool)
 		notifier := services.NewNotifier(notificationRepo, userRepo)
 
 		formRepo := repository.NewRequestFormRepo(pool)
 		fileRepo := repository.NewFileRepo(pool)
-		issueHandler := handlers.NewIssueHandler(issueRepo, projectRepo, activityRepo, userRepo, notifier, formRepo, fileRepo)
+		issueHandler := handlers.NewIssueHandler(issueRepo, projectRepo, activityRepo, userRepo, notifier, formRepo, fileRepo, teamRepo)
 		commentHandler := handlers.NewCommentHandler(commentRepo, issueRepo, projectRepo, activityRepo, notifier)
 		activityHandler := handlers.NewActivityHandler(activityRepo, issueRepo, projectRepo)
 		inventoryHandler := handlers.NewInventoryHandler(inventoryRepo, projectRepo)
-		userHandler := handlers.NewUserHandler(userRepo, roleStore)
+		userHandler := handlers.NewUserHandler(userRepo, roleStore, teamRepo)
 		teamHandler := handlers.NewTeamHandler(teamRepo, projectRepo)
+		userAdminHandler := handlers.NewUserAdminHandler(userRepo, projectRepo, teamRepo, roleStore)
 		templateHandler := handlers.NewReplyTemplateHandler(templateRepo, projectRepo)
 		notificationHandler := handlers.NewNotificationHandler(notificationRepo)
 		formHandler := handlers.NewRequestFormHandler(formRepo, projectRepo)
 		fileHandler := handlers.NewFileHandler(fileRepo, issueRepo, projectRepo, cfg.UploadDir)
 
 		r.Group(func(r chi.Router) {
-			r.Use(authmw.RequireAuth(authService, roleStore))
+			r.Use(authmw.RequireAuth(authService, roleStore, teamRepo, userRepo))
 
 			r.Route("/units", func(r chi.Router) {
 				r.Get("/", unitHandler.List)
@@ -111,6 +112,7 @@ func main() {
 				r.Post("/", projectHandler.Create)
 				r.Get("/{id}", projectHandler.Get)
 				r.Patch("/{id}", projectHandler.Update)
+				r.Put("/{id}/members", userAdminHandler.SetProjectMembers)
 
 				r.Get("/{id}/sprints", sprintHandler.List)
 				r.Post("/{id}/sprints", sprintHandler.Create)
@@ -173,6 +175,7 @@ func main() {
 				r.Post("/{id}/approve-completion", issueHandler.ApproveCompletion)
 				r.Post("/{id}/reject-completion", issueHandler.RejectCompletion)
 				r.Patch("/{id}/assignee", issueHandler.UpdateAssignee)
+				r.Get("/{id}/assignees", issueHandler.Assignees)
 				r.Patch("/{id}/dates", issueHandler.UpdateDates)
 				r.Post("/{id}/visible-users", issueHandler.AddVisibleUser)
 				r.Post("/{id}/clone", issueHandler.Clone)
@@ -193,6 +196,9 @@ func main() {
 				r.Get("/me", userHandler.Me)
 				r.Patch("/me", userHandler.UpdateMe)
 				r.Post("/me/change-password", userHandler.ChangePassword)
+				r.Post("/", userAdminHandler.Create)
+				r.Patch("/{id}", userAdminHandler.Update)
+				r.Delete("/{id}", userAdminHandler.Deactivate)
 				r.Patch("/{id}/role", roleHandler.AssignUserRole)
 			})
 

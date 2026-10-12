@@ -64,8 +64,10 @@ type VisibilityScope struct {
 	All          bool
 	UnitID       *uuid.UUID // Department_Head
 	ManagerID    *uuid.UUID // Project_Manager
-	ProjectID    *uuid.UUID // Worker
+	ProjectIDs   []uuid.UUID // Worker: every müdürlük they serve in
 	OwnOrVisible *uuid.UUID // External_User: reporter_id = X OR visible to X
+	// Issues assigned to these teams are visible on top of the scope above.
+	TeamIDs []uuid.UUID
 }
 
 // IssueFilter holds optional query-string filters layered on top of the
@@ -88,22 +90,29 @@ func (r *IssueRepo) List(ctx context.Context, scope VisibilityScope, filter Issu
 		return fmt.Sprintf("$%d", len(args))
 	}
 
+	var scopeClause string
 	switch {
 	case scope.All:
 		// no restriction
 	case scope.UnitID != nil:
-		clauses = append(clauses, "p.unit_id = "+arg(*scope.UnitID))
+		scopeClause = "p.unit_id = " + arg(*scope.UnitID)
 	case scope.ManagerID != nil:
-		clauses = append(clauses, "p.manager_id = "+arg(*scope.ManagerID))
-	case scope.ProjectID != nil:
-		clauses = append(clauses, "i.project_id = "+arg(*scope.ProjectID))
+		scopeClause = "p.manager_id = " + arg(*scope.ManagerID)
+	case scope.ProjectIDs != nil:
+		scopeClause = "i.project_id = ANY(" + arg(scope.ProjectIDs) + ")"
 	case scope.OwnOrVisible != nil:
 		placeholder := arg(*scope.OwnOrVisible)
-		clauses = append(clauses, fmt.Sprintf(
+		scopeClause = fmt.Sprintf(
 			"(i.reporter_id = %s OR EXISTS (SELECT 1 FROM issue_visible_users vv WHERE vv.issue_id = i.id AND vv.user_id = %s))",
-			placeholder, placeholder))
+			placeholder, placeholder)
 	default:
-		clauses = append(clauses, "false") // no scope matched → nothing visible
+		scopeClause = "false" // no scope matched → nothing visible
+	}
+	if scopeClause != "" && len(scope.TeamIDs) > 0 {
+		scopeClause = fmt.Sprintf("(%s OR i.assignee_team_id = ANY(%s))", scopeClause, arg(scope.TeamIDs))
+	}
+	if scopeClause != "" {
+		clauses = append(clauses, scopeClause)
 	}
 
 	if filter.ProjectID != nil {

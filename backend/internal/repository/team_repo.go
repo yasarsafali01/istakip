@@ -87,11 +87,12 @@ func (r *TeamRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-// ErrNotProjectStaff: the user is neither assigned to the team's project nor its manager.
-var ErrNotProjectStaff = errors.New("user is not staff of the team's project")
+// ErrNotUnitStaff: the user doesn't belong to the daire başkanlığı that owns
+// the team's müdürlük.
+var ErrNotUnitStaff = errors.New("user is not staff of the team's unit")
 
-// AddMember adds a user to a team. Only the team's own müdürlük staff (users
-// assigned to the project, or its manager) can be members.
+// AddMember adds a user to a team. Any staff of the same daire başkanlığı may
+// join, so one person can serve on teams of several müdürlükler in that unit.
 func (r *TeamRepo) AddMember(ctx context.Context, teamID, userID uuid.UUID) error {
 	var staff bool
 	if err := r.pool.QueryRow(ctx, `
@@ -99,19 +100,88 @@ func (r *TeamRepo) AddMember(ctx context.Context, teamID, userID uuid.UUID) erro
 		  SELECT 1 FROM teams t
 		  JOIN projects p ON p.id = t.project_id
 		  JOIN users u ON u.id = $2
-		  WHERE t.id = $1 AND (u.project_id = t.project_id OR p.manager_id = u.id))`,
+		  WHERE t.id = $1 AND (u.unit_id = p.unit_id OR p.manager_id = u.id))`,
 		teamID, userID).Scan(&staff); err != nil {
 		return err
 	}
 	if !staff {
-		return ErrNotProjectStaff
+		return ErrNotUnitStaff
 	}
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, teamID, userID)
 	return err
 }
 
+// MembershipsOf returns every team the user belongs to, with its müdürlük.
+func (r *TeamRepo) MembershipsOf(ctx context.Context, userID uuid.UUID) ([]models.TeamMembership, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT t.id, t.name, p.id, p.name
+		 FROM team_members m
+		 JOIN teams t ON t.id = m.team_id
+		 JOIN projects p ON p.id = t.project_id
+		 WHERE m.user_id = $1
+		 ORDER BY p.name, t.name`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []models.TeamMembership{}
+	for rows.Next() {
+		var m models.TeamMembership
+		if err := rows.Scan(&m.TeamID, &m.TeamName, &m.ProjectID, &m.ProjectName); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 func (r *TeamRepo) RemoveMember(ctx context.Context, teamID, userID uuid.UUID) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM team_members WHERE team_id = $1 AND user_id = $2`, teamID, userID)
 	return err
+}
+
+// ErrTeamOutsideUnit: a requested team belongs to another daire başkanlığı.
+var ErrTeamOutsideUnit = errors.New("team outside unit")
+
+// SetUserTeams replaces the user's memberships among the teams of one daire
+// başkanlığı; memberships in other units' teams are left untouched.
+func (r *TeamRepo) SetUserTeams(ctx context.Context, userID, unitID uuid.UUID, teamIDs []uuid.UUID) error {
+	unique := map[uuid.UUID]bool{}
+	ids := []uuid.UUID{}
+	for _, id := range teamIDs {
+		if !unique[id] {
+			unique[id] = true
+			ids = append(ids, id)
+		}
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var inUnit int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM teams t JOIN projects p ON p.id = t.project_id
+		WHERE t.id = ANY($1) AND p.unit_id = $2`, ids, unitID).Scan(&inUnit); err != nil {
+		return err
+	}
+	if inUnit != len(ids) {
+		return ErrTeamOutsideUnit
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM team_members m USING teams t, projects p
+		WHERE m.team_id = t.id AND p.id = t.project_id AND m.user_id = $1 AND p.unit_id = $2`, userID, unitID); err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, userID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }

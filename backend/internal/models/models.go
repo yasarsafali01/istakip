@@ -13,7 +13,9 @@ const (
 	RoleDepartmentHead Role = "Department_Head"
 	RoleProjectManager Role = "Project_Manager"
 	RoleWorker         Role = "Worker"
-	RoleExternalUser   Role = "External_User"
+	// Requester types: same "own" scope and permissions for now.
+	RoleUniversityStaff Role = "University_Staff"
+	RoleStudent         Role = "Student"
 )
 
 // Scope is how much data a role can see (independent of what it may do).
@@ -51,8 +53,11 @@ type User struct {
 	// Additional roles on top of Role; effective access is the union.
 	ExtraRoles []Role `json:"extraRoles"`
 	UnitID       *uuid.UUID `json:"unitId,omitempty"`
-	ProjectID    *uuid.UUID `json:"projectId,omitempty"`
-	AvatarColor  string     `json:"avatarColor"`
+	// Primary müdürlük; ProjectIDs lists every müdürlük the user serves in
+	// (primary first).
+	ProjectID    *uuid.UUID  `json:"projectId,omitempty"`
+	ProjectIDs   []uuid.UUID `json:"projectIds"`
+	AvatarColor  string      `json:"avatarColor"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	// Profile location — where to find this person in the building (helpdesk use).
 	Building *string `json:"building,omitempty"`
@@ -63,10 +68,13 @@ type User struct {
 	NotifyEmail bool `json:"notifyEmail"`
 	NotifySMS   bool `json:"notifySms"`
 	NotifyPush  bool `json:"notifyPush"`
+	// Deactivated users can't sign in but stay referenced by their history.
+	IsActive bool `json:"isActive"`
 	// Filled in for /auth/login and /users/me only.
 	Scope       Scope    `json:"scope,omitempty"`
 	Level       int      `json:"level,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
+	Teams       []TeamMembership `json:"teams,omitempty"`
 }
 
 type Unit struct {
@@ -157,6 +165,8 @@ type Issue struct {
 	// Set while the issue is "Onay Bekliyor": the completion a user without
 	// issue.approve submitted, applied only when a manager approves it.
 	PendingCompletion *PendingCompletion `json:"pendingCompletion,omitempty"`
+	// What the requesting user may do with this issue (response-only).
+	AllowedActions *IssueActions `json:"allowedActions,omitempty"`
 }
 
 // StatusPendingApproval: completed by someone who can't close work alone;
@@ -260,12 +270,41 @@ type RequestAnswer struct {
 	Value      interface{} `json:"value"`
 }
 
+// IssueActions says what the current user may do with an issue; filled in on
+// every issue response (see services.IssueActionsFor).
+type IssueActions struct {
+	Edit         bool `json:"edit"`
+	Delete       bool `json:"delete"`
+	ChangeStatus bool `json:"changeStatus"`
+	Complete     bool `json:"complete"`
+	Approve      bool `json:"approve"`
+	Assign       bool `json:"assign"`
+	Reject       bool `json:"reject"`
+	Forward      bool `json:"forward"`
+	Cancel       bool `json:"cancel"`
+	Rate         bool `json:"rate"`
+	Clone        bool `json:"clone"`
+	Share        bool `json:"share"`
+	MoveSprint   bool `json:"moveSprint"`
+	EditDates    bool `json:"editDates"`
+	Comment      bool `json:"comment"`
+}
+
 type Team struct {
 	ID        uuid.UUID   `json:"id"`
 	ProjectID uuid.UUID   `json:"projectId"`
 	Name      string      `json:"name"`
 	CreatedAt time.Time   `json:"createdAt"`
 	MemberIDs []uuid.UUID `json:"memberIds"`
+}
+
+// TeamMembership is one team a user serves on; the team may belong to another
+// müdürlük of the user's daire başkanlığı.
+type TeamMembership struct {
+	TeamID      uuid.UUID `json:"teamId"`
+	TeamName    string    `json:"teamName"`
+	ProjectID   uuid.UUID `json:"projectId"`
+	ProjectName string    `json:"projectName"`
 }
 
 // Template kinds: canned comment replies, and resolution notes used when

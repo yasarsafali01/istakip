@@ -42,12 +42,20 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		uid := claims.UserID
 		filter.ManagerID = &uid
 	case models.ScopeProject:
-		filter.OnlyID = claims.ProjectID
+		filter.OnlyIDs = claims.ProjectIDs
+		if filter.OnlyIDs == nil {
+			filter.OnlyIDs = []uuid.UUID{}
+		}
 	case models.ScopeOwn:
 		// no filter — a requester picks unit → project when opening a
 		// request (issue Create already lets them target any project)
 	default:
 		filter.None = true
+	}
+	// A team member sees the müdürlük of each team they serve on, so requests
+	// assigned to those teams can show their müdürlük and number.
+	if !filter.None {
+		filter.AlsoIDs = claims.TeamProjectIDs
 	}
 
 	projects, err := h.projects.List(r.Context(), filter)

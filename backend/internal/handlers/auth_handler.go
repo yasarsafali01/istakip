@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/yasarsafali01/istakip/backend/internal/repository"
 	"github.com/yasarsafali01/istakip/backend/internal/response"
 	"github.com/yasarsafali01/istakip/backend/internal/services"
 )
@@ -12,10 +13,11 @@ import (
 type AuthHandler struct {
 	auth  *services.AuthService
 	roles *services.RoleStore
+	teams *repository.TeamRepo
 }
 
-func NewAuthHandler(auth *services.AuthService, roles *services.RoleStore) *AuthHandler {
-	return &AuthHandler{auth: auth, roles: roles}
+func NewAuthHandler(auth *services.AuthService, roles *services.RoleStore, teams *repository.TeamRepo) *AuthHandler {
+	return &AuthHandler{auth: auth, roles: roles, teams: teams}
 }
 
 type loginRequest struct {
@@ -47,6 +49,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.roles.Decorate(&user)
+	if user.Teams, err = h.teams.MembershipsOf(r.Context(), user.ID); err != nil {
+		response.Error(w, http.StatusInternalServerError, "login failed")
+		return
+	}
 	response.JSON(w, http.StatusOK, tokenResponse{
 		AccessToken:  pair.AccessToken,
 		RefreshToken: pair.RefreshToken,
