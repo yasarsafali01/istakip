@@ -3,8 +3,6 @@ import { useParams, Link, Navigate } from 'react-router-dom';
 import { TbPackage } from 'react-icons/tb';
 import { useAppContext } from '../context/AppContext';
 import HelpGuide from '../components/common/HelpGuide';
-import { ROLES } from '../constants';
-import { useAuth } from '../hooks/useAuth';
 
 /**
  * Stok Durumu sayfası.
@@ -14,7 +12,6 @@ import { useAuth } from '../hooks/useAuth';
 function InventoryPage() {
   const { projectId } = useParams();
   const { state } = useAppContext();
-  const { currentUser } = useAuth();
 
   const project = state.projects.find((p) => p.id === projectId);
 

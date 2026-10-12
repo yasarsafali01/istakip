@@ -398,6 +398,8 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
             <button
               className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
               onClick={() => setShowDeleteConfirm(true)}
+              aria-label="Sil"
+              title="Sil"
             >
               <TbTrash size={14} />
             </button>

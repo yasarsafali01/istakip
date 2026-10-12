@@ -44,17 +44,9 @@ export function useRequestFilters({ issues, currentUser, projects, units, role }
     [issues, currentUser, projects]
   );
 
-  // Step 2: Role-based filtering
-  const roleFilteredRequests = useMemo(() => {
-    let result = visibleRequests;
-
-    // System_Admin tüm talepleri görür
-    // Diğer tüm roller (Department_Head, Project_Manager, Worker, External_User)
-    // sadece kendi açtıkları talepleri görür — getVisibleRequests zaten bunu sağlar
-    // Department_Head ve Project_Manager için ek proje/birim filtresi uygulanmaz
-
-    return result;
-  }, [visibleRequests, role, projects, currentUser]);
+  // Step 2: Role-based filtering — getVisibleRequests already scopes by role,
+  // so no extra filter is applied here.
+  const roleFilteredRequests = visibleRequests;
 
   // Derive available units from role-filtered requests (not all units)
   const availableUnits = useMemo(() => {
