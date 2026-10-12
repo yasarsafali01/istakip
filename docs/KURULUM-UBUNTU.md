@@ -280,6 +280,7 @@ Sayıların yukarıdan aşağıya doğru azalması beklenir.
 ```bash
 go build ./...   # tüm paketler derleniyor mu?
 go vet ./...     # yaygın hataları arar; çıktı vermemesi başarılıdır
+gofmt -l .       # biçim kontrolü; çıktı vermemesi başarılıdır
 go test ./...    # birim testler (henüz test dosyası yoksa "no test files" yazar)
 ```
 
@@ -323,10 +324,10 @@ Giriş ekranındaki **Demo Hesapları** listesinden bir satıra tıklayın; e-po
 ### Üretim derlemesi (isteğe bağlı)
 
 ```bash
-npm run build
+CI=true npm run build
 ```
 
-Sunucuya konacak statik dosyaları `frontend/build/` klasörüne üretir. Derleme hatasız bitmelidir.
+Sunucuya konacak statik dosyaları `frontend/build/` klasörüne üretir. `CI=true` ile lint uyarıları da hata sayılır (GitLab CI'daki gibi); derleme "The build folder is ready to be deployed" ile bitmelidir.
 
 ### Web birim testleri (isteğe bağlı)
 
@@ -334,7 +335,7 @@ Sunucuya konacak statik dosyaları `frontend/build/` klasörüne üretir. Derlem
 CI=true npm test
 ```
 
-> Not: `IssueDetailContent.bugfix.test.js` ve `RequestDetailContent` testlerinin bir kısmı, yetki kurallarının backend'e (`allowedActions`) taşınmasından önceki davranışa göre yazılmıştır ve şu an başarısız olur. Bu, uygulamanın çalışmasını etkilemez; testlerin güncellenmesi gerekiyor.
+İki test paketi çalışır: uygulamanın oturum yokken giriş ekranıyla açıldığını doğrulayan duman testi ve talep detayındaki butonların backend'den gelen `allowedActions` bayraklarına göre gösterildiğini doğrulayan testler. Beklenen sonuç: `Tests: 9 passed`.
 
 ## 8. Mobil uygulamayı kurun ve çalıştırın
 
@@ -396,6 +397,7 @@ npx expo start
 
 ```bash
 npx tsc --noEmit                                                  # TypeScript tip kontrolü; çıktı vermemesi başarılıdır
+npx expo-doctor                                                   # bağımlılık uyumu; "21/21 checks passed" beklenir
 npx expo export --platform android --output-dir /tmp/istakip-export   # paket derleniyor mu?
 ```
 

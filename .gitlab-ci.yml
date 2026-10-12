@@ -1,26 +1,53 @@
 stages:
+  - test
   - build
 
-image: node:18
-
-cache:
-  key: react-node-cache
-  paths:
-    - node_modules/
-    - .npm/
-
 variables:
-  NPM_CONFIG_CACHE: .npm
+  NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
 
-build-job:
-  stage: build
+backend:
+  stage: test
+  image: golang:1.26
   script:
+    - cd backend
+    - test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+    - go build ./...
+    - go vet ./...
+    - go test ./...
+
+frontend-test:
+  stage: test
+  image: node:22
+  cache:
+    key: frontend-npm
+    paths: [.npm/]
+  script:
+    - cd frontend
     - npm ci
-    - npm run build
+    - CI=true npm test
+
+mobile-typecheck:
+  stage: test
+  image: node:22
+  cache:
+    key: mobile-npm
+    paths: [.npm/]
+  script:
+    - cd mobile
+    - npm ci --legacy-peer-deps
+    - npx tsc --noEmit
+
+frontend-build:
+  stage: build
+  image: node:22
+  cache:
+    key: frontend-npm
+    paths: [.npm/]
+  script:
+    - cd frontend
+    - npm ci
+    - CI=true npm run build
   artifacts:
     paths:
-      - build/
+      - frontend/build/
     expire_in: 1 week
- # only:
-   # - devtest
-    #- main
