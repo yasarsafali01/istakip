@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
 import { usersApi } from '../../../src/api/resources';
 import Avatar from '../../../src/components/Avatar';
+import { ROLE_LABELS } from '../../../src/utils/constants';
 
 /** Mirrors the web Profilim page: location, notification channels, password. */
 export default function ProfileScreen() {
@@ -63,11 +64,24 @@ export default function ProfileScreen() {
     <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.userCard}>
-          <Avatar name={currentUser?.name || '?'} size={48} />
+          <Avatar name={currentUser?.name || '?'} color={currentUser?.avatarColor} size={48} />
           <View style={{ marginLeft: 12, flex: 1 }}>
             <Text style={styles.name}>{currentUser?.name}</Text>
             <Text style={styles.meta}>{currentUser?.email}</Text>
+            {currentUser ? <Text style={styles.meta}>{ROLE_LABELS[currentUser.roleKey || currentUser.role] || currentUser.role}</Text> : null}
           </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Ekiplerim</Text>
+        <View style={[styles.card, { flexDirection: 'row', flexWrap: 'wrap', gap: 6 }]}>
+          {(currentUser?.teams || []).length === 0 ? (
+            <Text style={styles.meta}>Henüz bir ekipte görev almıyorsunuz.</Text>
+          ) : (currentUser?.teams || []).map((t) => (
+            <View key={t.teamId} style={styles.teamChip}>
+              <Text style={styles.teamName}>{t.teamName}</Text>
+              <Text style={styles.teamProject}> · {t.projectName}</Text>
+            </View>
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>Konum</Text>
@@ -126,6 +140,9 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  teamChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eef0f8', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  teamName: { fontSize: 12, fontWeight: '700', color: '#1F2855' },
+  teamProject: { fontSize: 12, color: '#64748b' },
   container: { padding: 16, paddingBottom: 40 },
   userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8 },
   name: { fontSize: 16, fontWeight: '700', color: '#172B4D' },

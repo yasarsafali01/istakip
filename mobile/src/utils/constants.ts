@@ -56,12 +56,36 @@ export const ROLES = {
 
 export const MANAGER_ROLES: string[] = [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER];
 
+// Fallback names when the roles list isn't loaded yet. "External_User" is the
+// UI's base role for requesters (scope own): Üniversite Personeli and Öğrenci.
+export const ROLE_LABELS: Record<string, string> = {
+  System_Admin: 'Sistem Yöneticisi',
+  Department_Head: 'Daire Başkanı',
+  Project_Manager: 'Müdür',
+  Worker: 'Çalışan',
+  External_User: 'Talep Sahibi',
+  University_Staff: 'Üniversite Personeli',
+  Student: 'Öğrenci',
+};
+
+/** Same palette as the web (styles/dashboard.css). */
+export const THEME = {
+  navy: '#1F2855', navySoft: '#eef0f8',
+  orange: '#EE7203', orangeSoft: '#fff4e8',
+  ok: '#15803d', okSoft: '#e8f7ee',
+  warn: '#b45309', warnSoft: '#fff6e5',
+  danger: '#c2410c', dangerSoft: '#fdecea',
+  violet: '#7c3aed', violetSoft: '#f3edff',
+  ink: '#0f172a', muted: '#64748b', line: '#e2e8f0', canvas: '#f4f6fa', surface: '#ffffff',
+  brand: '#2563eb',
+};
+
 export const ROLE_DEFAULT_ROUTE: Record<string, string> = {
   System_Admin: '/(app)/dashboard',
   Department_Head: '/(app)/dashboard',
   Project_Manager: '/(app)/dashboard',
   Worker: '/(app)/dashboard',
-  External_User: '/(app)/requests',
+  External_User: '/(app)/dashboard',
 };
 
 export const SCOPE_LABELS: Record<string, string> = {

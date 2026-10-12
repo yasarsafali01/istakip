@@ -5,7 +5,7 @@ import * as Sharing from 'expo-sharing';
 import { api, BASE_URL, getAccessToken } from './client';
 import type {
   User, Unit, Project, Sprint, Issue, Comment, Activity, InventoryItem, RoleDef, Team, ReplyTemplate,
-  AppNotification, RequestForm, RequestQuestion, TemplateKind, FileRef,
+  AppNotification, RequestForm, RequestQuestion, TemplateKind, FileRef, AssigneeOptions,
 } from './types';
 import { withBaseRole } from './roles';
 
@@ -20,6 +20,12 @@ export const usersApi = {
   updateMe: (data: Partial<User>) => api.patch<User>('/users/me', data),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post('/users/me/change-password', { currentPassword, newPassword }),
+  // Daire Başkanı: manage the personnel of their own daire başkanlığı.
+  create: (data: { name: string; email: string; password: string; role: string; projectIds: string[]; teamIds: string[] }) =>
+    api.post<User>('/users', data),
+  update: (id: string, data: { name: string; email: string; projectIds: string[]; teamIds?: string[]; password?: string }) =>
+    api.patch<User>(`/users/${id}`, data),
+  remove: (id: string) => api.delete(`/users/${id}`),
 };
 
 export interface PermissionInfo { key: string; label: string; group: string; description: string }
@@ -47,6 +53,8 @@ export const projectsApi = {
   get: (id: string) => api.get<Project>(`/projects/${id}`),
   create: (data: Partial<Project>) => api.post<Project>('/projects', data),
   update: (id: string, data: Partial<Project>) => api.patch<Project>(`/projects/${id}`, data),
+  /** Makes exactly these people the müdürlük's personnel. */
+  setMembers: (id: string, userIds: string[]) => api.put(`/projects/${id}/members`, { userIds }),
 };
 
 export const sprintsApi = {
@@ -95,6 +103,8 @@ export const issuesApi = {
     api.patch<Issue>(`/issues/${id}/assignee`, { assigneeId, assigneeTeamId: null }),
   assignTeam: (id: string, assigneeTeamId: string) =>
     api.patch<Issue>(`/issues/${id}/assignee`, { assigneeId: null, assigneeTeamId }),
+  assignees: (id: string, projectId?: string) =>
+    api.get<AssigneeOptions>(`/issues/${id}/assignees${projectId ? `?projectId=${projectId}` : ''}`),
   clone: (id: string) => api.post<Issue>(`/issues/${id}/clone`),
   moveSprint: (id: string, sprintId: string | null) => api.post<Issue>(`/issues/${id}/move-sprint`, { sprintId }),
   updateDates: (id: string, resolvedAt: string | null, timeSpent: number) =>

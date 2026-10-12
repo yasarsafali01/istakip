@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsApi, requestFormsApi } from '../../../src/api/resources';
 import ProjectSelect from '../../../src/components/ProjectSelect';
+import { useLocalSearchParams } from 'expo-router';
 import PickerSheet from '../../../src/components/PickerSheet';
 import DynamicQuestions from '../../../src/components/DynamicQuestions';
 import {
@@ -29,7 +30,9 @@ const toDraft = (f: RequestForm): Draft => ({ name: f.name, description: f.descr
 export default function FormsScreen() {
   const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list });
   const projects = projectsQuery.data || [];
-  const [projectId, setProjectId] = useState('');
+  // Opened from Müdürlükler → (müdürlük) → Talep Formları
+  const { project: projectParam } = useLocalSearchParams<{ project?: string }>();
+  const [projectId, setProjectId] = useState(projectParam || '');
   const pid = projectId || projects[0]?.id || '';
 
   const [forms, setForms] = useState<RequestForm[]>([]);
@@ -71,6 +74,10 @@ export default function FormsScreen() {
       { text: 'Vazgeç', style: 'cancel' }, { text: 'Değişiklikleri at', style: 'destructive', onPress: then },
     ]);
   };
+  // Switching müdürlük from the Müdürlükler tab while this screen stays mounted.
+  useEffect(() => {
+    if (projectParam && projectParam !== projectId) confirmDiscard(() => setProjectId(projectParam));
+  }, [projectParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setQuestions = (fn: (qs: RequestQuestion[]) => RequestQuestion[]) => setDraft((d) => (d ? { ...d, questions: fn(d.questions) } : d));
 
@@ -322,7 +329,8 @@ function QuestionEditor({ question, earlier, onCancel, onSave }: {
   question: RequestQuestion; earlier: RequestQuestion[]; onCancel: () => void; onSave: (q: RequestQuestion, prevType: string) => void;
 }) {
   const [q, setQ] = useState<RequestQuestion>(question);
-  const [optionsText, setOptionsText] = useState(question.options.join('\n'));
+  const [options, setOptions] = useState<string[]>(question.options);
+  const [bulk, setBulk] = useState<string | null>(null); // null = one by one, string = bulk text
   const [typeOpen, setTypeOpen] = useState(false);
   const [parentOpen, setParentOpen] = useState(false);
   const [valueOpen, setValueOpen] = useState(false);
@@ -335,15 +343,16 @@ function QuestionEditor({ question, earlier, onCancel, onSave }: {
   function changeType(type: any) {
     setTypeOpen(false);
     const next: RequestQuestion = { ...q, type };
-    if (isChoiceType(type) && !isChoiceType(q.type)) { next.options = ['Seçenek 1', 'Seçenek 2']; setOptionsText('Seçenek 1\nSeçenek 2'); }
-    if (!isChoiceType(type)) { next.options = []; setOptionsText(''); }
+    if (isChoiceType(type) && !isChoiceType(q.type)) { next.options = ['Seçenek 1', 'Seçenek 2']; setOptions(next.options); setBulk(null); }
+    if (!isChoiceType(type)) { next.options = []; setOptions([]); setBulk(null); }
     if (!hasPlaceholder(type)) next.placeholder = '';
     if (type !== q.type) next.settings = type === 'file' ? { maxFiles: 1, accept: [] } : {};
     setQ(next);
   }
 
   function done() {
-    const final = { ...q, options: isChoiceType(q.type) ? optionsText.split('\n').map((o) => o.trim()).filter(Boolean) : [] };
+    const raw = bulk !== null ? bulk.split('\n') : options;
+    const final = { ...q, options: isChoiceType(q.type) ? raw.map((o) => o.trim()).filter(Boolean) : [] };
     if (!final.label.trim()) { Alert.alert('Uyarı', 'Soru metni boş bırakılamaz.'); return; }
     if (isChoiceType(final.type) && final.options.length === 0) { Alert.alert('Uyarı', 'En az bir seçenek ekleyin.'); return; }
     onSave(final, question.type);
@@ -379,8 +388,43 @@ function QuestionEditor({ question, earlier, onCancel, onSave }: {
 
           {isChoiceType(q.type) && (
             <>
-              <Text style={styles.label}>Seçenekler <Text style={styles.req}>*</Text> <Text style={styles.hintInline}>(her satıra bir seçenek)</Text></Text>
-              <TextInput style={[styles.input, { minHeight: 100, textAlignVertical: 'top' }]} multiline value={optionsText} onChangeText={setOptionsText} />
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                <Text style={[styles.label, { flex: 1 }]}>Seçenekler <Text style={styles.req}>*</Text></Text>
+                <TouchableOpacity onPress={() => setBulk(bulk === null ? options.join('\n') : null)}>
+                  <Text style={styles.linkText}>{bulk === null ? 'Toplu düzenle' : 'Tek tek düzenle'}</Text>
+                </TouchableOpacity>
+              </View>
+              {bulk !== null ? (
+                <>
+                  <TextInput style={[styles.input, { minHeight: 110, textAlignVertical: 'top' }]} multiline autoFocus value={bulk}
+                    onChangeText={setBulk} placeholder="Her satıra bir seçenek yazın" />
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 8 }}>
+                    <TouchableOpacity onPress={() => setBulk(null)}><Text style={{ color: '#6B7280', fontWeight: '700' }}>Vazgeç</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      const lines = bulk.split('\n').map((o) => o.trim()).filter(Boolean);
+                      if (lines.length) setOptions(lines);
+                      setBulk(null);
+                    }}><Text style={styles.linkText}>Uygula</Text></TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  {options.map((o, i) => (
+                    <View key={i} style={styles.optRow}>
+                      <Text style={styles.optMark}>{q.type === 'checkbox' ? '☐' : q.type === 'radio' ? '○' : i + 1}</Text>
+                      <TextInput style={[styles.input, { flex: 1 }]} value={o} placeholder={`Seçenek ${i + 1}`}
+                        onChangeText={(t) => setOptions(options.map((x, j) => (j === i ? t : x)))} />
+                      <TouchableOpacity disabled={options.length <= 1} style={{ opacity: options.length <= 1 ? 0.3 : 1, padding: 6 }}
+                        onPress={() => setOptions(options.filter((_, j) => j !== i))}>
+                        <Text style={{ fontSize: 16, color: '#6B7280' }}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity onPress={() => setOptions([...options, ''])} style={{ marginTop: 4 }}>
+                    <Text style={styles.linkText}>+ Seçenek ekle</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </>
           )}
 
@@ -487,6 +531,9 @@ function IconBtn({ icon, onPress, disabled, danger }: { icon: any; onPress: () =
 }
 
 const styles = StyleSheet.create({
+  linkText: { color: '#0052CC', fontWeight: '700', fontSize: 13 },
+  optRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  optMark: { width: 22, textAlign: 'center', color: '#6B7280', fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
   container: { padding: 16, paddingBottom: 100 },
   empty: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', marginVertical: 10 },

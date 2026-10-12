@@ -15,7 +15,9 @@ export interface User {
   /** Additional roles on top of `role`; effective access is the union. */
   extraRoles?: string[];
   unitId?: string | null;
+  /** Primary müdürlük; projectIds lists every müdürlük the user serves in (primary first). */
   projectId?: string | null;
+  projectIds?: string[];
   avatarColor: string;
   createdAt: string;
   /** Real role key (a custom role's key); `role` holds the built-in role with the same scope. */
@@ -29,6 +31,17 @@ export interface User {
   notifyEmail?: boolean;
   notifySms?: boolean;
   notifyPush?: boolean;
+  /** false = deleted (deactivated); kept so history still shows the name. */
+  isActive?: boolean;
+  /** Only on /auth/login and /users/me. */
+  teams?: TeamMembership[];
+}
+
+export interface TeamMembership {
+  teamId: string;
+  teamName: string;
+  projectId: string;
+  projectName: string;
 }
 
 export interface RoleDef {
@@ -133,6 +146,32 @@ export interface Issue {
   requestFormName?: string | null;
   requestAnswers: RequestAnswer[];
   pendingCompletion?: PendingCompletion | null;
+  /** What the signed-in user may do with this issue — decided by the backend. */
+  allowedActions?: IssueActions;
+}
+
+export interface IssueActions {
+  edit: boolean;
+  delete: boolean;
+  changeStatus: boolean;
+  complete: boolean;
+  approve: boolean;
+  assign: boolean;
+  reject: boolean;
+  forward: boolean;
+  cancel: boolean;
+  rate: boolean;
+  clone: boolean;
+  share: boolean;
+  moveSprint: boolean;
+  editDates: boolean;
+  comment: boolean;
+}
+
+/** GET /issues/{id}/assignees — exactly who the backend accepts as assignee. */
+export interface AssigneeOptions {
+  users: { id: string; name: string; email: string; avatarColor: string }[];
+  teams: { id: string; name: string; memberCount: number }[];
 }
 
 export interface Comment {

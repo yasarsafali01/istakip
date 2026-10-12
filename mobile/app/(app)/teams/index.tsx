@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { projectsApi, teamsApi, templatesApi, usersApi } from '../../../src/api/resources';
 import { usePermissions } from '../../../src/hooks/usePermissions';
 import PickerSheet from '../../../src/components/PickerSheet';
 import ProjectSelect from '../../../src/components/ProjectSelect';
 import { ROLES } from '../../../src/utils/constants';
+import { inProject } from '../../../src/utils/access';
 import type { TemplateKind, Team, ReplyTemplate } from '../../../src/api/types';
 
 const KINDS: Record<TemplateKind, { label: string; help: string }> = {
@@ -22,7 +24,10 @@ export default function TeamsTemplatesScreen() {
   const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list });
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: usersApi.list });
   const projects = projectsQuery.data || [];
-  const [projectId, setProjectId] = useState('');
+  // Opened from Müdürlükler → (müdürlük) → Ekipler ve Şablonlar
+  const { project: projectParam } = useLocalSearchParams<{ project?: string }>();
+  const [projectId, setProjectId] = useState(projectParam || '');
+  useEffect(() => { if (projectParam) setProjectId(projectParam); }, [projectParam]);
   const pid = projectId || projects[0]?.id || '';
   const project = projects.find((p) => p.id === pid);
 
@@ -42,10 +47,13 @@ export default function TeamsTemplatesScreen() {
   };
   const run = (fn: () => Promise<any>) => fn().then(refresh).catch((err: any) => Alert.alert('Hata', err.message));
 
-  // Only this müdürlük's own staff can join its teams (backend enforces too)
-  const staff = (usersQuery.data || []).filter(
-    (u) => u.role !== ROLES.EXTERNAL_USER && (u.projectId === pid || u.id === project?.managerId)
-  );
+  // Any active staff of the same daire başkanlığı can join (a person may serve on
+  // several müdürlükler' teams) — the backend enforces the same rule. Own staff first.
+  const isOwnStaff = (u: { id: string; projectId?: string | null; projectIds?: string[] }) => inProject(u, pid) || u.id === project?.managerId;
+  const staff = (usersQuery.data || [])
+    .filter((u) => u.isActive !== false && u.role !== ROLES.EXTERNAL_USER && (isOwnStaff(u) || (!!project && u.unitId === project.unitId)))
+    .sort((a, b) => Number(isOwnStaff(b)) - Number(isOwnStaff(a)) || a.name.localeCompare(b.name, 'tr'));
+  const projectNameOf = (u: { projectId?: string | null }) => projects.find((p) => p.id === u.projectId)?.name || 'Diğer müdürlük';
   const userName = (id: string) => usersQuery.data?.find((u) => u.id === id)?.name || id;
   const kindTemplates = (templatesQuery.data || []).filter((t) => (t.kind || 'reply') === kind);
 
@@ -128,7 +136,7 @@ export default function TeamsTemplatesScreen() {
         {/* Ekipler */}
         <Text style={styles.sectionTitle}>Ekipler</Text>
         <View style={styles.card}>
-          <Text style={styles.help}>Talepleri tek kişi yerine bir ekibe atayabilirsiniz. Ekiplere yalnızca bu müdürlüğün personeli eklenebilir.</Text>
+          <Text style={styles.help}>Talepleri tek kişi yerine bir ekibe atayabilirsiniz. Ekiplere daire başkanlığındaki tüm personel eklenebilir; bir personel birden fazla ekipte görev alabilir.</Text>
           {can('team.manage') && (
             <>
               <Text style={styles.label}>Yeni ekip adı <Text style={styles.req}>*</Text></Text>
@@ -175,7 +183,8 @@ export default function TeamsTemplatesScreen() {
       <PickerSheet
         visible={!!memberPickerTeam}
         title="Üye ekle"
-        options={staff.filter((u) => !memberPickerTeam?.memberIds.includes(u.id)).map((u) => ({ key: u.id, label: u.name }))}
+        options={staff.filter((u) => !memberPickerTeam?.memberIds.includes(u.id))
+          .map((u) => ({ key: u.id, label: u.name, sublabel: isOwnStaff(u) ? 'Bu müdürlük' : projectNameOf(u) }))}
         onSelect={(uid) => { const t = memberPickerTeam; setMemberPickerTeam(null); if (t) run(() => teamsApi.addMember(t.id, uid)); }}
         onClose={() => setMemberPickerTeam(null)}
       />

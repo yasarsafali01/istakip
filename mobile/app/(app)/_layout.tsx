@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../src/context/AuthContext';
 import { notificationsApi } from '../../src/api/resources';
-import { ROLES, BRAND } from '../../src/utils/constants';
+import { ROLES, BRAND, THEME } from '../../src/utils/constants';
 
 // Small brand mark in every header (logo + short name), like the web top bar.
 function HeaderBrand({ title }: { title: string }) {
@@ -20,6 +20,7 @@ function HeaderBrand({ title }: { title: string }) {
 export default function AppTabsLayout() {
   const { currentUser } = useAuth();
   const isExternalUser = currentUser?.role === ROLES.EXTERNAL_USER;
+  const isAdmin = currentUser?.role === ROLES.SYSTEM_ADMIN;
 
   // Unread notifications badge, refreshed every minute.
   const unreadQuery = useQuery({
@@ -31,19 +32,17 @@ export default function AppTabsLayout() {
 
   return (
     <Tabs
-      // External_User has no "dashboard" tab, so their landing tab is "requests".
-      initialRouteName={isExternalUser ? 'requests/index' : 'dashboard'}
+      initialRouteName="dashboard"
       screenOptions={{
         headerShown: true,
-        tabBarActiveTintColor: '#0052CC',
+        tabBarActiveTintColor: THEME.navy,
         headerTitle: ({ children }) => <HeaderBrand title={String(children)} />,
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Panel',
-          href: isExternalUser ? null : undefined,
+          title: 'Ana Sayfa',
           tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
         }}
       />
@@ -58,7 +57,7 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="requests"
         options={{
-          title: isExternalUser ? 'Taleplerim' : 'Talepler',
+          title: isExternalUser ? 'Taleplerim' : isAdmin ? 'Talepler' : 'Açtığım Talepler',
           tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />,
         }}
       />
@@ -87,6 +86,8 @@ export default function AppTabsLayout() {
       <Tabs.Screen name="forms/index" options={{ href: null, title: 'Talep Formları' }} />
       <Tabs.Screen name="reports/index" options={{ href: null, title: 'İstatistikler' }} />
       <Tabs.Screen name="performance/index" options={{ href: null, title: 'Performansım' }} />
+      <Tabs.Screen name="personnel/[id]" options={{ href: null, title: 'Personel Profili' }} />
+      <Tabs.Screen name="inventory/index" options={{ href: null, title: 'Stok Takip' }} />
       <Tabs.Screen name="projects/[id]/index" options={{ href: null }} />
       <Tabs.Screen name="issues/[id]" options={{ href: null }} />
     </Tabs>

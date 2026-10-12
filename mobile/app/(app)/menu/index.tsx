@@ -8,7 +8,7 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { usePermissions } from '../../../src/hooks/usePermissions';
 import { rolesApi } from '../../../src/api/resources';
 import Avatar from '../../../src/components/Avatar';
-import { ROLES, MANAGER_ROLES, BRAND } from '../../../src/utils/constants';
+import { MANAGER_ROLES, BRAND } from '../../../src/utils/constants';
 
 type Item = { icon: any; label: string; route: string; show: boolean };
 
@@ -20,7 +20,7 @@ type Item = { icon: any; label: string; route: string; show: boolean };
 export default function MenuScreen() {
   const router = useRouter();
   const { currentUser, logout } = useAuth();
-  const { can, isExternalUser } = usePermissions();
+  const { can, isExternalUser, isDepartmentHead, isSystemAdmin, isWorker } = usePermissions();
   const rolesQuery = useQuery({ queryKey: ['roles'], queryFn: rolesApi.list });
 
   const roleName = (key?: string) => rolesQuery.data?.find((r) => r.key === key)?.name || key;
@@ -35,7 +35,7 @@ export default function MenuScreen() {
     {
       title: 'Raporlar',
       items: [
-        { icon: 'person-outline', label: 'Performansım', route: '/(app)/performance', show: !isExternalUser },
+        { icon: 'person-outline', label: 'Performansım', route: '/(app)/performance', show: !isExternalUser && !isDepartmentHead },
         { icon: 'bar-chart-outline', label: 'İstatistikler', route: '/(app)/reports', show: isManager },
       ],
     },
@@ -43,12 +43,10 @@ export default function MenuScreen() {
       title: 'Yönetim',
       items: [
         { icon: 'people-outline', label: 'Kullanıcılar', route: '/(app)/users', show: can('user.assign_role') },
-        { icon: 'list-outline', label: 'Talep Formları', route: '/(app)/forms', show: can('request_form.manage') },
-        { icon: 'albums-outline', label: 'Ekipler ve Şablonlar', route: '/(app)/teams', show: can('team.manage') || can('template.manage') },
-        {
-          icon: 'business-outline', label: 'Daire Başkanlıkları', route: '/(app)/units',
-          show: currentUser?.role === ROLES.SYSTEM_ADMIN || currentUser?.role === ROLES.DEPARTMENT_HEAD,
-        },
+        // Everyone with the Müdürlükler tab finds these under each müdürlük.
+        { icon: 'list-outline', label: 'Talep Formları', route: '/(app)/forms', show: isWorker && can('request_form.manage') },
+        { icon: 'albums-outline', label: 'Ekipler ve Şablonlar', route: '/(app)/teams', show: isWorker && (can('team.manage') || can('template.manage')) },
+        { icon: 'business-outline', label: 'Daire Başkanlıkları', route: '/(app)/units', show: isSystemAdmin },
         { icon: 'shield-checkmark-outline', label: 'Roller ve İzinler', route: '/(app)/roles', show: can('role.manage') },
       ],
     },

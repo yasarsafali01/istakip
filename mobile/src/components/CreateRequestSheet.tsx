@@ -50,6 +50,10 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
   const unitProjects = (projectsQuery.data || []).filter((p) => p.unitId === unitId);
   const selectedForm = forms.find((f) => f.id === formId);
   const questions = selectedForm?.questions || [];
+  // A müdürlük with request forms replaces title/description with its form (the
+  // request is named after the chosen talep türü); otherwise the default fields.
+  const usesForm = forms.length > 0;
+  const showDefaultFields = !usesForm && !formsLoading;
 
   useEffect(() => {
     setForms([]);
@@ -81,7 +85,7 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
     if (!unitId) errs.unitId = 'Lütfen bir daire başkanlığı seçin.';
     if (!projectId) errs.projectId = 'Lütfen bir müdürlük seçin.';
     if (projectId && forms.length > 0 && !formId) errs.formId = 'Lütfen talep türünü seçin.';
-    if (!title.trim()) errs.title = 'Talep başlığı zorunludur.';
+    if (!usesForm && !title.trim()) errs.title = 'Talep başlığı zorunludur.';
     const aErrs = validateAnswers(questions, answers);
     setErrors(errs);
     setAnswerErrors(aErrs);
@@ -91,8 +95,8 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
     try {
       await issuesApi.create({
         projectId,
-        title: title.trim(),
-        description: description.trim(),
+        title: usesForm ? '' : title.trim(),
+        description: usesForm ? '' : description.trim(),
         priority,
         isRequest: true,
         ...(formId ? { requestFormId: formId, answers: buildAnswersPayload(questions, answers) } : {}),
@@ -124,7 +128,7 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
           {can('helpdesk.create') && (
             <View style={styles.behalfBox}>
               <TouchableOpacity style={styles.optionRow} onPress={() => setOnBehalf(!onBehalf)}>
-                <Ionicons name={onBehalf ? 'checkbox' : 'square-outline'} size={20} color={onBehalf ? '#0052CC' : '#9CA3AF'} />
+                <Ionicons name={onBehalf ? 'checkbox' : 'square-outline'} size={20} color={onBehalf ? '#1F2855' : '#9CA3AF'} />
                 <Text style={styles.optionText}>Bir kişi adına açıyorum (telefon / yüz yüze)</Text>
               </TouchableOpacity>
               {onBehalf && (
@@ -170,7 +174,7 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
                 return (
                   <TouchableOpacity key={f.id} style={[styles.formCard, active && styles.formCardActive]}
                     onPress={() => { setFormId(f.id); setAnswers({}); setAnswerErrors({}); setErrors((e) => ({ ...e, formId: '' })); }}>
-                    <Ionicons name={active ? 'radio-button-on' : 'radio-button-off'} size={18} color={active ? '#0052CC' : '#9CA3AF'} />
+                    <Ionicons name={active ? 'radio-button-on' : 'radio-button-off'} size={18} color={active ? '#1F2855' : '#9CA3AF'} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.formName}>{f.name}</Text>
                       {f.description ? <Text style={styles.formDesc}>{f.description}</Text> : null}
@@ -183,8 +187,7 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
           )}
 
           {questions.length > 0 && (
-            <View style={styles.questionsBox}>
-              <Text style={styles.questionsTitle}>{selectedForm?.name} — Talep Bilgileri</Text>
+            <View style={{ marginTop: 6 }}>
               <DynamicQuestions
                 questions={questions}
                 answers={answers}
@@ -195,15 +198,19 @@ export default function CreateRequestSheet({ visible, onCreated, onCancel }: Pro
             </View>
           )}
 
-          <Text style={styles.label}>Başlık <Text style={styles.req}>*</Text></Text>
-          <TextInput style={[styles.input, errors.title && styles.inputError]} value={title}
-            onChangeText={(t) => { setTitle(t); if (errors.title) setErrors((e) => ({ ...e, title: '' })); }}
-            placeholder="Talebinizi kısaca açıklayın" />
-          <FieldError k="title" />
+          {showDefaultFields && (
+            <>
+              <Text style={styles.label}>Başlık <Text style={styles.req}>*</Text></Text>
+              <TextInput style={[styles.input, errors.title && styles.inputError]} value={title}
+                onChangeText={(t) => { setTitle(t); if (errors.title) setErrors((e) => ({ ...e, title: '' })); }}
+                placeholder="Talebinizi kısaca açıklayın" />
+              <FieldError k="title" />
 
-          <Text style={styles.label}>Açıklama</Text>
-          <TextInput style={styles.textArea} value={description} onChangeText={setDescription}
-            placeholder="Talebinizi detaylı açıklayın..." multiline />
+              <Text style={styles.label}>Açıklama</Text>
+              <TextInput style={styles.textArea} value={description} onChangeText={setDescription}
+                placeholder="Talebinizi detaylı açıklayın..." multiline />
+            </>
+          )}
 
           <Text style={styles.label}>Öncelik</Text>
           <View style={styles.priorityRow}>
@@ -272,14 +279,14 @@ const styles = StyleSheet.create({
   optionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   optionText: { fontSize: 13, color: '#374151', flex: 1 },
   formCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, marginBottom: 6 },
-  formCardActive: { borderColor: '#0052CC', borderWidth: 2, backgroundColor: '#EEF4FD' },
+  formCardActive: { borderColor: '#1F2855', borderWidth: 2, backgroundColor: '#eef0f8' },
   formName: { fontSize: 14, fontWeight: '700', color: '#172B4D' },
   formDesc: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   questionsBox: { marginTop: 14, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F8FAFC' },
-  questionsTitle: { fontSize: 12, fontWeight: '700', color: '#0052CC' },
+  questionsTitle: { fontSize: 12, fontWeight: '700', color: '#1F2855' },
   priorityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   priorityChip: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  priorityChipActive: { backgroundColor: '#0052CC', borderColor: '#0052CC' },
+  priorityChipActive: { backgroundColor: '#1F2855', borderColor: '#1F2855' },
   priorityChipText: { fontSize: 12, color: '#374151' },
   priorityChipTextActive: { color: '#fff', fontWeight: '600' },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
@@ -288,6 +295,6 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20, marginBottom: 24 },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
   cancelText: { color: '#6B7280', fontWeight: '600' },
-  confirmBtn: { backgroundColor: '#0052CC', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
+  confirmBtn: { backgroundColor: '#1F2855', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
   confirmText: { color: '#fff', fontWeight: '600' },
 });

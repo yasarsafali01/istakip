@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { issuesApi } from '../api/resources';
-import { usePermissions } from '../hooks/usePermissions';
 import type { Issue, User } from '../api/types';
 
 interface Props {
@@ -20,7 +19,6 @@ interface Props {
  * reason (→ In Progress); everyone else sees that it is waiting.
  */
 export default function ApprovalPanel({ issue, users = [], header, onOpen, onChanged }: Props) {
-  const { can } = usePermissions();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState('');
@@ -28,7 +26,8 @@ export default function ApprovalPanel({ issue, users = [], header, onOpen, onCha
 
   const pc = issue.pendingCompletion;
   if (issue.status !== 'Onay Bekliyor' || !pc) return null;
-  const canDecide = can('issue.approve');
+  // Decided by the backend (allowedActions), same as the web.
+  const canDecide = !!issue.allowedActions?.approve;
   const submitter = users.find((u) => u.id === pc.submittedBy)?.name || 'Bilinmeyen kullanıcı';
 
   async function approve() {
