@@ -10,11 +10,13 @@ import NotificationBell from './NotificationBell';
 const PAGE_TITLES = [
   ['/dashboard', 'Ana Sayfa'],
   ['/units', 'Daire Başkanlıkları'],
+  ['/projects/new', 'Yeni Müdürlük'],
   ['/projects', 'Müdürlükler'],
   ['/request-forms', 'Talep Formları'],
   ['/teams-templates', 'Ekipler ve Şablonlar'],
   ['/reports', 'İstatistikler'],
   ['/performance', 'Performansım'],
+  ['/personnel', 'Personel Profili'],
   ['/requests', 'Talepler'],
   ['/users', 'Kullanıcılar'],
   ['/roles', 'Roller ve İzinler'],

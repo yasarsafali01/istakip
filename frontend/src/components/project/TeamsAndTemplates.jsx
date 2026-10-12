@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { TbPlus, TbUsers, TbTrash, TbTemplate, TbAlertCircle, TbX } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ROLES } from '../../constants';
 import { teamsApi, templatesApi } from '../../api/resources';
 import ConfirmDialog from '../common/ConfirmDialog';
+import { inProject } from '../../utils/permissionUtils';
 
 const TEMPLATE_KINDS = {
   reply: {
@@ -52,12 +54,15 @@ export default function TeamsAndTemplates({ projectId }) {
   const canManageTeams = can('team.manage');
   const canManageTemplates = can('template.manage');
 
-  // Only this müdürlük's own staff (assigned to it, or its manager) can join
-  // its teams — the backend enforces the same rule.
-  const managerId = state.projects.find((p) => p.id === projectId)?.managerId;
-  const projectUsers = state.users.filter(
-    (u) => u.role !== ROLES.EXTERNAL_USER && (u.projectId === projectId || u.id === managerId)
+  // Any staff of the same daire başkanlığı can join this müdürlük's teams, so
+  // one person can serve on teams of several müdürlükler — the backend
+  // enforces the same rule.
+  const project = state.projects.find((p) => p.id === projectId);
+  const isOwnStaff = (u) => inProject(u, projectId) || u.id === project?.managerId;
+  const unitUsers = state.users.filter((u) => u.isActive !== false).filter(
+    (u) => u.role !== ROLES.EXTERNAL_USER && (isOwnStaff(u) || (project && u.unitId === project.unitId))
   );
+  const projectNameOf = (u) => state.projects.find((p) => p.id === u.projectId)?.name || 'Diğer müdürlük';
 
   const kindTemplates = templates.filter((t) => (t.kind || 'reply') === kind);
   const countOf = (k) => templates.filter((t) => (t.kind || 'reply') === k).length;
@@ -112,7 +117,12 @@ export default function TeamsAndTemplates({ projectId }) {
     load();
   }
   async function removeMember(teamId, userId) {
-    await teamsApi.removeMember(teamId, userId);
+    try {
+      await teamsApi.removeMember(teamId, userId);
+    } catch (err) {
+      setErrors((s) => ({ ...s, [`member:${teamId}`]: err.message || 'Üye çıkarılamadı.' }));
+      return;
+    }
     load();
   }
 
@@ -257,7 +267,7 @@ export default function TeamsAndTemplates({ projectId }) {
               <TbUsers size={16} /> Ekipler
             </h6>
             <p className="text-muted small">
-              Talepleri tek tek kişi yerine bir ekibe atayabilirsiniz. Ekiplere yalnızca bu müdürlüğün personeli eklenebilir.
+              Talepleri tek tek kişi yerine bir ekibe atayabilirsiniz. Ekiplere daire başkanlığındaki tüm personel eklenebilir; bir personel birden fazla ekipte görev alabilir.
             </p>
 
             {canManageTeams && (
@@ -290,7 +300,11 @@ export default function TeamsAndTemplates({ projectId }) {
             ) : (
               teams.map((t) => {
                 const memberKey = `member:${t.id}`;
-                const candidates = projectUsers.filter((u) => !t.memberIds.includes(u.id));
+                const candidates = unitUsers.filter((u) => !t.memberIds.includes(u.id));
+                const ownCandidates = candidates.filter(isOwnStaff);
+                const otherCandidates = candidates
+                  .filter((u) => !isOwnStaff(u))
+                  .sort((a, b) => projectNameOf(a).localeCompare(projectNameOf(b), 'tr') || a.name.localeCompare(b.name, 'tr'));
                 return (
                   <div key={t.id} className="border rounded-3 p-2 mb-2">
                     <div className="d-flex align-items-center justify-content-between mb-2">
@@ -305,9 +319,12 @@ export default function TeamsAndTemplates({ projectId }) {
                       {t.memberIds.length === 0 && <span className="text-muted" style={{ fontSize: 12 }}>Üye yok</span>}
                       {t.memberIds.map((uid) => {
                         const u = state.users.find((x) => x.id === uid);
+                        const fromOther = u && !isOwnStaff(u);
                         return (
-                          <span key={uid} className="badge text-bg-light border d-flex align-items-center gap-1" style={{ fontSize: 11 }}>
-                            {u?.name || uid}
+                          <span key={uid} className="badge text-bg-light border d-flex align-items-center gap-1" style={{ fontSize: 11 }}
+                            title={fromOther ? projectNameOf(u) : undefined}>
+                            {u ? <Link to={`/personnel/${uid}`} className="text-reset text-decoration-none">{u.name}</Link> : uid}
+                            {fromOther && <span className="text-muted fw-normal">· {projectNameOf(u)}</span>}
                             {canManageTeams && (
                               <button type="button" className="btn btn-link p-0 lh-1 text-muted" title="Ekipten çıkar"
                                 aria-label={`${u?.name || 'Üye'} ekipten çıkar`} onClick={() => removeMember(t.id, uid)}>
@@ -320,7 +337,7 @@ export default function TeamsAndTemplates({ projectId }) {
                     </div>
                     {canManageTeams && (
                       candidates.length === 0 ? (
-                        <div className="text-muted" style={{ fontSize: 12 }}>Müdürlüğün tüm personeli bu ekipte.</div>
+                        <div className="text-muted" style={{ fontSize: 12 }}>Daire başkanlığının tüm personeli bu ekipte.</div>
                       ) : (
                         <>
                           <div className="d-flex gap-1">
@@ -331,19 +348,30 @@ export default function TeamsAndTemplates({ projectId }) {
                               onChange={(e) => { setNewMemberByTeam((s) => ({ ...s, [t.id]: e.target.value })); clearError(memberKey); }}
                             >
                               <option value="">— Üye ekle —</option>
-                              {candidates.map((u) => (
-                                <option key={u.id} value={u.id}>{u.name}</option>
-                              ))}
+                              {ownCandidates.length > 0 && (
+                                <optgroup label="Bu müdürlük">
+                                  {ownCandidates.map((u) => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {otherCandidates.length > 0 && (
+                                <optgroup label="Daire başkanlığının diğer müdürlükleri">
+                                  {otherCandidates.map((u) => (
+                                    <option key={u.id} value={u.id}>{u.name} — {projectNameOf(u)}</option>
+                                  ))}
+                                </optgroup>
+                              )}
                             </select>
                             <button className="btn btn-sm btn-outline-secondary flex-shrink-0" onClick={() => addMember(t.id)}>Ekle</button>
                           </div>
-                          {errors[memberKey] && (
-                            <div className="invalid-feedback d-flex align-items-center gap-1">
-                              <TbAlertCircle size={14} className="flex-shrink-0" /> {errors[memberKey]}
-                            </div>
-                          )}
                         </>
                       )
+                    )}
+                    {errors[memberKey] && (
+                      <div className="invalid-feedback d-flex align-items-center gap-1">
+                        <TbAlertCircle size={14} className="flex-shrink-0" /> {errors[memberKey]}
+                      </div>
                     )}
                   </div>
                 );

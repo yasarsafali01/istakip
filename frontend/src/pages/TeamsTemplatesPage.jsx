@@ -7,13 +7,14 @@ import TeamsAndTemplates from '../components/project/TeamsAndTemplates';
 import EmptyState from '../components/common/EmptyState';
 
 /**
- * Yönetim → Ekipler ve Şablonlar: one place to manage each müdürlük's teams
- * and canned reply templates (previously a tab under every müdürlük).
+ * Yönetim → Ekipler ve Şablonlar: one müdürlük's teams and canned reply
+ * templates. Users with several müdürlükler pick one from the sidebar
+ * (each müdürlük lists its own link), which sets ?project=.
  */
 export default function TeamsTemplatesPage() {
   const { state } = useAppContext();
   const { currentUser } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const projects = useMemo(
     () => (currentUser ? getVisibleProjects(state.projects, currentUser) : []),
@@ -21,12 +22,6 @@ export default function TeamsTemplatesPage() {
   );
   const projectId = searchParams.get('project') || (projects.length === 1 ? projects[0].id : '');
   const project = projects.find((p) => p.id === projectId);
-
-  const unitsById = Object.fromEntries(state.units.map((u) => [u.id, u]));
-  const projectsByUnit = projects.reduce((acc, p) => {
-    (acc[p.unitId] = acc[p.unitId] || []).push(p);
-    return acc;
-  }, {});
 
   return (
     <div>
@@ -38,29 +33,13 @@ export default function TeamsTemplatesPage() {
             cevap şablonlarını yönetin.
           </p>
         </div>
-        {projects.length > 1 && (
-          <select
-            className="form-select"
-            style={{ maxWidth: 300 }}
-            value={projectId}
-            onChange={(e) => setSearchParams(e.target.value ? { project: e.target.value } : {})}
-            aria-label="Müdürlük seçin"
-          >
-            <option value="">— Müdürlük seçin —</option>
-            {Object.entries(projectsByUnit).map(([unitId, list]) => (
-              <optgroup key={unitId} label={unitsById[unitId]?.name || 'Daire Başkanlığı'}>
-                {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </optgroup>
-            ))}
-          </select>
-        )}
       </div>
 
       {!project ? (
         <EmptyState
           title={projects.length ? 'Bir müdürlük seçin' : 'Yönettiğiniz müdürlük yok'}
           description={projects.length
-            ? 'Ekiplerini ve şablonlarını düzenlemek istediğiniz müdürlüğü sağ üstten seçin.'
+            ? 'Ekiplerini ve şablonlarını düzenlemek istediğiniz müdürlüğün altından seçin (sol menü → Müdürlükler).'
             : 'Ekip ve şablon yönetmek için bir müdürlüğün yöneticisi olmalısınız.'}
         />
       ) : (

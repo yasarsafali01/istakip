@@ -11,6 +11,8 @@ const LoginPage         = lazy(() => import('./pages/LoginPage'));
 const DashboardPage     = lazy(() => import('./pages/DashboardPage'));
 const ProjectsPage      = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
+const ProjectFormPage   = lazy(() => import('./pages/ProjectFormPage'));
+const PersonnelProfilePage = lazy(() => import('./pages/PersonnelProfilePage'));
 const BoardPage         = lazy(() => import('./pages/BoardPage'));
 const BacklogPage       = lazy(() => import('./pages/BacklogPage'));
 const UnitsPage         = lazy(() => import('./pages/UnitsPage'));
@@ -70,11 +72,11 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
 
-              {/* Units — System_Admin and Department_Head only */}
+              {/* Units — System_Admin only */}
               <Route
                 path="/units"
                 element={
-                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD]}>
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN]}>
                     <UnitsPage />
                   </ProtectedRoute>
                 }
@@ -86,6 +88,23 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER]}>
                     <ProjectsPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Müdürlükler → Yeni Müdürlük / Müdürlük Bilgileri */}
+              <Route
+                path="/projects/new"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD]}>
+                    <ProjectFormPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:projectId/settings"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD]}>
+                    <ProjectFormPage />
                   </ProtectedRoute>
                 }
               />
@@ -173,11 +192,21 @@ function App() {
                 }
               />
 
+              {/* Personel Profili — opened by clicking a person's name */}
+              <Route
+                path="/personnel/:userId"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER]}>
+                    <PersonnelProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Performansım — own (or, for managers, a subordinate's) performance */}
               <Route
                 path="/performance"
                 element={
-                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
+                  <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN, ROLES.PROJECT_MANAGER, ROLES.WORKER]}>
                     <PerformancePage />
                   </ProtectedRoute>
                 }

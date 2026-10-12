@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   TbTicket, TbHourglass, TbCircleCheck, TbClock, TbStar, TbShieldCheck, TbChartBar, TbFilterOff,
   TbPrinter, TbCalendar, TbBuildingCommunity, TbX, TbAlertTriangle, TbInfoCircle,
@@ -175,6 +176,12 @@ export default function ReportsPage() {
     { key: 'avgRating', label: 'Memnuniyet', num: true, value: (r) => r.avgRating, render: (r) => fmtRating(r.avgRating), csv: (r) => (r.avgRating ? r.avgRating.toFixed(2) : '') },
   ];
   const nameCol = (label) => ({ key: 'name', label, value: (r) => r.name, render: (r) => <span className="fw-medium">{r.name}</span> });
+  const personCol = {
+    ...nameCol('Personel'),
+    render: (r) => (usersById[r.key]
+      ? <Link to={`/personnel/${r.key}`} className="fw-medium text-decoration-none">{r.name}</Link>
+      : <span className="fw-medium">{r.name}</span>),
+  };
 
   // ── Summary banner chips ──────────────────────────────────────────────
   const periodText = `${f.month !== ALL ? `${MONTHS[Number(f.month) - 1]} ` : ''}${f.year === ALL ? 'Tüm zamanlar' : f.year}`;
@@ -480,9 +487,9 @@ export default function ReportsPage() {
           </div>
         )}
         <div className="col-12">
-          <ChartCard title="Personel bazında">
+          <ChartCard title="Personel bazında" subtitle="Profilini açmak için personel adına tıklayın">
             <DataTable csvName={`personel-raporu-${csvSuffix}.csv`} defaultSort={{ key: 'done', dir: 'desc' }}
-              columns={[nameCol('Personel'), ...statCols]} rows={userRows} empty="Atanmış kayıt yok" />
+              columns={[personCol, ...statCols]} rows={userRows} empty="Atanmış kayıt yok" />
           </ChartCard>
         </div>
         <div className="col-12 col-xl-6">

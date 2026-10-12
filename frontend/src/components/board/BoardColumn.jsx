@@ -12,51 +12,23 @@ import IssueCard from './IssueCard';
  * @param {Function} props.onIssueClick - Called with an issue when its card is clicked
  */
 function BoardColumn({ status, issues, onIssueClick, readonly = false }) {
-  const accentColor = STATUS_COLORS[status] || '#DFE1E6';
-  const isLight = status === 'To Do';
+  const accentColor = STATUS_COLORS[status] === '#DFE1E6' ? '#94a3b8' : (STATUS_COLORS[status] || '#94a3b8');
 
   return (
-    <div
-      className="board-column d-flex flex-column"
-      style={{ minWidth: 240, flex: '1 1 0' }}
-    >
-      {/* Column header */}
-      <div
-        className="d-flex align-items-center justify-content-between px-2 py-2 rounded-top"
-        style={{ backgroundColor: accentColor }}
-      >
-        <span
-          className="fw-semibold small text-truncate"
-          style={{ color: isLight ? '#42526E' : '#ffffff' }}
-        >
-          {STATUS_LABELS[status] || status}
-        </span>
-        <span
-          className="badge rounded-pill ms-2 flex-shrink-0"
-          style={{
-            backgroundColor: isLight ? '#42526E' : 'rgba(255,255,255,0.3)',
-            color: '#ffffff',
-            fontSize: '0.65rem',
-          }}
-          aria-label={`${issues.length} issue`}
-        >
-          {issues.length}
-        </span>
+    <div className="kb-col">
+      <div className="kb-col__head">
+        <span className="ds-dot" style={{ background: accentColor, width: 9, height: 9 }} />
+        <span className="kb-col__title text-truncate">{STATUS_LABELS[status] || status}</span>
+        <span className="ds-count ms-auto" aria-label={`${issues.length} kayıt`}>{issues.length}</span>
       </div>
 
-      {/* Droppable area */}
       <Droppable droppableId={status} isDropDisabled={readonly}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="flex-grow-1 p-2 rounded-bottom"
-            style={{
-              minHeight: 120,
-              backgroundColor: snapshot.isDraggingOver ? '#E8F0FE' : '#F4F5F7',
-              transition: 'background-color 0.15s ease',
-            }}
-            aria-label={`${status} sütunu`}
+            className={`kb-col__body ${snapshot.isDraggingOver ? 'kb-col__body--over' : ''}`}
+            aria-label={`${STATUS_LABELS[status] || status} sütunu`}
           >
             {issues.map((issue, index) => (
               <IssueCard
@@ -68,6 +40,9 @@ function BoardColumn({ status, issues, onIssueClick, readonly = false }) {
               />
             ))}
             {provided.placeholder}
+            {issues.length === 0 && !snapshot.isDraggingOver && (
+              <div className="kb-col__empty">{readonly ? 'Kayıt yok' : 'Buraya sürükleyin'}</div>
+            )}
           </div>
         )}
       </Droppable>

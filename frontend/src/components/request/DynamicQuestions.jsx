@@ -40,7 +40,7 @@ export default function DynamicQuestions({ questions, answers, onChange, errors 
                   checked={value === true}
                   onChange={(e) => set(q.id, e.target.checked)}
                 />
-                <label htmlFor={id} className="form-check-label fw-semibold">
+                <label htmlFor={id} className="form-check-label fw-medium">
                   {label} {q.required && <span className="text-danger">*</span>}
                 </label>
               </div>
@@ -52,7 +52,7 @@ export default function DynamicQuestions({ questions, answers, onChange, errors 
 
         return (
           <div key={q.id} className={cell}>
-            <label htmlFor={id} className="form-label fw-semibold mb-1">
+            <label htmlFor={id} className="form-label fw-medium">
               {label} {q.required && <span className="text-danger">*</span>}
             </label>
             {q.type === 'file'

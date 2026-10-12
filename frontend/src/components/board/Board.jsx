@@ -71,9 +71,11 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
     const issue = state.issues.find(i => i.id === draggableId);
     if (!issue || issue.status === newStatus) return;
 
-    // Onay bekleyen işi yalnızca onay yetkisi olan taşıyabilir
-    if (issue.status === 'Onay Bekliyor' && !can('issue.approve')) {
-      window.alert('Onay bekleyen talebin durumunu yalnızca yönetici değiştirebilir.');
+    // Durum değiştirilebilir mi? Kararı backend verir (onay bekleyen, geri çevrilmiş vb.)
+    if (!issue.allowedActions?.changeStatus) {
+      window.alert(issue.status === 'Onay Bekliyor'
+        ? 'Onay bekleyen talebin durumunu yalnızca yönetici değiştirebilir.'
+        : 'Bu işin durumunu değiştirme yetkiniz yok.');
       return;
     }
 
@@ -105,14 +107,13 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
       <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {currentSprint && (
-            <span className="badge" style={{ backgroundColor: '#E3FCEF', color: '#006644' }}>
-              {currentSprint.name}
+            <span className="ds-pill" style={{ background: 'var(--ok-soft)', color: 'var(--ok)' }}>
+              <span className="ds-dot" style={{ background: 'var(--ok)' }} /> {currentSprint.name}
             </span>
           )}
           {readonly && (
-            <span className="badge d-flex align-items-center gap-1"
-              style={{ background: '#DEEBFF', color: '#0747A6', fontSize: '0.72rem' }}>
-              <TbLock size={12} /> Salt Okunur
+            <span className="ds-pill" style={{ background: 'var(--navy-soft)', color: 'var(--navy)' }}>
+              <TbLock size={12} /> Salt okunur
             </span>
           )}
           <BoardFilters
@@ -153,7 +154,7 @@ function Board({ projectId, sprintId, readonly = false, defaultAssigneeFilter = 
       {/* Kanban columns */}
       {(sprintId || currentSprint) && !showEmptySprintMessage && (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="d-flex gap-3 overflow-auto pb-3" style={{ alignItems: 'flex-start' }}>
+          <div className="kb-board">
             {STATUSES.filter(s => s !== 'Geri Çevrildi').map(status => {
               const columnIssues = filteredIssues.filter(i => i.status === status);
               return (

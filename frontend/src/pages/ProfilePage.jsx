@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TbMapPin, TbBell, TbLock } from 'react-icons/tb';
+import { TbMapPin, TbBell, TbLock, TbUsers } from 'react-icons/tb';
 import { useAuth } from '../hooks/useAuth';
 import { useAppContext } from '../context/AppContext';
 import { usersApi } from '../api/resources';
@@ -11,7 +11,9 @@ const ROLE_LABELS = {
   Department_Head: 'Daire Başkanı',
   Project_Manager: 'Müdür',
   Worker: 'Çalışan',
-  External_User: 'Dış Kullanıcı',
+  External_User: 'Talep Sahibi',
+  University_Staff: 'Üniversite Personeli',
+  Student: 'Öğrenci',
 };
 
 export default function ProfilePage() {
@@ -82,6 +84,26 @@ export default function ProfilePage() {
             <div className="text-muted small">{currentUser.email}</div>
             <div className="text-muted small">{ROLE_LABELS[currentUser.roleKey || currentUser.role] || currentUser.role}</div>
           </div>
+        </div>
+      </div>
+
+      <div className="card mb-4">
+        <div className="card-body">
+          <h6 className="fw-semibold d-flex align-items-center gap-2 mb-3">
+            <TbUsers size={16} /> Ekiplerim
+          </h6>
+          {(currentUser.teams || []).length === 0 ? (
+            <p className="text-muted small fst-italic mb-0">Henüz bir ekipte görev almıyorsunuz.</p>
+          ) : (
+            <div className="d-flex flex-wrap gap-2">
+              {currentUser.teams.map((t) => (
+                <span key={t.teamId} className="badge text-bg-light border fw-normal" style={{ fontSize: 12 }}>
+                  <span className="fw-semibold">{t.teamName}</span>
+                  <span className="text-muted"> · {t.projectName}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

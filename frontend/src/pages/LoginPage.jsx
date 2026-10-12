@@ -58,10 +58,11 @@ const DEMO_ACCOUNTS = [
     ],
   },
   {
-    group: 'Dış Kullanıcı',
+    group: 'Talep Sahipleri',
     color: '#36B37E',
     accounts: [
-      { label: 'Dış Kullanıcı', email: 'dis.kullanici@example.com', password: 'pass123', badge: 'External' },
+      { label: 'Üniversite Personeli', email: 'dis.kullanici@example.com', password: 'pass123', badge: 'Personel' },
+      { label: 'Öğrenci', email: 'ogrenci@example.com', password: 'pass123', badge: 'Öğrenci' },
     ],
   },
 ];

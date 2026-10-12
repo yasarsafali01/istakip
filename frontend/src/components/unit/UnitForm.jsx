@@ -11,7 +11,7 @@ export default function UnitForm({ onClose, existingUnit }) {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  const departmentHeads = state.users.filter(u => u.role === ROLES.DEPARTMENT_HEAD);
+  const departmentHeads = state.users.filter((u) => u.isActive !== false).filter(u => u.role === ROLES.DEPARTMENT_HEAD);
 
   function validate() {
     const errs = {};

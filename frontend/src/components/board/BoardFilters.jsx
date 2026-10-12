@@ -4,6 +4,7 @@ import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
 import Avatar from '../common/Avatar';
+import { inProject } from '../../utils/permissionUtils';
 
 function BoardFilters({
   projectId,
@@ -20,9 +21,9 @@ function BoardFilters({
   const isWorker = currentUser?.role === ROLES.WORKER;
 
   const project = state.projects.find((p) => p.id === projectId);
-  const projectMembers = state.users.filter((u) => {
+  const projectMembers = state.users.filter((u) => u.isActive !== false).filter((u) => {
     if (u.role === ROLES.EXTERNAL_USER) return false;
-    if (u.role === ROLES.WORKER) return u.projectId === projectId;
+    if (u.role === ROLES.WORKER) return inProject(u, projectId);
     if (u.role === ROLES.PROJECT_MANAGER) return project?.managerId === u.id;
     if (u.role === ROLES.DEPARTMENT_HEAD) return u.unitId === project?.unitId;
     if (u.role === ROLES.SYSTEM_ADMIN) return true;
@@ -59,17 +60,8 @@ function BoardFilters({
       {/* Öncelik — modern pill dropdown */}
       <div className="position-relative">
         <button
-          className="btn btn-sm d-flex align-items-center gap-1"
-          style={{
-            border: priorityFilter ? '1.5px solid #2563eb' : '1.5px solid #DFE1E6',
-            borderRadius: 20,
-            padding: '4px 12px',
-            fontSize: '0.82rem',
-            fontWeight: priorityFilter ? 600 : 400,
-            background: priorityFilter ? '#EAF2FF' : '#fff',
-            color: priorityFilter ? '#2563eb' : '#42526E',
-            whiteSpace: 'nowrap',
-          }}
+          type="button"
+          className={`ds-filter ${priorityFilter ? 'ds-filter--on' : ''}`}
           onClick={() => setPriorityOpen(v => !v)}
         >
           <span>⚑</span>
@@ -87,13 +79,13 @@ function BoardFilters({
         {priorityOpen && (
           <>
             <div className="position-fixed top-0 start-0 w-100 h-100" style={{ zIndex: 1040 }} onClick={() => setPriorityOpen(false)} />
-            <div className="position-absolute bg-white rounded shadow p-2" style={{ zIndex: 1050, top: '110%', left: 0, minWidth: 150, border: '1px solid #DFE1E6' }}>
-              <button className={`btn btn-sm w-100 text-start mb-1 ${!priorityFilter ? 'btn-primary' : 'btn-light'}`} style={{ fontSize: '0.82rem' }}
+            <div className="ds-menu" style={{ left: 0, right: 'auto', minWidth: 160 }}>
+              <button type="button" className={!priorityFilter ? 'on' : ''}
                 onClick={() => { setPriorityFilter(null); setPriorityOpen(false); }}>
                 Tüm Öncelikler
               </button>
               {PRIORITIES.map((p) => (
-                <button key={p} className={`btn btn-sm w-100 text-start mb-1 ${priorityFilter === p ? 'btn-primary' : 'btn-light'}`} style={{ fontSize: '0.82rem' }}
+                <button key={p} type="button" className={priorityFilter === p ? 'on' : ''}
                   onClick={() => { setPriorityFilter(p); setPriorityOpen(false); }}>
                   {PRIORITY_LABELS[p]}
                 </button>

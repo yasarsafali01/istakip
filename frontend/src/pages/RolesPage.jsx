@@ -14,7 +14,7 @@ const EMPTY_FORM = { key: null, name: '', description: '', scope: 'project', lev
 // someone whose own role level is strictly greater).
 const BUILTIN_LEVELS = [
   ['Sistem Yöneticisi', 100], ['Daire Başkanı', 80], ['Müdür', 60],
-  ['Çalışan', 40], ['Dış Kullanıcı', 20],
+  ['Çalışan', 40], ['Üniversite Personeli / Öğrenci', 20],
 ];
 
 /** Groups the flat permission catalog by its "group" field, keeping catalog order. */

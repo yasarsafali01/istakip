@@ -8,6 +8,10 @@ export const usersApi = {
   updateMe: (data) => api.patch('/users/me', data),
   changePassword: (currentPassword, newPassword) =>
     api.post('/users/me/change-password', { currentPassword, newPassword }),
+  // Daire Başkanı: manage personnel of their own daire başkanlığı
+  create: (data) => api.post('/users', data),
+  update: (id, data) => api.patch(`/users/${id}`, data),
+  remove: (id) => api.delete(`/users/${id}`),
 };
 
 export const unitsApi = {
@@ -21,6 +25,7 @@ export const projectsApi = {
   get: (id) => api.get(`/projects/${id}`),
   create: (data) => api.post('/projects', data),
   update: (id, data) => api.patch(`/projects/${id}`, data),
+  setMembers: (id, userIds) => api.put(`/projects/${id}/members`, { userIds }),
 };
 
 export const sprintsApi = {
@@ -47,6 +52,8 @@ export const issuesApi = {
   rejectCompletion: (id, reason) => api.post(`/issues/${id}/reject-completion`, { reason }),
   updateAssignee: (id, assigneeId) => api.patch(`/issues/${id}/assignee`, { assigneeId, assigneeTeamId: null }),
   assignTeam: (id, assigneeTeamId) => api.patch(`/issues/${id}/assignee`, { assigneeId: null, assigneeTeamId }),
+  // People and teams the backend accepts as assignee: { users: [...], teams: [...] }
+  assignees: (id, projectId) => api.get(`/issues/${id}/assignees${projectId ? `?projectId=${projectId}` : ''}`),
   clone: (id) => api.post(`/issues/${id}/clone`),
   moveSprint: (id, sprintId) => api.post(`/issues/${id}/move-sprint`, { sprintId }),
   updateDates: (id, resolvedAt, timeSpent) => api.patch(`/issues/${id}/dates`, { resolvedAt, timeSpent }),

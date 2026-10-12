@@ -30,20 +30,8 @@ export default function FilterChip({ icon, label, active = false, children }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="d-flex align-items-center gap-1 px-3 py-1"
-        style={{
-          border: `1.5px solid ${active ? '#2563eb' : '#dee2e6'}`,
-          borderRadius: '999px',
-          background: active ? '#EAF0FB' : '#fff',
-          color: active ? '#2563eb' : '#495057',
-          fontSize: '0.85rem',
-          fontWeight: 500,
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          transition: 'box-shadow 0.15s, border-color 0.15s',
-          boxShadow: open ? '0 0 0 3px rgba(0,82,204,0.12)' : 'none',
-          outline: 'none',
-        }}
+        className={`ds-filter ${active ? 'ds-filter--on' : ''}`}
+        style={{ cursor: 'pointer', outline: 'none', boxShadow: open ? '0 0 0 3px rgba(31,40,85,0.12)' : 'none' }}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -61,15 +49,8 @@ export default function FilterChip({ icon, label, active = false, children }) {
 
       {open && (
         <div
-          className="position-absolute bg-white rounded shadow"
-          style={{
-            top: 'calc(100% + 6px)',
-            left: 0,
-            minWidth: 180,
-            zIndex: 1050,
-            border: '1px solid #dee2e6',
-            padding: '4px 0',
-          }}
+          className="ds-menu"
+          style={{ left: 0, right: 'auto' }}
           role="listbox"
         >
           {React.Children.map(children, child =>
@@ -104,21 +85,10 @@ export function FilterChipOption({ selected, onClick, onSelect, children }) {
         onClick();
         onSelect?.();
       }}
-      className="d-flex align-items-center gap-2 w-100 px-3 py-2 text-start"
-      style={{
-        background: selected ? '#EAF0FB' : 'transparent',
-        color: selected ? '#2563eb' : '#212529',
-        border: 'none',
-        fontSize: '0.85rem',
-        fontWeight: selected ? 600 : 400,
-        cursor: 'pointer',
-        transition: 'background 0.1s',
-      }}
-      onMouseEnter={e => { if (!selected) e.currentTarget.style.background = '#f8f9fa'; }}
-      onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
+      className={`d-flex align-items-center gap-2 ${selected ? 'on' : ''}`}
     >
       {selected && (
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', flexShrink: 0 }} />
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--navy)', flexShrink: 0 }} />
       )}
       {!selected && <span style={{ width: 8, flexShrink: 0 }} />}
       {children}

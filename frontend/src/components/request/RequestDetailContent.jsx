@@ -15,13 +15,11 @@ import {
   TbBan,
   TbPhone,
   TbPaperclip,
+  TbBuildingSkyscraper,
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
-import { useAuth } from '../../hooks/useAuth';
-import { usePermissions } from '../../hooks/usePermissions';
-import { ACTIONS, MANUAL_STATUSES, STATUS_LABELS, PRIORITIES, PRIORITY_LABELS, ROLES } from '../../constants';
-import { canChangeAssignee } from '../../utils/permissionUtils';
-import { issuesApi, commentsApi, activitiesApi, teamsApi, filesApi } from '../../api/resources';
+import { ACTIONS, MANUAL_STATUSES, STATUS_LABELS, PRIORITIES, PRIORITY_LABELS } from '../../constants';
+import { issuesApi, commentsApi, activitiesApi, filesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 import { formatDate, timeAgo, formatTimeSpent } from '../../utils/dateUtils';
 import { formatAnswer, formatBytes } from '../../utils/requestForm';
@@ -43,8 +41,6 @@ import ApprovalPanel from '../issue/ApprovalPanel';
  */
 function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const { state, dispatch } = useAppContext();
-  const { currentUser } = useAuth();
-  const { can } = usePermissions();
 
   // ── Edit mode state ───────────────────────────────────────────────────────
   const [editMode, setEditMode] = useState(false);
@@ -71,7 +67,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   const [rating, setRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
-  const [teams, setTeams] = useState([]);
+  const [assigneeOptions, setAssigneeOptions] = useState({ users: [], teams: [] });
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const assignee = state.users.find((u) => u.id === request.assigneeId);
@@ -83,15 +79,14 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                   state.projects.find((p) => p.id === request.projectId);
   const unit = state.units?.find((u) => u.unitCode === request.unitCode);
 
-  const isExternalUser = currentUser?.role === ROLES.EXTERNAL_USER;
-  const isOwnRequest = request.reporterId === currentUser?.id;
-  const canAssign = canChangeAssignee(currentUser, request, state.projects);
-  // Dış kullanıcı yalnızca kendi talebi üzerinde işlem yapabilir; diğer roller izinlerine göre
-  const ownsIfExternal = !isExternalUser || isOwnRequest;
-  const canEdit = !!currentUser && can('issue.edit') && ownsIfExternal;
-  // Kimse kendi açmadığı talebi silemez (yöneticiler dahil)
-  const canDelete = !!currentUser && can('issue.delete') && isOwnRequest;
-  const canEditDates = !!currentUser && can('issue.dates');
+  // Ne yapılabileceğine backend karar verir (allowedActions); web ve mobil aynı
+  // bayrakları kullanır, kurallar istemcide tekrar yazılmaz.
+  const actions = request.allowedActions || {};
+  const canAssign = !!actions.assign;
+  const canEdit = !!actions.edit;
+  const canDelete = !!actions.delete;
+  const canEditDates = !!actions.editDates;
+  const canChangeStatus = !!actions.changeStatus;
 
   // Projects available for reassignment (same unit as the request)
   const unitProjects = state.projects.filter((p) => {
@@ -100,23 +95,16 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
     return projectUnit?.unitCode === request.unitCode;
   });
 
+  // Atanabilecek kişi ve ekipler backend'den gelir (aynı kuralla atama doğrulanır).
   useEffect(() => {
     let cancelled = false;
-    teamsApi.listByProject(request.projectId).then((list) => { if (!cancelled) setTeams(list); }).catch(() => {});
+    issuesApi.assignees(request.id)
+      .then((opts) => { if (!cancelled) setAssigneeOptions(opts); })
+      .catch(() => {});
     return () => { cancelled = true; };
-  }, [request.projectId]);
-
-  // Users eligible for assignment: workers of the (possibly new) project, PM, dept head, admin
-  const assignableUsers = state.users.filter((u) => {
-    if (u.role === ROLES.EXTERNAL_USER) return false;
-    const targetProjectId = editMode ? editProjectId : request.projectId;
-    const targetProject = state.projects.find((p) => p.id === targetProjectId);
-    if (u.role === ROLES.SYSTEM_ADMIN) return true;
-    if (u.role === ROLES.WORKER) return u.projectId === targetProjectId;
-    if (u.role === ROLES.PROJECT_MANAGER) return targetProject?.managerId === u.id;
-    if (u.role === ROLES.DEPARTMENT_HEAD) return u.unitId === targetProject?.unitId;
-    return false;
-  });
+  }, [request.id, request.projectId]);
+  const assignableUsers = assigneeOptions.users;
+  const teams = assigneeOptions.teams;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const unitCodeByProjectId = buildUnitCodeByProjectId(state.projects, state.units);
@@ -226,7 +214,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   // ── Klonla ────────────────────────────────────────────────────────────────
   // Requirement 18: yetkili kullanıcılar (ve External_User kendi talebini)
   // "Klonla" ile aynı içerikte yeni bir talep oluşturabilir.
-  const canClone = !!currentUser && can('issue.clone') && ownsIfExternal;
+  const canClone = !!actions.clone;
   async function handleClone() {
     try {
       const cloned = await issuesApi.clone(request.id);
@@ -263,18 +251,13 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
     }
   }
 
-  const canReject =
-    currentUser &&
-    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser.role) &&
-    request.status !== 'Geri Çevrildi';
+  const canReject = !!actions.reject;
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
 
   // ── Yönlendir (Forward to another project) ───────────────────────────────
-  const TERMINAL_STATUSES = ['Done', 'Geri Çevrildi', 'İptal Edildi', 'Yönlendirildi'];
-  const isTerminal = TERMINAL_STATUSES.includes(request.status);
-  const canForward = !!currentUser && can('issue.forward') && !isTerminal;
+  const canForward = !!actions.forward;
   const forwardTargets = state.projects.filter((p) => p.id !== request.projectId);
 
   async function handleForward() {
@@ -291,7 +274,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   }
 
   // ── İptal Et (requester withdraws their own open request) ────────────────
-  const canCancel = !!currentUser && isOwnRequest && !isTerminal;
+  const canCancel = !!actions.cancel;
   async function handleCancel() {
     try {
       await issuesApi.cancel(request.id);
@@ -303,7 +286,7 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   }
 
   // ── Puanla (requester rates a completed request once) ────────────────────
-  const canRate = !!currentUser && isOwnRequest && request.status === 'Done' && !request.ratedAt;
+  const canRate = !!actions.rate;
   async function handleRate() {
     if (!rating) return;
     setRatingSubmitting(true);
@@ -318,336 +301,193 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  const STEPS = ['Açıldı', 'İşlemde', 'Onayda', 'Tamamlandı'];
+  const STEP_INDEX = { 'To Do': 0, 'In Progress': 1, 'Onay Bekliyor': 2, Done: 4 };
+  const CLOSED_BANNERS = {
+    'Geri Çevrildi': { text: 'Bu talep geri çevrildi. Nedeni yorumlarda yer alıyor.', bg: 'var(--danger-soft)', fg: 'var(--danger)' },
+    'İptal Edildi': { text: 'Talep sahibi bu talebi iptal etti.', bg: '#f1f5f9', fg: '#475569' },
+    Yönlendirildi: { text: 'Bu talep başka bir müdürlüğe yönlendirildi.', bg: 'var(--violet-soft)', fg: 'var(--violet)' },
+  };
+  const stepIndex = STEP_INDEX[request.status];
+  const closedBanner = CLOSED_BANNERS[request.status];
+  const durations = requestDurations(request);
+  const hasAnswers = request.requestAnswers?.length > 0;
+  const statusTargets = MANUAL_STATUSES.filter((s) => s !== request.status && s !== 'Geri Çevrildi');
+  const hasToolbar = editMode || (canChangeStatus && statusTargets.length > 0) || canEdit || canAssign
+    || canClone || canForward || canCancel || canReject || canDelete;
+
+  const editableProps = (enabled, onActivate, title) => (enabled ? {
+    className: 'rd-editable',
+    role: 'button',
+    tabIndex: 0,
+    title,
+    onClick: onActivate,
+    onKeyDown: (e) => e.key === 'Enter' && onActivate(),
+  } : {});
+
   return (
     <div>
-      {/* Breadcrumb */}
-      <div className="d-flex align-items-center gap-2 mb-2">
-        {unit && <span className="text-muted small">{unit.name}</span>}
-        {unit && <span className="text-muted small">/</span>}
-        {project && <span className="text-muted small">{project.name}</span>}
-        {project && <span className="text-muted small">/</span>}
-        <span className="text-primary small fw-semibold">{request.number}</span>
-        <SlaBadge request={request} />
-      </div>
+      {/* ── Başlık alanı ── */}
+      <div className="rd-head mb-3">
+        <div className="rd-crumbs">
+          <span className="rd-key">{request.number}</span>
+          {unit && <span>{unit.name}</span>}
+          {unit && project && <span>/</span>}
+          {project && <span className="fw-semibold" style={{ color: 'var(--ink)' }}>{project.name}</span>}
+          <span className="ms-auto"><SlaBadge request={request} /></span>
+        </div>
 
-      {/* Title */}
-      {editMode ? (
-        <input
-          className="form-control fw-semibold fs-5 mb-3"
-          value={editTitle}
-          onChange={(e) => setEditTitle(e.target.value)}
-          placeholder="Talep başlığı"
-          autoFocus
-        />
-      ) : (
-        <h5 className="fw-semibold mb-3">{request.title}</h5>
-      )}
-
-      {/* Action toolbar */}
-      <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
-        {/* Status buttons (view mode only) */}
-        {!isExternalUser && !editMode && can('issue.status') && request.status !== 'Geri Çevrildi'
-          && (request.status !== 'Onay Bekliyor' || can('issue.approve')) && (
-          <>
-            {editingStatus ? (
-              <select
-                className="form-select form-select-sm"
-                style={{ width: 'auto' }}
-                defaultValue={request.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                onBlur={() => setEditingStatus(false)}
-                autoFocus
-              >
-                {MANUAL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-              </select>
-            ) : (
-              MANUAL_STATUSES.filter((s) => s !== request.status && s !== 'Geri Çevrildi').map((s) => (
-                <button key={s} className="btn btn-sm btn-outline-secondary" onClick={() => handleStatusChange(s)}>
-                  {STATUS_LABELS[s]}
-                </button>
-              ))
-            )}
-          </>
+        {editMode ? (
+          <input
+            className="form-control fw-semibold fs-5 my-2"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            placeholder="Talep başlığı"
+            autoFocus
+          />
+        ) : (
+          <h4 className="rd-title">{request.title}</h4>
         )}
 
-        <div className="ms-auto d-flex gap-2">
-          {/* Edit / Save / Cancel */}
-          {canEdit && !editMode && (
-            <button className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" onClick={handleStartEdit}>
-              <TbEdit size={14} /> Düzenle
-            </button>
+        <div className="rd-meta">
+          <Badge label={request.status} type="status" />
+          <PriorityIcon priority={request.priority} showLabel size={13} />
+          {request.requestFormName && (
+            <span className="ds-pill" style={{ background: 'var(--navy-soft)', color: 'var(--navy)' }}>
+              <TbTag size={12} /> {request.requestFormName}
+            </span>
           )}
-          {editMode && (
+          {reporter && (
+            <span className="d-inline-flex align-items-center gap-1">
+              <Avatar name={reporter.name} color={reporter.avatarColor} size={18} />
+              <strong className="fw-semibold" style={{ color: 'var(--ink)' }}>{reporter.name}</strong> açtı
+            </span>
+          )}
+          <span title={formatDate(request.createdAt)}><TbCalendar size={13} /> {timeAgo(request.createdAt)}</span>
+        </div>
+
+        {stepIndex !== undefined ? (
+          <div className="rd-steps" aria-label="Talep aşaması">
+            {STEPS.map((label, i) => {
+              const state_ = i < stepIndex || stepIndex === 4 ? 'done' : i === stepIndex ? 'current' : '';
+              return (
+                <div key={label} className={`rd-step ${state_ ? `rd-step--${state_}` : ''}`}>
+                  <div className="rd-step__dot">{state_ === 'done' ? <TbCheck size={14} /> : i + 1}</div>
+                  <div className="rd-step__label">{label}</div>
+                </div>
+              );
+            })}
+          </div>
+        ) : closedBanner && (
+          <div className="rd-banner" style={{ background: closedBanner.bg, color: closedBanner.fg }}>
+            <TbBan size={18} /> {closedBanner.text}
+          </div>
+        )}
+      </div>
+
+      {/* ── İşlem çubuğu ── */}
+      {hasToolbar && (
+        <div className="rd-toolbar mb-3">
+          {!editMode && canChangeStatus && statusTargets.length > 0 && (
             <>
-              <button className="btn btn-sm btn-primary d-flex align-items-center gap-1" onClick={handleSaveEdit} disabled={!editTitle.trim()}>
-                <TbCheck size={14} /> Kaydet
-              </button>
-              <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={handleCancelEdit}>
-                <TbX size={14} /> İptal
-              </button>
+              <span className="rd-toolbar__label">Durum</span>
+              {editingStatus ? (
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: 'auto' }}
+                  defaultValue={request.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  onBlur={() => setEditingStatus(false)}
+                  autoFocus
+                >
+                  {MANUAL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                </select>
+              ) : (
+                statusTargets.map((s) => (
+                  <button key={s} className={`btn btn-sm ${s === 'Done' ? 'btn-success' : 'btn-outline-secondary'}`}
+                    onClick={() => handleStatusChange(s)}>
+                    {s === 'Done' && <TbCircleCheck size={14} className="me-1" />}
+                    {STATUS_LABELS[s]}
+                  </button>
+                ))
+              )}
             </>
           )}
 
-          {/* Assign button (view mode) */}
-          {canAssign && !editMode && (
-            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setEditingAssignee(true)} title="Atama yap">
-              <TbUserPlus size={14} /> Ata
-            </button>
-          )}
-
-          {/* Klonla */}
-          {canClone && !editMode && (
-            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={handleClone} title="Talebi klonla">
-              <TbCopy size={14} /> Klonla
-            </button>
-          )}
-
-          {/* Yönlendir */}
-          {canForward && !editMode && (
-            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowForwardModal(true)} title="Talebi başka bir müdürlüğe yönlendir">
-              <TbArrowForwardUp size={14} /> Yönlendir
-            </button>
-          )}
-
-          {/* İptal Et — talebi açan kişi kendi talebini geri çekebilir */}
-          {canCancel && !editMode && (
-            <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowCancelConfirm(true)} title="Talebi iptal et">
-              <TbBan size={14} /> İptal Et
-            </button>
-          )}
-
-          {/* Geri Çevir */}
-          {canReject && !editMode && (
-            <button
-              className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
-              onClick={() => setShowRejectModal(true)}
-              title="Talebi geri çevir"
-            >
-              <TbX size={14} /> Geri Çevir
-            </button>
-          )}
-
-          {/* Delete — sadece talebi açan kullanıcı silebilir */}          {canDelete && !editMode && (
-            <button className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" onClick={() => setShowDeleteConfirm(true)} title="Talebi sil">
-              <TbTrash size={14} />
-            </button>
-          )}
+          <div className="ms-auto d-flex flex-wrap gap-2">
+            {editMode ? (
+              <>
+                <button className="btn btn-sm btn-primary d-flex align-items-center gap-1" onClick={handleSaveEdit} disabled={!editTitle.trim()}>
+                  <TbCheck size={14} /> Kaydet
+                </button>
+                <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={handleCancelEdit}>
+                  <TbX size={14} /> Vazgeç
+                </button>
+              </>
+            ) : (
+              <>
+                {canAssign && (
+                  <button className="btn btn-sm btn-primary d-flex align-items-center gap-1" onClick={() => setEditingAssignee(true)}>
+                    <TbUserPlus size={14} /> Ata
+                  </button>
+                )}
+                {canEdit && (
+                  <button className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" onClick={handleStartEdit}>
+                    <TbEdit size={14} /> Düzenle
+                  </button>
+                )}
+                {canForward && (
+                  <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowForwardModal(true)}
+                    title="Talebi başka bir müdürlüğe yönlendir">
+                    <TbArrowForwardUp size={14} /> Yönlendir
+                  </button>
+                )}
+                {canClone && (
+                  <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={handleClone} title="Aynı içerikle yeni talep aç">
+                    <TbCopy size={14} /> Klonla
+                  </button>
+                )}
+                {(canReject || canCancel || canDelete) && <span className="rd-toolbar__sep" />}
+                {canReject && (
+                  <button className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1" onClick={() => setShowRejectModal(true)}>
+                    <TbX size={14} /> Geri Çevir
+                  </button>
+                )}
+                {canCancel && (
+                  <button className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" onClick={() => setShowCancelConfirm(true)}>
+                    <TbBan size={14} /> İptal Et
+                  </button>
+                )}
+                {canDelete && (
+                  <button className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" onClick={() => setShowDeleteConfirm(true)} title="Talebi sil">
+                    <TbTrash size={14} />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Onay bekleyen tamamlama — yönetici onaylar/reddeder */}
       <ApprovalPanel issue={request} />
 
-      {/* Two-column layout */}
-      <div className="row g-4">
-        {/* Left column */}
+      <div className="row g-3">
+        {/* ── Ana sütun ── */}
         <div className="col-12 col-lg-8">
-
-          {/* Details grid */}
-          <div className="mb-4">
-            <h6 className="fw-semibold text-muted text-uppercase mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-              Detaylar
-            </h6>
-            <div className="row g-2" style={{ fontSize: '0.875rem' }}>
-
-              {/* Type */}
-              <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                <TbTag size={13} /> Tip
-              </div>
-              <div className="col-8 col-md-9">
-                <Badge label="Talep" type="issueType" />
-              </div>
-
-              {/* Priority */}
-              <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                <TbFlag size={13} /> Öncelik
-              </div>
-              <div className="col-8 col-md-9">
-                {editMode ? (
-                  <select
-                    className="form-select form-select-sm"
-                    style={{ width: 'auto' }}
-                    value={editPriority}
-                    onChange={(e) => setEditPriority(e.target.value)}
-                  >
-                    {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
-                  </select>
-                ) : (
-                  <PriorityIcon priority={request.priority} showLabel size={13} />
-                )}
-              </div>
-
-              {/* Status */}
-              <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                <TbCircleCheck size={13} /> Durum
-              </div>
-              <div className="col-8 col-md-9">
-                <Badge label={request.status} type="status" />
-              </div>
-
-              {/* Project (editable) */}
-              <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                📁 Müdürlük
-              </div>
-              <div className="col-8 col-md-9">
-                {editMode ? (
-                  <select
-                    className="form-select form-select-sm"
-                    style={{ width: 'auto', minWidth: 200 }}
-                    value={editProjectId}
-                    onChange={(e) => setEditProjectId(e.target.value)}
-                  >
-                    {unitProjects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className="small">{project?.name || '—'}</span>
-                )}
-              </div>
-
-              {/* Resolved at */}
-              <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                <TbCalendar size={13} /> Çözülüş
-              </div>
-              <div className="col-8 col-md-9">
-                {canEditDates && !editMode && editingResolvedAt ? (
-                  <div className="d-flex gap-1">
-                    <input
-                      type="date"
-                      className="form-control form-control-sm"
-                      style={{ width: 'auto' }}
-                      defaultValue={request.resolvedAt ? request.resolvedAt.substring(0, 10) : ''}
-                      onChange={(e) => setResolvedAtInput(e.target.value)}
-                      autoFocus
-                    />
-                    <button className="btn btn-sm btn-primary" onClick={handleResolvedAtSave}>Kaydet</button>
-                    <button className="btn btn-sm btn-outline-secondary" onClick={() => setEditingResolvedAt(false)}>İptal</button>
-                  </div>
-                ) : (
-                  <span
-                    role={canEditDates && !editMode ? 'button' : undefined}
-                    tabIndex={canEditDates && !editMode ? 0 : undefined}
-                    onClick={() => { if (canEditDates && !editMode) { setResolvedAtInput(request.resolvedAt ? request.resolvedAt.substring(0, 10) : ''); setEditingResolvedAt(true); } }}
-                    onKeyDown={(e) => e.key === 'Enter' && canEditDates && !editMode && setEditingResolvedAt(true)}
-                    style={{ cursor: canEditDates && !editMode ? 'pointer' : 'default' }}
-                    title={canEditDates && !editMode ? 'Çözülüş tarihini düzenle' : undefined}
-                  >
-                    {request.resolvedAt ? formatDate(request.resolvedAt) : <span className="text-muted">—</span>}
-                  </span>
-                )}
-              </div>
-
-              {/* Time spent */}
-              <div className="col-4 col-md-3 text-muted fw-medium d-flex align-items-center gap-1">
-                <TbClock size={13} /> Harcanan Zaman
-              </div>
-              <div className="col-8 col-md-9">
-                {canEditDates && !editMode && editingTimeSpent ? (
-                  <div>
-                    <div className="d-flex gap-1">
-                      <input
-                        type="number"
-                        className={`form-control form-control-sm ${timeSpentError ? 'is-invalid' : ''}`}
-                        placeholder="Dakika"
-                        style={{ width: '100px' }}
-                        defaultValue={request.timeSpent || ''}
-                        onChange={(e) => { setTimeSpentInput(e.target.value); setTimeSpentError(''); }}
-                        min={0}
-                        autoFocus
-                      />
-                      <button className="btn btn-sm btn-primary" onClick={handleTimeSpentSave}>Kaydet</button>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setEditingTimeSpent(false); setTimeSpentError(''); }}>İptal</button>
-                    </div>
-                    {timeSpentError && <div className="invalid-feedback d-block mt-1">{timeSpentError}</div>}
-                  </div>
-                ) : (
-                  <span
-                    role={canEditDates && !editMode ? 'button' : undefined}
-                    tabIndex={canEditDates && !editMode ? 0 : undefined}
-                    onClick={() => { if (canEditDates && !editMode) { setTimeSpentInput(String(request.timeSpent || '')); setEditingTimeSpent(true); } }}
-                    onKeyDown={(e) => e.key === 'Enter' && canEditDates && !editMode && setEditingTimeSpent(true)}
-                    style={{ cursor: canEditDates && !editMode ? 'pointer' : 'default' }}
-                    title={canEditDates && !editMode ? 'Harcanan zamanı düzenle' : undefined}
-                  >
-                    {formatTimeSpent(request.timeSpent)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Süreler: bekleme (açılış → işleme alınma), çözüm (işleme alınma → çözülme), toplam */}
-          {(() => {
-            const d = requestDurations(request);
-            const cells = [
-              { label: 'Bekleme Süresi', part: d.waiting, hint: 'Açıldığı andan işleme alınana kadar', color: '#D4A000' },
-              { label: 'Çözüm Süresi', part: d.resolution, hint: 'İşleme alındığı andan çözülene kadar', color: '#FF991F' },
-              { label: 'Toplam Süre', part: d.total, hint: 'Açıldığı andan çözülene kadar', color: '#00875A' },
-            ];
-            return (
-              <div className="row g-2 mt-3">
-                {cells.map(({ label, part, hint, color }) => (
-                  <div className="col-4" key={label}>
-                    <div className="rounded-3 border p-2 h-100" title={hint} style={{ borderLeft: `3px solid ${color}` }}>
-                      <div className="text-muted fw-semibold" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {label}
-                      </div>
-                      <div className="fw-bold" style={{ color, fontSize: '1rem' }}>{formatDuration(part?.ms ?? null)}</div>
-                      <div className="text-muted" style={{ fontSize: '0.7rem' }}>
-                        {!part ? 'Kayıt yok' : part.ongoing ? 'devam ediyor' : hint}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          <hr className="my-3" />
-
-          {/* Description */}
-          <div className="mb-4">
-            <h6 className="fw-semibold text-muted text-uppercase mb-2" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-              Açıklama
-            </h6>
-            {editMode ? (
-              <textarea
-                className="form-control"
-                rows={5}
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Talep açıklaması..."
-              />
-            ) : request.description ? (
-              <p className="mb-0" style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{request.description}</p>
-            ) : (
-              <p className="text-muted fst-italic mb-0" style={{ fontSize: '0.875rem' }}>Açıklama eklenmemiş.</p>
-            )}
-          </div>
-
-          {/* Müdürlük talep formu cevapları (talep açılırken verilen) */}
-          {(request.requestFormName || request.requestAnswers?.length > 0) && (
+          {hasAnswers && (
             <div className="mb-4">
-              <h6 className="fw-semibold text-muted text-uppercase mb-2 d-flex align-items-center gap-2" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                Talep Bilgileri
-                {request.requestFormName && (
-                  <span className="badge bg-primary bg-opacity-10 text-primary text-capitalize" style={{ letterSpacing: 0 }}>
-                    {request.requestFormName}
-                  </span>
-                )}
-              </h6>
-              {request.requestAnswers?.length > 0 && (
-              <dl className="row mb-0 rounded border p-2 mx-0" style={{ fontSize: '0.875rem', background: '#F8FAFC' }}>
+              <h6 className="rd-section-title">Talep Bilgileri</h6>
+              <div className="rd-answers">
                 {request.requestAnswers.map((a) => (
-                  <React.Fragment key={a.questionId}>
-                    <dt className="col-12 col-md-5 text-dark fw-semibold">{a.label}</dt>
-                    <dd className="col-12 col-md-7 mb-2" style={{ whiteSpace: 'pre-wrap' }}>
+                  <div key={a.questionId} className={`rd-answer ${a.type === 'textarea' || a.type === 'file' ? 'rd-answer--wide' : ''}`}>
+                    <div className="rd-answer__q">{a.label}</div>
+                    <div className="rd-answer__a">
                       {a.type === 'file' ? (
-                        <div className="d-flex flex-column align-items-start gap-1">
+                        <div className="d-flex flex-wrap gap-2">
                           {(a.value || []).map((file) => (
                             <button key={file.id} type="button"
-                              className="btn btn-link btn-sm p-0 text-decoration-none d-flex align-items-center gap-1"
+                              className="btn btn-sm btn-light border d-flex align-items-center gap-1"
                               title="İndir"
                               onClick={() => filesApi.download(file.id, file.name).catch((err) => alert(err.message || 'Dosya indirilemedi'))}>
                               <TbPaperclip size={14} /> {file.name}
@@ -655,33 +495,66 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                             </button>
                           ))}
                         </div>
-                      ) : formatAnswer(a)}
-                    </dd>
-                  </React.Fragment>
+                      ) : (formatAnswer(a) || <span className="text-muted">—</span>)}
+                    </div>
+                  </div>
                 ))}
-              </dl>
+              </div>
+            </div>
+          )}
+
+          {(editMode || request.description || !hasAnswers) && (
+            <div className="mb-4">
+              <h6 className="rd-section-title">Açıklama</h6>
+              {editMode ? (
+                <textarea
+                  className="form-control"
+                  rows={5}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Talep açıklaması..."
+                />
+              ) : request.description ? (
+                <div className="rd-answer" style={{ background: '#fff' }}>
+                  <div className="rd-answer__a" style={{ fontWeight: 400 }}>{request.description}</div>
+                </div>
+              ) : (
+                <p className="text-muted fst-italic mb-0" style={{ fontSize: '0.875rem' }}>Açıklama eklenmemiş.</p>
               )}
             </div>
           )}
 
-          <hr className="my-3" />
+          {/* Süreler: bekleme (açılış → işleme alınma), çözüm (işleme alınma → çözülme), toplam */}
+          <div className="mb-4">
+            <h6 className="rd-section-title">Süreler</h6>
+            <div className="rd-durations">
+              {[
+                { label: 'Bekleme', part: durations.waiting, hint: 'Açılıştan işleme alınana kadar', color: 'var(--warn)' },
+                { label: 'Çözüm', part: durations.resolution, hint: 'İşleme alınmadan çözülene kadar', color: 'var(--orange)' },
+                { label: 'Toplam', part: durations.total, hint: 'Açılıştan çözülene kadar', color: 'var(--ok)' },
+              ].map(({ label, part, hint, color }) => (
+                <div key={label} className="rd-duration" title={hint} style={{ borderLeft: `3px solid ${color}` }}>
+                  <div className="rd-duration__label">{label}</div>
+                  <div className="rd-duration__value" style={{ color }}>{formatDuration(part?.ms ?? null)}</div>
+                  <div className="rd-duration__hint">{!part ? 'Kayıt yok' : part.ongoing ? 'Devam ediyor' : hint}</div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          {/* Activity tabs */}
+          {/* Aktivite */}
           <div>
-            <h6 className="fw-semibold text-muted text-uppercase mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-              Aktivite
-            </h6>
-            <ul className="nav nav-tabs mb-3" style={{ fontSize: '0.875rem' }}>
-              <li className="nav-item">
-                <button className={`nav-link py-1 px-3 ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>Yorumlar</button>
-              </li>
-              <li className="nav-item">
-                <button className={`nav-link py-1 px-3 ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Geçmiş</button>
-              </li>
-              <li className="nav-item">
-                <button className={`nav-link py-1 px-3 ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>Tümü</button>
-              </li>
-            </ul>
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <h6 className="rd-section-title mb-0">Aktivite</h6>
+              <div className="rd-tabs" role="tablist">
+                {[['comments', 'Yorumlar'], ['history', 'Geçmiş'], ['all', 'Tümü']].map(([key, label]) => (
+                  <button key={key} type="button" role="tab" aria-selected={activeTab === key}
+                    className={activeTab === key ? 'active' : ''} onClick={() => setActiveTab(key)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {(activeTab === 'comments' || activeTab === 'all') && (
               <div className="mb-3"><CommentSection issueId={request.id} /></div>
             )}
@@ -691,112 +564,192 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
           </div>
         </div>
 
-        {/* Right column */}
+        {/* ── Sağ panel ── */}
         <div className="col-12 col-lg-4">
+          <div className="rd-side-card">
+            <h6 className="rd-section-title">Kişiler</h6>
 
-          {/* People */}
-          <div className="p-3 rounded mb-3" style={{ backgroundColor: '#F4F5F7', fontSize: '0.85rem' }}>
-            <h6 className="fw-semibold text-muted text-uppercase mb-3" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>
-              Kişiler
-            </h6>
-
-            {/* Assignee */}
-            <div className="mb-3">
-              <p className="text-muted mb-1 small fw-semibold">Atanan Kişi</p>
-              {canAssign && editingAssignee ? (
-                <select
-                  className="form-select form-select-sm"
-                  defaultValue={request.assigneeTeamId ? `t:${request.assigneeTeamId}` : request.assigneeId ? `u:${request.assigneeId}` : ''}
-                  onChange={(e) => handleAssigneeChange(e.target.value)}
-                  onBlur={() => setEditingAssignee(false)}
-                  autoFocus
-                >
-                  <option value="">— Atanmamış —</option>
-                  {assignableUsers.map((u) => (
-                    <option key={u.id} value={`u:${u.id}`}>{u.name}</option>
-                  ))}
-                  {teams.length > 0 && (
-                    <optgroup label="Ekipler">
-                      {teams.map((t) => (
-                        <option key={t.id} value={`t:${t.id}`}>{t.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-              ) : (
-                <div
-                  className="d-flex align-items-center gap-2"
-                  role={canAssign ? 'button' : undefined}
-                  tabIndex={canAssign ? 0 : undefined}
-                  onClick={() => canAssign && setEditingAssignee(true)}
-                  onKeyDown={(e) => e.key === 'Enter' && canAssign && setEditingAssignee(true)}
-                  style={{ cursor: canAssign ? 'pointer' : 'default' }}
-                  title={canAssign ? 'Atanan kişiyi değiştir' : undefined}
-                >
-                  {assignee ? (
-                    <>
-                      <Avatar name={assignee.name} color={assignee.avatarColor} size={24} />
-                      <div>
-                        <div className="fw-medium">{assignee.name}</div>
-                        {canAssign && <div className="text-primary" style={{ fontSize: '0.75rem' }}>Değiştir</div>}
-                      </div>
-                    </>
-                  ) : request.assigneeTeamId ? (
-                    <div>
-                      <div className="fw-medium">{teams.find((t) => t.id === request.assigneeTeamId)?.name || 'Ekip'}</div>
-                      {canAssign && <div className="text-primary" style={{ fontSize: '0.75rem' }}>Değiştir</div>}
-                    </div>
-                  ) : (
-                    <div>
-                      <span className="text-muted">Atanmamış</span>
-                      {canAssign && <div className="text-primary" style={{ fontSize: '0.75rem', cursor: 'pointer' }}>Ata</div>}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="rd-person">
+              <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                <div className="rd-person__role">Atanan</div>
+                {canAssign && editingAssignee ? (
+                  <select
+                    className="form-select form-select-sm mt-1"
+                    defaultValue={request.assigneeTeamId ? `t:${request.assigneeTeamId}` : request.assigneeId ? `u:${request.assigneeId}` : ''}
+                    onChange={(e) => handleAssigneeChange(e.target.value)}
+                    onBlur={() => setEditingAssignee(false)}
+                    autoFocus
+                  >
+                    <option value="">— Atanmamış —</option>
+                    {assignableUsers.map((u) => (
+                      <option key={u.id} value={`u:${u.id}`}>{u.name}</option>
+                    ))}
+                    {teams.length > 0 && (
+                      <optgroup label="Ekipler">
+                        {teams.map((t) => (
+                          <option key={t.id} value={`t:${t.id}`}>{t.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                ) : (
+                  <div className="d-flex align-items-center gap-2 mt-1"
+                    {...editableProps(canAssign, () => setEditingAssignee(true), 'Atanan kişiyi değiştir')}>
+                    {assignee ? (
+                      <>
+                        <Avatar name={assignee.name} color={assignee.avatarColor} size={28} />
+                        <span className="fw-semibold">{assignee.name}</span>
+                      </>
+                    ) : request.assigneeTeamId ? (
+                      <>
+                        <span className="ds-kpi__icon" style={{ background: 'var(--navy-soft)', color: 'var(--navy)', width: 28, height: 28 }}>
+                          <TbUserPlus size={15} />
+                        </span>
+                        <span className="fw-semibold">{teams.find((t) => t.id === request.assigneeTeamId)?.name || 'Ekip'}</span>
+                        <span className="ds-pill" style={{ background: 'var(--navy-soft)', color: 'var(--navy)' }}>Ekip</span>
+                      </>
+                    ) : (
+                      <span className="ds-pill" style={{ background: 'var(--orange-soft)', color: 'var(--orange)' }}>Atanmamış</span>
+                    )}
+                    {canAssign && <span className="ms-auto text-primary" style={{ fontSize: '0.75rem' }}>Değiştir</span>}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Reporter */}
-            <div className={request.contactName ? 'mb-3' : 'mb-1'}>
-              <p className="text-muted mb-1 small fw-semibold">Raporlayan</p>
-              <div className="d-flex align-items-center gap-2">
-                {reporter ? (
-                  <>
-                    <Avatar name={reporter.name} color={reporter.avatarColor} size={24} />
-                    <span className="fw-medium">{reporter.name}</span>
-                  </>
-                ) : (
-                  <span className="text-muted">—</span>
-                )}
+            <div className="rd-person">
+              <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                <div className="rd-person__role">Talep sahibi</div>
+                <div className="d-flex align-items-center gap-2 mt-1">
+                  {reporter ? (
+                    <>
+                      <Avatar name={reporter.name} color={reporter.avatarColor} size={28} />
+                      <div style={{ minWidth: 0 }}>
+                        <div className="fw-semibold text-truncate">{reporter.name}</div>
+                        <div className="text-muted text-truncate" style={{ fontSize: '0.74rem' }}>{reporter.email}</div>
+                      </div>
+                    </>
+                  ) : <span className="text-muted">—</span>}
+                </div>
               </div>
             </div>
 
             {/* Yardım masası: bu talep, başka biri adına telefonla/yüz yüze açıldıysa */}
             {request.contactName && (
-              <div className="mb-1">
-                <p className="text-muted mb-1 small fw-semibold d-flex align-items-center gap-1">
-                  <TbPhone size={12} /> Talep Eden Kişi
-                </p>
-                <div className="fw-medium">{request.contactName}</div>
-                {request.contactPhone && <div className="text-muted small">{request.contactPhone}</div>}
+              <div className="rd-person">
+                <div className="flex-grow-1">
+                  <div className="rd-person__role d-flex align-items-center gap-1"><TbPhone size={12} /> Adına açılan kişi</div>
+                  <div className="fw-semibold mt-1">{request.contactName}</div>
+                  {request.contactPhone && <div className="text-muted" style={{ fontSize: '0.78rem' }}>{request.contactPhone}</div>}
+                </div>
               </div>
             )}
           </div>
 
+          <div className="rd-side-card">
+            <h6 className="rd-section-title">Detaylar</h6>
+            <div className="rd-field">
+              <span className="rd-field__label"><TbFlag size={14} /> Öncelik</span>
+              <span className="rd-field__value">
+                {editMode ? (
+                  <select className="form-select form-select-sm" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
+                  </select>
+                ) : <PriorityIcon priority={request.priority} showLabel size={13} />}
+              </span>
+            </div>
+            <div className="rd-field">
+              <span className="rd-field__label"><TbBuildingSkyscraper size={14} /> Müdürlük</span>
+              <span className="rd-field__value text-truncate">
+                {editMode ? (
+                  <select className="form-select form-select-sm" value={editProjectId} onChange={(e) => setEditProjectId(e.target.value)}>
+                    {unitProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                ) : (project?.name || '—')}
+              </span>
+            </div>
+            <div className="rd-field">
+              <span className="rd-field__label"><TbCalendar size={14} /> Çözülüş</span>
+              <span className="rd-field__value">
+                {canEditDates && !editMode && editingResolvedAt ? (
+                  <span className="d-flex gap-1 justify-content-end">
+                    <input
+                      type="date"
+                      className="form-control form-control-sm"
+                      style={{ width: 'auto' }}
+                      defaultValue={request.resolvedAt ? request.resolvedAt.substring(0, 10) : ''}
+                      onChange={(e) => setResolvedAtInput(e.target.value)}
+                      autoFocus
+                    />
+                    <button className="btn btn-sm btn-primary" onClick={handleResolvedAtSave}><TbCheck size={14} /></button>
+                    <button className="btn btn-sm btn-outline-secondary" onClick={() => setEditingResolvedAt(false)}><TbX size={14} /></button>
+                  </span>
+                ) : (
+                  <span {...editableProps(canEditDates && !editMode, () => {
+                    setResolvedAtInput(request.resolvedAt ? request.resolvedAt.substring(0, 10) : '');
+                    setEditingResolvedAt(true);
+                  }, 'Çözülüş tarihini düzenle')}>
+                    {request.resolvedAt ? formatDate(request.resolvedAt) : <span className="text-muted fw-normal">—</span>}
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="rd-field">
+              <span className="rd-field__label"><TbClock size={14} /> Harcanan zaman</span>
+              <span className="rd-field__value">
+                {canEditDates && !editMode && editingTimeSpent ? (
+                  <span className="d-block">
+                    <span className="d-flex gap-1 justify-content-end">
+                      <input
+                        type="number"
+                        className={`form-control form-control-sm ${timeSpentError ? 'is-invalid' : ''}`}
+                        placeholder="Dakika"
+                        style={{ width: 90 }}
+                        defaultValue={request.timeSpent || ''}
+                        onChange={(e) => { setTimeSpentInput(e.target.value); setTimeSpentError(''); }}
+                        min={0}
+                        autoFocus
+                      />
+                      <button className="btn btn-sm btn-primary" onClick={handleTimeSpentSave}><TbCheck size={14} /></button>
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setEditingTimeSpent(false); setTimeSpentError(''); }}><TbX size={14} /></button>
+                    </span>
+                    {timeSpentError && <span className="invalid-feedback d-block mt-1">{timeSpentError}</span>}
+                  </span>
+                ) : (
+                  <span {...editableProps(canEditDates && !editMode, () => {
+                    setTimeSpentInput(String(request.timeSpent || ''));
+                    setEditingTimeSpent(true);
+                  }, 'Harcanan zamanı düzenle')}>
+                    {formatTimeSpent(request.timeSpent)}
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="rd-field">
+              <span className="rd-field__label">Oluşturulma</span>
+              <span className="rd-field__value" title={formatDate(request.createdAt)}>{timeAgo(request.createdAt) || '—'}</span>
+            </div>
+            <div className="rd-field">
+              <span className="rd-field__label">Son güncelleme</span>
+              <span className="rd-field__value" title={formatDate(request.updatedAt)}>
+                {timeAgo(request.updatedAt) || timeAgo(request.createdAt) || '—'}
+              </span>
+            </div>
+          </div>
+
           {/* Puanlama */}
           {(canRate || request.ratedAt) && (
-            <div className="p-3 rounded mb-3" style={{ backgroundColor: '#F4F5F7', fontSize: '0.85rem' }}>
-              <h6 className="fw-semibold text-muted text-uppercase mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>
-                Çözüm Değerlendirmesi
-              </h6>
+            <div className="rd-side-card" style={canRate ? { borderColor: 'var(--orange)', background: 'var(--orange-soft)' } : undefined}>
+              <h6 className="rd-section-title">Çözüm değerlendirmesi</h6>
               {request.ratedAt ? (
                 <>
-                  <StarRating value={request.rating} size={16} />
+                  <StarRating value={request.rating} size={18} />
                   {request.ratingComment && <p className="text-muted small mt-2 mb-0 fst-italic">"{request.ratingComment}"</p>}
                 </>
               ) : (
                 <>
-                  <StarRating value={rating} onRate={setRating} size={20} />
+                  <p className="small mb-2">Talebiniz çözüldü. Hizmeti puanlar mısınız?</p>
+                  <StarRating value={rating} onRate={setRating} size={22} />
                   <textarea
                     className="form-control form-control-sm mt-2"
                     rows={2}
@@ -804,32 +757,13 @@ function RequestDetailContent({ request, onClose, onCloneSuccess }) {
                     value={ratingComment}
                     onChange={(e) => setRatingComment(e.target.value)}
                   />
-                  <button
-                    className="btn btn-sm btn-primary mt-2"
-                    disabled={!rating || ratingSubmitting}
-                    onClick={handleRate}
-                  >
+                  <button className="btn btn-sm btn-primary mt-2" disabled={!rating || ratingSubmitting} onClick={handleRate}>
                     {ratingSubmitting ? 'Gönderiliyor…' : 'Puanı Gönder'}
                   </button>
                 </>
               )}
             </div>
           )}
-
-          {/* Dates */}
-          <div className="p-3 rounded" style={{ backgroundColor: '#F4F5F7', fontSize: '0.85rem' }}>
-            <h6 className="fw-semibold text-muted text-uppercase mb-3" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>
-              Tarihler
-            </h6>
-            <div className="mb-2">
-              <p className="text-muted mb-0 small fw-semibold">Oluşturulma</p>
-              <span title={formatDate(request.createdAt)}>{timeAgo(request.createdAt) || '—'}</span>
-            </div>
-            <div className="mb-2">
-              <p className="text-muted mb-0 small fw-semibold">Güncelleme</p>
-              <span title={formatDate(request.updatedAt)}>{timeAgo(request.updatedAt) || timeAgo(request.createdAt) || '—'}</span>
-            </div>
-          </div>
         </div>
       </div>
       <ConfirmDialog

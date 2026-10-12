@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom';
-import { TbLock, TbPlus, TbUsers, TbUsersGroup, TbAlertCircle, TbFlag } from 'react-icons/tb';
+import {
+  TbLock, TbPlus, TbUsers, TbUsersGroup, TbAlertCircle, TbFlag, TbLayoutKanban, TbList, TbShieldCheck,
+  TbClipboardList, TbHourglass, TbProgress, TbCircleCheck, TbCalendar,
+} from 'react-icons/tb';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../hooks/useAuth';
-import { canAccessProject } from '../utils/permissionUtils';
+import { canAccessProject, inProject } from '../utils/permissionUtils';
 import { formatDate, timeAgo } from '../utils/dateUtils';
 import Board from '../components/board/Board';
 import Avatar from '../components/common/Avatar';
@@ -21,6 +24,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { sortSprintsByCurrentMonth, getMissingSprintMonths, getSprintName } from '../utils/sprintUtils';
 import SprintForm from '../components/sprint/SprintForm';
 import ApprovalsList from '../components/project/ApprovalsList';
+import { Kpi, Panel, SlaPill } from '../components/dashboard/DashboardKit';
 
 // "Aylık Dönem" seçicisinde tüm aylara atanmış işleri birlikte gösteren seçenek.
 const ALL_MONTHS = '__all__';
@@ -30,14 +34,9 @@ const MONTH_NAMES = [
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
-const PRIORITY_BG = {
-  High:    { light: '#FFF0F0', dark: '#DE350B' },
-  Medium:  { light: '#FFFAE5', dark: '#D4A000' },
-  Low:     { light: '#EAF2FF', dark: '#2684FF' },
-};
-
 /* ── Ana sayfa ───────────────────────────────────────────────────────────────── */
 function ProjectDetailPage() {
+  const { can } = usePermissions();
   const { projectId } = useParams();
   const [searchParams] = useSearchParams();
   const { state } = useAppContext();
@@ -72,37 +71,53 @@ function ProjectDetailPage() {
 
   const activeSprint = allSprints.find((s) => s.status === 'Active');
   const pageTitle = tab === 'board' ? 'Aktif Talepler' : tab === 'approvals' ? 'Onay Bekleyenler' : 'Bekleyen Talepler';
+  const backlogCount = state.issues.filter((i) => i.projectId === projectId && !i.sprintId && i.status !== 'Geri Çevrildi').length;
+  const approvalCount = state.issues.filter((i) => i.projectId === projectId && i.status === 'Onay Bekliyor').length;
 
   return (
     <div>
-      <div className="mb-4">
-        <div className="d-flex align-items-center gap-2 mb-1">
-          <span className="badge" style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.75rem' }}>
-            {project.key}
-          </span>
-          <h4 className="fw-bold mb-0">{project.name}</h4>
-          <span className="text-muted small">/ {pageTitle}</span>
-          <HelpGuide
-            title={`${pageTitle} — Yardım Kılavuzu`}
-            sections={
-              currentUser?.role === ROLES.PROJECT_MANAGER ? [
-                { icon: '📊', title: 'İstatistikler', items: ['Sayfanın üstünde toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
-                { icon: '📌', title: 'Board Görünümü', items: ['İşleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.'] },
-                { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri öncelik, atanan kişi ve tarihe göre filtreleyebilirsiniz.', 'İşleri aktif aya atayabilirsiniz.', 'CSV dışa aktarma ve yazdırma özelliklerini kullanabilirsiniz.'] },
-                { icon: '➕', title: 'Talep Oluşturma', items: ['Bekleyen Talepler görünümünde "Talep Oluştur" butonuyla yeni iş ekleyebilirsiniz.'] },
-              ] : currentUser?.role === ROLES.WORKER ? [
-                { icon: '📊', title: 'İstatistikler', items: ['Müdürlükteki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
-                { icon: '📌', title: 'Board Görünümü', items: ['Size atanan işleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemleri görüntüleyebilirsiniz.'] },
-                { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri görüntüleyebilirsiniz.'] },
-              ] : [
-                { icon: '📊', title: 'İstatistikler', items: ['Müdürlükteki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
-                { icon: '📌', title: 'Board Görünümü', items: ['Müdürlüğün aktif dönemindeki işleri görüntüleyebilirsiniz.'] },
-                { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri görüntüleyebilirsiniz.'] },
-              ]
-            }
-          />
+      <div className="pg-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="pg-head__title">
+            <span className="rd-key">{project.key}</span>
+            <h4 className="pg-head__name text-truncate">{project.name}</h4>
+            <HelpGuide
+              title={`${pageTitle} — Yardım Kılavuzu`}
+              sections={
+                currentUser?.role === ROLES.PROJECT_MANAGER ? [
+                  { icon: '📊', title: 'İstatistikler', items: ['Sayfanın üstünde toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                  { icon: '📌', title: 'Board Görünümü', items: ['İşleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemlerin board\'unu görüntüleyebilirsiniz.'] },
+                  { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri öncelik, atanan kişi ve tarihe göre filtreleyebilirsiniz.', 'İşleri aktif aya atayabilirsiniz.', 'CSV dışa aktarma ve yazdırma özelliklerini kullanabilirsiniz.'] },
+                  { icon: '➕', title: 'Talep Oluşturma', items: ['Bekleyen Talepler görünümünde "Talep Oluştur" butonuyla yeni iş ekleyebilirsiniz.'] },
+                ] : currentUser?.role === ROLES.WORKER ? [
+                  { icon: '📊', title: 'İstatistikler', items: ['Müdürlükteki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                  { icon: '📌', title: 'Board Görünümü', items: ['Size atanan işleri sütunlar arasında sürükleyerek durumlarını güncelleyebilirsiniz.', 'Ay seçici ile farklı dönemleri görüntüleyebilirsiniz.'] },
+                  { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri görüntüleyebilirsiniz.'] },
+                ] : [
+                  { icon: '📊', title: 'İstatistikler', items: ['Müdürlükteki toplam, yapılacak, devam eden ve tamamlanan iş sayılarını görürsünüz.'] },
+                  { icon: '📌', title: 'Board Görünümü', items: ['Müdürlüğün aktif dönemindeki işleri görüntüleyebilirsiniz.'] },
+                  { icon: '📋', title: 'Bekleyen Talepler', items: ['Bekleyen talepleri görüntüleyebilirsiniz.'] },
+                ]
+              }
+            />
+          </div>
+          {project.description && <div className="pg-head__desc">{project.description}</div>}
         </div>
-        {project.description && <p className="text-muted small mb-0">{project.description}</p>}
+        <nav className="pg-tabs" aria-label="Müdürlük sayfaları">
+          <Link to={`/projects/${projectId}?tab=board`} className={tab === 'board' ? 'active' : ''}>
+            <TbLayoutKanban size={16} /> Aktif Talepler
+          </Link>
+          <Link to={`/projects/${projectId}?tab=backlog`} className={tab === 'backlog' ? 'active' : ''}>
+            <TbList size={16} /> Bekleyen Talepler
+            <span className="ds-count">{backlogCount}</span>
+          </Link>
+          {can('issue.approve') && (
+            <Link to={`/projects/${projectId}?tab=approvals`} className={tab === 'approvals' ? 'active' : ''}>
+              <TbShieldCheck size={16} /> Onay Bekleyenler
+              {approvalCount > 0 && <span className="ds-count" style={{ background: 'var(--violet-soft)', color: 'var(--violet)' }}>{approvalCount}</span>}
+            </Link>
+          )}
+        </nav>
       </div>
 
       {tab === 'board' && (
@@ -169,78 +184,25 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
   return (
     <div>
       {/* İstatistik kartları */}
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100"
-            style={{ borderLeft: '4px solid #2563eb', background: 'linear-gradient(135deg, #EAF0FB 0%, #ffffff 100%)' }}>
-            <div className="card-body py-3 px-4">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Toplam İş</span>
-                <div className="d-flex align-items-center justify-content-center rounded-circle"
-                  style={{ width: 36, height: 36, background: '#EAF0FB', flexShrink: 0 }}>
-                  <span style={{ color: '#2563eb', fontSize: 18 }}>📋</span>
-                </div>
-              </div>
-              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#2563eb' }}>{totalCount}</div>
-            </div>
-          </div>
-        </div>
-        <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100"
-            style={{ borderLeft: '4px solid #DFE1E6', background: 'linear-gradient(135deg, #F4F5F7 0%, #ffffff 100%)' }}>
-            <div className="card-body py-3 px-4">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Yapılacak</span>
-                <div className="d-flex align-items-center justify-content-center rounded-circle"
-                  style={{ width: 36, height: 36, background: '#F4F5F7', flexShrink: 0 }}>
-                  <span style={{ color: '#6B778C', fontSize: 18 }}>⏳</span>
-                </div>
-              </div>
-              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#6B778C' }}>{todoCount}</div>
-            </div>
-          </div>
-        </div>
-        <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100"
-            style={{ borderLeft: '4px solid #FF991F', background: 'linear-gradient(135deg, #FFF4E5 0%, #ffffff 100%)' }}>
-            <div className="card-body py-3 px-4">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Devam Eden</span>
-                <div className="d-flex align-items-center justify-content-center rounded-circle"
-                  style={{ width: 36, height: 36, background: '#FFF4E5', flexShrink: 0 }}>
-                  <span style={{ color: '#FF991F', fontSize: 18 }}>⚙️</span>
-                </div>
-              </div>
-              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#FF991F' }}>{inProgCount}</div>
-            </div>
-          </div>
-        </div>
-        <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100"
-            style={{ borderLeft: '4px solid #00875A', background: 'linear-gradient(135deg, #E3FCEF 0%, #ffffff 100%)' }}>
-            <div className="card-body py-3 px-4">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="fw-semibold text-muted" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tamamlanan</span>
-                <div className="d-flex align-items-center justify-content-center rounded-circle"
-                  style={{ width: 36, height: 36, background: '#E3FCEF', flexShrink: 0 }}>
-                  <span style={{ color: '#00875A', fontSize: 18 }}>✅</span>
-                </div>
-              </div>
-              <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1, color: '#00875A' }}>{doneCount}</div>
-            </div>
-          </div>
-        </div>
+      <div className="row g-3 mb-3">
+        <div className="col-6 col-lg-3"><Kpi label="Toplam iş" value={totalCount} icon={<TbClipboardList size={17} />} tone="navy"
+          sub={resolvedSprint ? resolvedSprint.name : 'Tüm dönemler'} /></div>
+        <div className="col-6 col-lg-3"><Kpi label="Yapılacak" value={todoCount} icon={<TbHourglass size={17} />} tone="orange" sub="Henüz başlanmadı" /></div>
+        <div className="col-6 col-lg-3"><Kpi label="Devam eden" value={inProgCount} icon={<TbProgress size={17} />} tone="violet" sub="Üzerinde çalışılıyor" /></div>
+        <div className="col-6 col-lg-3"><Kpi label="Tamamlanan" value={doneCount} icon={<TbCircleCheck size={17} />} tone="ok"
+          sub={totalCount ? `%${Math.round((doneCount / totalCount) * 100)} tamamlandı` : 'Kayıt yok'} /></div>
       </div>
 
       {/* Ay seçici */}
-      <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
-        <label htmlFor="board-sprint-select" className="form-label mb-0 small fw-semibold">Ay:</label>
+      <div className="ds-bar mb-3">
+        <TbCalendar size={17} style={{ color: 'var(--navy)' }} />
+        <label htmlFor="board-sprint-select" className="ds-bar__label mb-0">Dönem</label>
         <select
           id="board-sprint-select"
           className="form-select form-select-sm"
           value={boardSprintId}
           onChange={(e) => setBoardSprintId(e.target.value)}
-          style={{ minWidth: 180 }}
+          style={{ width: 'auto', minWidth: 190 }}
         >
           <option value="active">Aktif Ay</option>
           <option value="all">Tümü (Kanban)</option>
@@ -252,10 +214,17 @@ function BoardView({ projectId, allSprints, activeSprint, boardSprintId, setBoar
           ))}
         </select>
         {isReadonly && (
-          <span className="badge d-flex align-items-center gap-1"
-            style={{ background: '#DEEBFF', color: '#0747A6', fontSize: '0.75rem', padding: '5px 10px' }}>
-            <TbLock size={13} /> Kapalı Ay — Salt Okunur
+          <span className="ds-pill" style={{ background: 'var(--navy-soft)', color: 'var(--navy)' }}>
+            <TbLock size={13} /> Kapalı ay — salt okunur
           </span>
+        )}
+        {totalCount > 0 && (
+          <div className="d-flex align-items-center gap-2 ms-auto" style={{ minWidth: 180 }}>
+            <span className="ds-bar__label">İlerleme</span>
+            <div className="ds-meter flex-grow-1" style={{ minWidth: 100 }}>
+              <span style={{ width: `${Math.round((doneCount / totalCount) * 100)}%`, background: 'var(--ok)' }} />
+            </div>
+          </div>
         )}
         {can('sprint.manage') && missingMonths.length > 0 && (
           <button
@@ -390,8 +359,8 @@ function BacklogTabView({ projectId, allSprints }) {
     });
 
   const project = state.projects.find((p) => p.id === projectId);
-  const projectMembers = state.users.filter(
-    (u) => u.role !== ROLES.EXTERNAL_USER && (u.projectId === projectId || project?.managerId === u.id)
+  const projectMembers = state.users.filter((u) => u.isActive !== false).filter(
+    (u) => u.role !== ROLES.EXTERNAL_USER && (inProject(u, projectId) || project?.managerId === u.id)
   );
 
   // Öncelik sayıları — sadece backlog bekleyenler
@@ -484,178 +453,133 @@ function BacklogTabView({ projectId, allSprints }) {
 
   return (
     <div>
-      {/* ── Satır 1: Çalışan (col-2) | Aylık Dönem (col-3) | Personel (col-7) */}
-      <div className="row g-3 mb-4 align-items-stretch">
-
-        {/* Toplam Çalışan */}
-        <div className="col-12 col-md-2">
-          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #2563eb' }}>
-            <div className="card-body d-flex flex-column align-items-center justify-content-center py-3 text-center">
-              <TbUsers size={28} className="text-primary mb-2 opacity-75" />
-              <div className="fw-bold fs-2 lh-1">{projectMembers.length}</div>
-              <div className="text-muted small mt-1">Toplam Çalışan</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Aylık Dönem Seçimi */}
-        <div className="col-12 col-md-3">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body py-3">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <div className="text-muted fw-semibold" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Aylık Dönem
-                </div>
-                {can('sprint.manage') && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-link p-0"
-                    style={{ fontSize: '0.72rem' }}
-                    onClick={() => setShowAddMonthModal(true)}
-                    title="Yeni ay ekle"
-                  >
-                    <TbPlus size={13} /> Ay Ekle
-                  </button>
-                )}
-              </div>
-              <select
-                className="form-select form-select-sm mb-2"
-                value={selectedSprintId}
-                onChange={(e) => setSelectedSprintId(e.target.value)}
-              >
-                <option value="">— Ay seçin —</option>
-                <option value={ALL_MONTHS}>Tüm Aylar</option>
-                {allSprints.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {sprintLabel(s)}{s.status === 'Active' ? ' ✓' : s.status === 'Completed' ? ' 🔒' : ''}
-                  </option>
-                ))}
-              </select>
-              {can('sprint.manage') && missingMonths.length > 0 && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-1 mb-3"
-                  style={{ fontSize: '0.72rem' }}
-                  onClick={handleCreateMissingMonths}
-                  disabled={creatingMissingMonths}
-                  title={`Eksik aylar: ${missingMonths.map((m) => getSprintName(m.year, m.month)).join(', ')}`}
-                >
-                  {creatingMissingMonths
-                    ? 'Oluşturuluyor…'
-                    : `${missingMonths.length} ay eksik — tümünü oluştur`}
-                </button>
-              )}
-              {hasSelection && (() => {
-                const badge = selectedSprint && sprintBadge(selectedSprint);
-                return (
-                  <div>
-                    <div className="d-flex align-items-center gap-2 mb-2">
-                      <span className="fw-semibold small">{sprintLabel(selectedSprint)}</span>
-                      {badge && <span className="badge" style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.6rem' }}>{badge.label}</span>}
-                    </div>
-                    <div className="d-flex gap-3">
-                      <div className="text-center">
-                        <div className="fw-bold fs-5 text-primary">{sprintIssues.length}</div>
-                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>Toplam</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="fw-bold fs-5 text-success">{sprintDone}</div>
-                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>Tamamlanan</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="fw-bold fs-5 text-warning">{sprintIssues.length - sprintDone}</div>
-                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>Devam Eden</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-
-        {/* Seçili aya ait personel */}
-        <div className="col-12 col-md-7">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body py-3">
-              {!hasSelection ? (
-                <div className="text-muted small d-flex align-items-center justify-content-center h-100">
-                  Personel bilgisi için bir ay seçin.
-                </div>
-              ) : sprintMembers.length === 0 ? (
-                <div className="text-muted small">{isAllMonths ? 'Hiçbir aya atanmış iş yok.' : 'Bu ayda atanmış iş yok.'}</div>
-              ) : (
-                <>
-                  <div className="text-muted fw-semibold mb-3" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {sprintLabel(selectedSprint)} — Personel & İşler
-                  </div>
-                  <div className="row g-2">
-                    {sprintMembers.map(({ user, issues, done }) => (
-                      <div key={user.id} className="col-12 col-sm-6">
-                        <div className="d-flex align-items-start gap-2 p-2 rounded" style={{ background: '#F4F5F7' }}>
-                          <Avatar name={user.name} color={user.avatarColor} size={32} />
-                          <div style={{ minWidth: 0 }}>
-                            <div className="fw-medium small text-truncate">{user.name}</div>
-                            <div className="d-flex gap-2 mt-1">
-                              <span className="badge bg-primary bg-opacity-10 text-primary" style={{ fontSize: '0.65rem' }}>{issues.length} iş</span>
-                              <span className="badge bg-success bg-opacity-10 text-success" style={{ fontSize: '0.65rem' }}>{done} tamamlandı</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Satır 2: Öncelik kartları (backlog bekleyenler) ───────────────── */}
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-md-2">
-          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #6B778C' }}>
-            <div className="card-body py-3 px-3">
-              <div className="d-flex align-items-center gap-1 mb-1">
-                <TbAlertCircle size={14} className="text-secondary" />
-                <span className="text-muted" style={{ fontSize: '0.72rem', fontWeight: 600 }}>Bekleyen</span>
-              </div>
-              <div className="fw-bold fs-4">{backlogIssues.length}</div>
-            </div>
-          </div>
+      {/* ── Satır 1: öncelik göstergeleri (tıklayınca tabloyu süzer) ── */}
+      <div className="row g-3 mb-3">
+        <div className="col-6 col-md-3">
+          <Kpi label="Bekleyen" value={backlogIssues.length} icon={<TbAlertCircle size={17} />} tone="navy"
+            sub={`${backlogIssues.filter((i) => !i.assigneeId && !i.assigneeTeamId).length} tanesi atanmamış`} />
         </div>
         {PRIORITIES.map((p) => {
-          const bg = PRIORITY_BG[p];
+          const tone = { High: 'danger', Medium: 'warn', Low: 'navy' }[p] || 'navy';
           const isActive = priorityFilter === p;
           return (
-            <div key={p} className="col-6 col-md-2">
-              <div
-                className="card border-0 shadow-sm h-100"
-                style={{ background: isActive ? bg.dark : bg.light, borderLeft: `4px solid ${bg.dark}`, cursor: 'pointer', transition: 'background 0.15s' }}
-                onClick={() => setPriorityFilter(isActive ? '' : p)}
-                title={`${PRIORITY_LABELS[p]} öncelikli bekleyen talepleri filtrele`}
-              >
-                <div className="card-body py-3 px-3">
-                  <div className="d-flex align-items-center gap-1 mb-1">
-                    <TbFlag size={13} style={{ color: isActive ? '#fff' : bg.dark }} />
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: isActive ? '#fff' : bg.dark }}>{PRIORITY_LABELS[p]}</span>
-                  </div>
-                  <div className="fw-bold fs-4" style={{ color: isActive ? '#fff' : bg.dark }}>{priorityCounts[p]}</div>
-                </div>
+            <div key={p} className="col-6 col-md-3">
+              <div style={{ height: '100%', borderRadius: 14, outline: isActive ? '2px solid var(--navy)' : 'none', outlineOffset: 2 }}>
+                <Kpi label={`${PRIORITY_LABELS[p]} öncelik`} value={priorityCounts[p]} icon={<TbFlag size={17} />} tone={tone}
+                  sub={isActive ? 'Süzülüyor · kaldırmak için tıklayın' : 'Tıklayın: tabloyu süz'}
+                  onClick={() => setPriorityFilter(isActive ? '' : p)} />
               </div>
             </div>
           );
         })}
       </div>
 
+      {/* ── Satır 2: Aylık dönem | Personel & işler ── */}
+      <div className="row g-3 mb-3 align-items-stretch">
+        <div className="col-12 col-lg-4">
+          <Panel title="Aylık dönem" icon={<TbCalendar size={17} className="text-primary" />}
+            action={can('sprint.manage') && (
+              <button type="button" className="btn btn-sm btn-link p-0 text-decoration-none d-flex align-items-center gap-1"
+                style={{ fontSize: '0.78rem' }} onClick={() => setShowAddMonthModal(true)}>
+                <TbPlus size={13} /> Ay ekle
+              </button>
+            )}>
+            <select
+              className="form-select form-select-sm mb-2"
+              value={selectedSprintId}
+              onChange={(e) => setSelectedSprintId(e.target.value)}
+            >
+              <option value="">— Ay seçin —</option>
+              <option value={ALL_MONTHS}>Tüm Aylar</option>
+              {allSprints.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {sprintLabel(s)}{s.status === 'Active' ? ' ✓' : s.status === 'Completed' ? ' 🔒' : ''}
+                </option>
+              ))}
+            </select>
+            {can('sprint.manage') && missingMonths.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-warning w-100 mb-2"
+                style={{ fontSize: '0.76rem' }}
+                onClick={handleCreateMissingMonths}
+                disabled={creatingMissingMonths}
+                title={`Eksik aylar: ${missingMonths.map((m) => getSprintName(m.year, m.month)).join(', ')}`}
+              >
+                {creatingMissingMonths ? 'Oluşturuluyor…' : `${missingMonths.length} ay eksik — tümünü oluştur`}
+              </button>
+            )}
+            {hasSelection && (() => {
+              const badge = selectedSprint && sprintBadge(selectedSprint);
+              const pct = sprintIssues.length ? Math.round((sprintDone / sprintIssues.length) * 100) : 0;
+              return (
+                <div className="mt-1">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="fw-semibold small">{sprintLabel(selectedSprint)}</span>
+                    {badge && <span className="ds-pill" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>}
+                    <span className="ms-auto fw-semibold small">%{pct}</span>
+                  </div>
+                  <div className="ds-meter mb-3"><span style={{ width: `${pct}%`, background: 'var(--ok)' }} /></div>
+                  <div className="row g-2 text-center">
+                    {[
+                      ['Toplam', sprintIssues.length, 'var(--navy)'],
+                      ['Tamamlanan', sprintDone, 'var(--ok)'],
+                      ['Devam eden', sprintIssues.length - sprintDone, 'var(--orange)'],
+                    ].map(([label, n, color]) => (
+                      <div key={label} className="col-4">
+                        <div className="rd-duration" style={{ padding: '8px 6px' }}>
+                          <div className="fw-bold" style={{ color, fontSize: '1.15rem' }}>{n}</div>
+                          <div className="rd-duration__hint">{label}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </Panel>
+        </div>
+
+        <div className="col-12 col-lg-8">
+          <Panel title={hasSelection ? `${sprintLabel(selectedSprint)} — personel ve işler` : 'Personel ve işler'}
+            icon={<TbUsers size={17} className="text-primary" />} hint={`${projectMembers.length} personel`}>
+            {!hasSelection ? (
+              <div className="ds-panel__empty">Personel bilgisi için bir ay seçin.</div>
+            ) : sprintMembers.length === 0 ? (
+              <div className="ds-panel__empty">{isAllMonths ? 'Hiçbir aya atanmış iş yok.' : 'Bu ayda atanmış iş yok.'}</div>
+            ) : (
+              <div className="row g-2">
+                {sprintMembers.map(({ user, issues, done }) => {
+                  const pct = issues.length ? Math.round((done / issues.length) * 100) : 0;
+                  return (
+                    <div key={user.id} className="col-12 col-sm-6">
+                      <Link to={`/personnel/${user.id}`} className="d-flex align-items-center gap-2 p-2 text-decoration-none"
+                        style={{ border: '1px solid #edf1f6', borderRadius: 12, background: '#fafbfd', color: 'var(--ink)' }}>
+                        <Avatar name={user.name} color={user.avatarColor} size={34} />
+                        <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <span className="fw-semibold small text-truncate">{user.name}</span>
+                            <span className="small text-muted ms-2" style={{ whiteSpace: 'nowrap' }}>{done}/{issues.length}</span>
+                          </div>
+                          <div className="ds-meter mt-1"><span style={{ width: `${pct}%`, background: 'var(--ok)' }} /></div>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+        </div>
+      </div>
+
       {/* ── Satır 3: Bekleyen işler tablosu ──────────────────────────────── */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
+      <div className="ds-panel mb-4">
+        <div className="ds-panel__body pt-3">
           {/* Modern filtre çubuğu */}
           <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-            <h6 className="fw-semibold mb-0">
-              Bekleyen Talepler <span className="text-muted fw-normal small ms-1">({filteredBacklog.length})</span>
+            <h6 className="ds-panel__title">
+              <TbList size={17} className="text-primary" /> Bekleyen talepler <span className="ds-count">{filteredBacklog.length}</span>
             </h6>
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {/* Atanan kişi pill */}
@@ -815,17 +739,17 @@ function BacklogTabView({ projectId, allSprints }) {
             </div>
           </div>
           {filteredBacklog.length === 0 ? (
-            <p className="text-muted small mb-0">{priorityFilter ? `${PRIORITY_LABELS[priorityFilter]} öncelikli bekleyen talep yok.` : 'Bekleyen talep yok.'}</p>
+            <div className="ds-panel__empty">{priorityFilter ? `${PRIORITY_LABELS[priorityFilter]} öncelikli bekleyen talep yok.` : 'Bekleyen talep yok.'}</div>
           ) : (
             <div className="table-responsive">
-              <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
+              <table className="ds-table">
                 <thead>
-                  <tr className="text-muted" style={{ fontSize: '0.75rem' }}>
-                    <th className="fw-semibold border-0 ps-0">Başlık</th>
-                    <th className="fw-semibold border-0">Öncelik</th>
-                    <th className="fw-semibold border-0">Atanan</th>
-                    <th className="fw-semibold border-0">Açılış Tarihi</th>
-                    {activeSprint && <th className="fw-semibold border-0"></th>}
+                  <tr>
+                    <th>Talep</th>
+                    <th>Öncelik</th>
+                    <th>Atanan</th>
+                    <th>Açılış</th>
+                    {activeSprint && <th></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -833,32 +757,38 @@ function BacklogTabView({ projectId, allSprints }) {
                     const assignee = state.users.find((u) => u.id === issue.assigneeId);
                     const team = !assignee && teams.find((t) => t.id === issue.assigneeTeamId);
                     return (
-                      <tr key={issue.id}>
-                        <td className="ps-0 align-middle">
-                          <button className="btn btn-link p-0 text-start text-decoration-none" style={{ fontSize: '0.85rem' }} onClick={() => issue.isRequest ? setSelectedRequestId(issue.id) : setSelectedIssueId(issue.id)}>
-                            <span className="text-muted me-1" style={{ fontSize: '0.72rem' }}>{issue.number}</span>
-                            <span className="fw-medium">{issue.title}</span>
-                            {issue.isRequest && <span className="ms-2 badge" style={{ backgroundColor: '#6f42c1', color: '#fff', fontSize: '0.65rem' }}>Talep</span>}
-                          </button>
+                      <tr key={issue.id} onClick={() => (issue.isRequest ? setSelectedRequestId(issue.id) : setSelectedIssueId(issue.id))}>
+                        <td style={{ maxWidth: 420 }}>
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="kb-card__key flex-shrink-0">{issue.number}</span>
+                            <span className="fw-semibold text-truncate">{issue.title}</span>
+                          </div>
+                          <div className="d-flex align-items-center gap-2 mt-1">
+                            {issue.requestFormName && (
+                              <span className="ds-pill" style={{ background: 'var(--navy-soft)', color: 'var(--navy)', padding: '1px 8px' }}>{issue.requestFormName}</span>
+                            )}
+                            {!issue.isRequest && <span className="ds-pill" style={{ background: '#f1f5f9', color: '#475569', padding: '1px 8px' }}>İç iş</span>}
+                            <SlaPill issue={issue} />
+                          </div>
                         </td>
-                        <td className="align-middle"><PriorityIcon priority={issue.priority} showLabel size={13} /></td>
-                        <td className="align-middle">
+                        <td><PriorityIcon priority={issue.priority} showLabel size={13} /></td>
+                        <td>
                           {assignee ? (
-                            <div className="d-flex align-items-center gap-2"><Avatar name={assignee.name} color={assignee.avatarColor} size={22} /><span>{assignee.name}</span></div>
+                            <div className="d-flex align-items-center gap-2"><Avatar name={assignee.name} color={assignee.avatarColor} size={24} /><span className="fw-medium">{assignee.name}</span></div>
                           ) : team ? (
-                            <div className="d-flex align-items-center gap-2"><TbUsersGroup size={18} className="text-primary" /><span>{team.name}</span></div>
-                          ) : <span className="text-muted fst-italic">Atanmamış</span>}
+                            <div className="d-flex align-items-center gap-2"><TbUsersGroup size={18} style={{ color: 'var(--navy)' }} /><span className="fw-medium">{team.name}</span></div>
+                          ) : <span className="ds-pill" style={{ background: 'var(--orange-soft)', color: 'var(--orange)' }}>Atanmamış</span>}
                         </td>
-                        <td className="align-middle text-muted"><span title={formatDate(issue.createdAt)}>{timeAgo(issue.createdAt)}</span></td>
+                        <td className="text-muted" style={{ whiteSpace: 'nowrap' }}><span title={formatDate(issue.createdAt)}>{timeAgo(issue.createdAt)}</span></td>
                         {activeSprint && (
-                          <td className="align-middle text-end">
+                          <td className="text-end">
                             <button
                               className="btn btn-sm btn-outline-primary"
-                              style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                              onClick={() => handleAssignToActiveSprint(issue)}
+                              style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', borderRadius: 9, fontWeight: 600 }}
+                              onClick={(e) => { e.stopPropagation(); handleAssignToActiveSprint(issue); }}
                               title={`${activeSprint.name} aktif ayına ata`}
                             >
-                              + Aktif Aya Ata
+                              + Aktif aya ata
                             </button>
                           </td>
                         )}
@@ -956,17 +886,8 @@ function FilterPill({ label, icon, active, activeLabel, onClear, children }) {
   return (
     <div className="position-relative" style={{ display: 'inline-block' }}>
       <button
-        className="btn btn-sm d-flex align-items-center gap-1"
-        style={{
-          border: active ? '1.5px solid #2563eb' : '1.5px solid #DFE1E6',
-          borderRadius: 20,
-          padding: '4px 12px',
-          fontSize: '0.82rem',
-          fontWeight: active ? 600 : 400,
-          background: active ? '#EAF2FF' : '#fff',
-          color: active ? '#2563eb' : '#42526E',
-          whiteSpace: 'nowrap',
-        }}
+        type="button"
+        className={`ds-filter ${active ? 'ds-filter--on' : ''}`}
         onClick={() => setOpen((v) => !v)}
       >
         <span>{icon}</span>
@@ -993,11 +914,7 @@ function FilterPill({ label, icon, active, activeLabel, onClear, children }) {
             onClick={() => setOpen(false)}
           />
           {/* Dropdown */}
-          <div
-            className="position-absolute bg-white rounded shadow"
-            style={{ zIndex: 1050, top: '110%', right: 0, minWidth: 160, border: '1px solid #DFE1E6' }}
-            onClick={() => setOpen(false)}
-          >
+          <div className="ds-menu" onClick={() => setOpen(false)}>
             {children}
           </div>
         </>

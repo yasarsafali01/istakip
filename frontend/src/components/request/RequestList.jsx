@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { TbPlus, TbEye, TbFlag, TbCircleCheck, TbArrowsSort, TbBuilding, TbUpload, TbFileSpreadsheet, TbPrinter, TbClock } from 'react-icons/tb';
+import {
+  TbPlus, TbEye, TbFlag, TbCircleCheck, TbArrowsSort, TbBuilding, TbUpload, TbFileSpreadsheet, TbPrinter, TbClock,
+  TbInbox, TbHourglass, TbProgress, TbBan,
+} from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -19,6 +22,7 @@ import EmptyState from '../common/EmptyState';
 import HelpGuide from '../common/HelpGuide';
 import { requestsToCsv, downloadCsv, printRequests } from '../../utils/exportUtils';
 import { requestDurations, averageMs, formatDuration } from '../../utils/durationUtils';
+import { Kpi } from '../dashboard/DashboardKit';
 
 /**
  * Filters requests by searchQuery across title, description and number fields.
@@ -36,6 +40,35 @@ export function filterRequests(requests, searchQuery) {
     (r.description || '').toLowerCase().includes(q) ||
     String(r.number).toLowerCase().includes(q)
   );
+}
+
+function helpSections(role) {
+  if (role === ROLES.EXTERNAL_USER) return [
+    { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz ve size görünür yapılan talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.', 'Geri çevrilen talepler kırmızı, tamamlananlar yeşil ile işaretlenir.'] },
+    { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı daire başkanlıklarına açılan taleplerin doğru daire başkanlığına tekrar açılması gerekmektedir.'] },
+    { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep başlığı, açıklaması veya numarasına göre filtreleyin.', 'Durum filtresinden açık, kapanan veya geri çevrilen talepleri görüntüleyin.'] },
+    { icon: '📄', title: 'Talep Detayı', items: ['Bir talep kartına tıklayarak detaylarını görüntüleyin.', 'Kendi oluşturduğunuz talepleri düzenleyebilir veya silebilirsiniz.'] },
+  ];
+  if (role === ROLES.WORKER) return [
+    { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.'] },
+    { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı daire başkanlıklarına açılan taleplerin doğru daire başkanlığına tekrar açılması gerekmektedir.'] },
+    { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep arayabilirsiniz.', 'Durum, öncelik ve daire başkanlığı filtrelerini kullanabilirsiniz.'] },
+  ];
+  if (role === ROLES.PROJECT_MANAGER) return [
+    { icon: '📋', title: 'Talep Yönetimi', items: ['Müdürlüğünüze gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve daire başkanlığına göre filtreleyebilirsiniz.'] },
+    { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevirme sırasında neden belirtmeniz gerekir.'] },
+    { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
+  ];
+  if (role === ROLES.DEPARTMENT_HEAD) return [
+    { icon: '📋', title: 'Talep Yönetimi', items: ['Daire başkanlığınıza gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve daire başkanlığına göre filtreleyebilirsiniz.'] },
+    { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri müdürlere atayabilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevrilen talepler açan kişiye geri gönderilir.'] },
+    { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.'] },
+  ];
+  return [
+    { icon: '📋', title: 'Tüm Talepleri Yönetme', items: ['Sistemdeki tüm talepler listelenir.', 'Daire Başkanlığı, durum, öncelik filtrelerini kullanabilirsiniz.'] },
+    { icon: '✅', title: 'Talep İşlemleri', items: ['Tüm talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.'] },
+    { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
+  ];
 }
 
 export default function RequestList() {
@@ -121,183 +154,50 @@ export default function RequestList() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div className="d-flex align-items-center gap-2">
-          <h4 className="fw-bold mb-0">
-            {[ROLES.EXTERNAL_USER, ROLES.WORKER].includes(currentUser?.role)
-              ? 'Açtığım Talepler'
-              : 'Talepler'}
-          </h4>
-          <HelpGuide
-            title="Talepler Sayfası — Yardım Kılavuzu"
-            sections={currentUser?.role === ROLES.EXTERNAL_USER ? [
-              { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz ve size görünür yapılan talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.', 'Geri çevrilen talepler kırmızı, tamamlananlar yeşil ile işaretlenir.'] },
-              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı daire başkanlıklarına açılan taleplerin doğru daire başkanlığına tekrar açılması gerekmektedir.'] },
-              { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep başlığı, açıklaması veya numarasına göre filtreleyin.', 'Durum filtresinden açık, kapanan veya geri çevrilen talepleri görüntüleyin.'] },
-              { icon: '📄', title: 'Talep Detayı', items: ['Bir talep kartına tıklayarak detaylarını görüntüleyin.', 'Kendi oluşturduğunuz talepleri düzenleyebilir veya silebilirsiniz.'] },
-            ] : currentUser?.role === ROLES.WORKER ? [
-              { icon: '📋', title: 'Talep Listeleme', items: ['Kendi oluşturduğunuz talepler listelenir.', 'Her kartın sol kenarındaki renk çubuğu talebin durumunu gösterir.'] },
-              { icon: '➕', title: 'Yeni Talep Oluşturma', items: ['Sağ üstteki "Yeni Talep" butonuyla yeni bir talep oluşturabilirsiniz.', 'Talep başlığı, açıklaması ve önceliğini belirtmeniz gerekir.', 'Talep açarken ilgili daire başkanlığı doğru seçilmelidir.', 'Taleplerde yer alan yorumlar talebinizin hızlı çözüme kavuşması için önemlidir.', 'Hatalı daire başkanlıklarına açılan taleplerin doğru daire başkanlığına tekrar açılması gerekmektedir.'] },
-              { icon: '🔍', title: 'Arama ve Filtreleme', items: ['Arama kutusuna yazarak talep arayabilirsiniz.', 'Durum, öncelik ve daire başkanlığı filtrelerini kullanabilirsiniz.'] },
-            ] : currentUser?.role === ROLES.PROJECT_MANAGER ? [
-              { icon: '📋', title: 'Talep Yönetimi', items: ['Müdürlüğünüze gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve daire başkanlığına göre filtreleyebilirsiniz.'] },
-              { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevirme sırasında neden belirtmeniz gerekir.'] },
-              { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
-            ] : currentUser?.role === ROLES.DEPARTMENT_HEAD ? [
-              { icon: '📋', title: 'Talep Yönetimi', items: ['Daire başkanlığınıza gelen tüm talepler listelenir.', 'Talepleri duruma, önceliğe ve daire başkanlığına göre filtreleyebilirsiniz.'] },
-              { icon: '✅', title: 'Talep İşlemleri', items: ['Talepleri müdürlere atayabilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.', 'Geri çevrilen talepler açan kişiye geri gönderilir.'] },
-              { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.'] },
-            ] : [
-              { icon: '📋', title: 'Tüm Talepleri Yönetme', items: ['Sistemdeki tüm talepler listelenir.', 'Daire Başkanlığı, durum, öncelik filtrelerini kullanabilirsiniz.'] },
-              { icon: '✅', title: 'Talep İşlemleri', items: ['Tüm talepleri atayabilir, durumlarını değiştirebilirsiniz.', '"Geri Çevir" butonu ile uygunsuz talepleri geri çevirebilirsiniz.'] },
-              { icon: '📊', title: 'Dışa Aktarma', items: ['Talepleri Excel/CSV olarak dışa aktarabilirsiniz.', 'Yazdır seçeneği ile PDF çıktısı alabilirsiniz.'] },
-            ]}
-          />
+      <div className="pg-head">
+        <div>
+          <div className="pg-head__title">
+            <h4 className="pg-head__name">{isExternalUser ? 'Taleplerim' : role === ROLES.SYSTEM_ADMIN ? 'Talepler' : 'Açtığım Talepler'}</h4>
+            <HelpGuide title="Talepler Sayfası — Yardım Kılavuzu" sections={helpSections(currentUser?.role)} />
+          </div>
+          <div className="pg-head__desc">{totalCount} talep · kutucuğa tıklayınca o duruma göre süzülür</div>
         </div>
         {can('request.create') && (
-          <button
-            className="btn btn-primary d-flex align-items-center gap-1"
-            onClick={() => setShowForm(true)}
-          >
-            <TbPlus size={18} />
-            Yeni Talep
+          <button className="btn btn-primary btn-sm d-flex align-items-center gap-1" onClick={() => setShowForm(true)}>
+            <TbPlus size={16} /> Yeni Talep
           </button>
         )}
       </div>
 
-      {/* Stat cards */}
-      <div className="row g-3 mb-4">
-        {/* Toplam Talep */}
-        <div className="col-6 col-md">
-          <div
-            className="rounded-3 p-3 h-100"
-            style={{
-              background: 'linear-gradient(135deg, #EAF0FB 0%, #dce8ff 100%)',
-              borderLeft: '4px solid #2563eb',
-            }}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-1">
-              <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Toplam Talep
-              </span>
-              <span style={{ fontSize: '1.4rem' }}>📋</span>
-            </div>
-            <div className="fw-bold" style={{ fontSize: '2rem', color: '#2563eb', lineHeight: 1 }}>
-              {totalCount}
-            </div>
-            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Tüm talepleriniz</div>
+      <div className="row g-3 mb-3">
+        {[
+          ['Toplam', totalCount, <TbInbox size={17} />, 'navy', 'Tüm talepler', 'all'],
+          ['Bekleyen', pendingCount, <TbHourglass size={17} />, 'warn', 'Henüz işleme alınmadı', 'open'],
+          ['Çözüm aşamasında', inProgressCount, <TbProgress size={17} />, 'orange', 'Devam eden ve onayda', 'open'],
+          ['Çözülmüş', resolvedCount, <TbCircleCheck size={17} />, 'ok', 'Tamamlanan talepler', 'closed'],
+          ['Geri çevrilmiş', rejectedCount, <TbBan size={17} />, 'danger', 'Geri çevrilen talepler', 'rejected'],
+        ].map(([label, value, icon, tone, sub, group]) => (
+          <div key={label} className="col-6 col-md">
+            <Kpi label={label} value={value} icon={icon} tone={tone} sub={sub} onClick={() => setStatusGroup(group)} />
           </div>
-        </div>
-
-        {/* Bekleyen */}
-        <div className="col-6 col-md">
-          <div
-            className="rounded-3 p-3 h-100"
-            style={{
-              background: 'linear-gradient(135deg, #FFF8E1 0%, #fff0b3 100%)',
-              borderLeft: '4px solid #D4A000',
-            }}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-1">
-              <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Bekleyen
-              </span>
-              <span style={{ fontSize: '1.4rem' }}>⏳</span>
-            </div>
-            <div className="fw-bold" style={{ fontSize: '2rem', color: '#D4A000', lineHeight: 1 }}>
-              {pendingCount}
-            </div>
-            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Henüz işleme alınmadı</div>
-          </div>
-        </div>
-
-        {/* Çözüm Aşamasında */}
-        <div className="col-6 col-md">
-          <div
-            className="rounded-3 p-3 h-100"
-            style={{
-              background: 'linear-gradient(135deg, #FFF4E5 0%, #ffe8c2 100%)',
-              borderLeft: '4px solid #FF991F',
-            }}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-1">
-              <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Çözüm Aşamasında
-              </span>
-              <span style={{ fontSize: '1.4rem' }}>⚙️</span>
-            </div>
-            <div className="fw-bold" style={{ fontSize: '2rem', color: '#FF991F', lineHeight: 1 }}>
-              {inProgressCount}
-            </div>
-            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Devam eden talepler</div>
-          </div>
-        </div>
-
-        {/* Çözülmüş */}
-        <div className="col-6 col-md">
-          <div
-            className="rounded-3 p-3 h-100"
-            style={{
-              background: 'linear-gradient(135deg, #E3FCEF 0%, #c6f6d5 100%)',
-              borderLeft: '4px solid #00875A',
-            }}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-1">
-              <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Çözülmüş
-              </span>
-              <span style={{ fontSize: '1.4rem' }}>✅</span>
-            </div>
-            <div className="fw-bold" style={{ fontSize: '2rem', color: '#00875A', lineHeight: 1 }}>
-              {resolvedCount}
-            </div>
-            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Tamamlanan talepler</div>
-          </div>
-        </div>
-
-        {/* Geri Çevrilmiş */}
-        <div className="col-6 col-md">
-          <div
-            className="rounded-3 p-3 h-100"
-            style={{
-              background: 'linear-gradient(135deg, #FFEBE6 0%, #ffd4cc 100%)',
-              borderLeft: '4px solid #DE350B',
-            }}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-1">
-              <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Geri Çevrilmiş
-              </span>
-              <span style={{ fontSize: '1.4rem' }}>🚫</span>
-            </div>
-            <div className="fw-bold" style={{ fontSize: '2rem', color: '#DE350B', lineHeight: 1 }}>
-              {rejectedCount}
-            </div>
-            <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>Geri çevrilen talepler</div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Ortalama süreler — çözülmüş talepler üzerinden */}
       {resolvedCount > 0 && (
-        <div className="card border-0 shadow-sm mb-4">
-          <div className="card-body py-2 d-flex flex-wrap align-items-center gap-4">
-            <span className="text-muted small fw-semibold d-flex align-items-center gap-1">
-              <TbClock size={15} /> Ortalama süreler
-              <span className="fw-normal">({resolvedCount} çözülmüş talep)</span>
+        <div className="ds-bar mb-3">
+          <span className="ds-bar__label d-flex align-items-center gap-1"><TbClock size={14} /> Ortalama süreler</span>
+          <span className="text-muted" style={{ fontSize: '0.78rem' }}>{resolvedCount} çözülmüş talep</span>
+          {[
+            ['Bekleme', avgWaiting, 'Açılıştan işleme alınana kadar', 'var(--warn)'],
+            ['Çözüm', avgResolution, 'İşleme alınmadan çözülene kadar', 'var(--orange)'],
+            ['Toplam', avgTotal, 'Açılıştan çözülene kadar', 'var(--ok)'],
+          ].map(([label, ms, hint, color]) => (
+            <span key={label} className="d-flex align-items-baseline gap-2 ms-md-2" title={hint}>
+              <span className="text-muted small">{label}</span>
+              <span className="fw-bold" style={{ color }}>{formatDuration(ms)}</span>
             </span>
-            {[
-              ['Bekleme', avgWaiting, 'Açılıştan işleme alınana kadar', '#D4A000'],
-              ['Çözüm', avgResolution, 'İşleme alınmadan çözülene kadar', '#FF991F'],
-              ['Toplam', avgTotal, 'Açılıştan çözülene kadar', '#00875A'],
-            ].map(([label, ms, hint, color]) => (
-              <span key={label} className="d-flex align-items-baseline gap-2" title={hint}>
-                <span className="text-muted small">{label}</span>
-                <span className="fw-bold" style={{ color }}>{formatDuration(ms)}</span>
-              </span>
-            ))}
-          </div>
+          ))}
         </div>
       )}
 
@@ -462,7 +362,7 @@ export default function RequestList() {
                 <button
                   className="btn btn-sm btn-outline-secondary position-absolute"
                   style={{ bottom: 8, right: 8 }}
-                  title="Dış kullanıcıya görünür yap"
+                  title="Talep sahibine görünür yap"
                   onClick={e => {
                     e.stopPropagation();
                     setVisibleToModal(req);
@@ -499,7 +399,7 @@ export default function RequestList() {
       {/* Add visible user modal */}
       <Modal
         isOpen={!!visibleToModal}
-        title="Dış Kullanıcıya Görünür Yap"
+        title="Talep Sahibine Görünür Yap"
         onClose={() => setVisibleToModal(null)}
       >
         {visibleToModal && (
@@ -508,7 +408,7 @@ export default function RequestList() {
               <strong>{visibleToModal.number}</strong> — {visibleToModal.title}
             </p>
             <div className="mb-3">
-              <label className="form-label fw-medium">Dış Kullanıcı Seç</label>
+              <label className="form-label fw-medium">Üniversite Personeli / Öğrenci Seç</label>
               <select
                 className="form-select"
                 value={selectedUserId}

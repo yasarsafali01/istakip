@@ -1,6 +1,15 @@
 import { ROLES, DEFAULT_ROLE_PERMISSIONS } from '../constants';
 
 /**
+ * Kullanıcı bu müdürlükte görevli mi? Bir personel daire başkanlığının birden
+ * fazla müdürlüğünde görev alabilir (projectIds); projectId ana müdürlüktür.
+ */
+export function inProject(user, projectId) {
+  if (!user || !projectId) return false;
+  return (user.projectIds?.length ? user.projectIds : [user.projectId]).includes(projectId);
+}
+
+/**
  * Kullanıcının rolüne göre görebileceği projeleri filtreler.
  * - System_Admin: tüm projeler
  * - Department_Head: kendi biriminin projeleri
@@ -18,7 +27,7 @@ export function getVisibleProjects(projects, currentUser) {
     case ROLES.PROJECT_MANAGER:
       return projects.filter(p => p.managerId === currentUser.id);
     case ROLES.WORKER:
-      return projects.filter(p => p.id === currentUser.projectId);
+      return projects.filter(p => inProject(currentUser, p.id));
     case ROLES.EXTERNAL_USER:
       return [];
     default:
@@ -33,6 +42,21 @@ export function getVisibleProjects(projects, currentUser) {
  * Diğer roller proje erişimine göre filtrelenir.
  */
 export function getVisibleIssues(issues, currentUser, visibleProjectIds) {
+  return withTeamIssues(scopedIssues(issues, currentUser, visibleProjectIds), issues, currentUser);
+}
+
+/**
+ * Kullanıcının üyesi olduğu ekiplere atanmış issue'ları rol kapsamının üzerine
+ * ekler — ekip başka bir müdürlüğe ait olsa bile (backend ile aynı kural).
+ */
+function withTeamIssues(visible, all, currentUser) {
+  const teamIds = new Set((currentUser?.teams || []).map(t => t.teamId));
+  if (teamIds.size === 0) return visible;
+  const seen = new Set(visible.map(i => i.id));
+  return visible.concat(all.filter(i => !seen.has(i.id) && teamIds.has(i.assigneeTeamId)));
+}
+
+function scopedIssues(issues, currentUser, visibleProjectIds) {
   if (!currentUser) return [];
   if (currentUser.role === ROLES.EXTERNAL_USER) {
     return issues.filter(
@@ -43,7 +67,7 @@ export function getVisibleIssues(issues, currentUser, visibleProjectIds) {
   }
   if (currentUser.role === ROLES.SYSTEM_ADMIN) return issues;
   if (currentUser.role === ROLES.WORKER) {
-    return issues.filter(i => i.projectId === currentUser.projectId);
+    return issues.filter(i => inProject(currentUser, i.projectId));
   }
   return issues.filter(i => visibleProjectIds.includes(i.projectId));
 }
@@ -67,8 +91,12 @@ export function getVisibleIssues(issues, currentUser, visibleProjectIds) {
  * @param {Array}  [projects]   - Tüm projeler listesi (PM/Worker filtrelemesi için)
  */
 export function getVisibleRequests(issues, currentUser, projects = []) {
-  if (!currentUser) return [];
   const requests = issues.filter(i => i.isRequest === true);
+  return withTeamIssues(scopedRequests(requests, currentUser, projects), requests, currentUser);
+}
+
+function scopedRequests(requests, currentUser, projects) {
+  if (!currentUser) return [];
 
   // System_Admin tüm talepleri görür
   if (currentUser.role === ROLES.SYSTEM_ADMIN) return requests;
@@ -89,7 +117,7 @@ export function getVisibleRequests(issues, currentUser, projects = []) {
 
   // Worker: kendi projesine ait tüm talepler
   if (currentUser.role === ROLES.WORKER) {
-    return requests.filter(r => r.projectId === currentUser.projectId);
+    return requests.filter(r => inProject(currentUser, r.projectId));
   }
 
   // External_User: yalnızca kendi açtığı veya visibleTo listesinde olduğu talepler
@@ -113,7 +141,7 @@ export function canAccessProject(project, currentUser) {
     case ROLES.PROJECT_MANAGER:
       return project.managerId === currentUser.id;
     case ROLES.WORKER:
-      return project.id === currentUser.projectId;
+      return inProject(currentUser, project.id);
     case ROLES.EXTERNAL_USER:
       return false;
     default:
@@ -156,7 +184,7 @@ export function canChangeAssignee(user, issue, projects = []) {
   if (issue.reporterId === user.id) return false;
   switch (user.role) {
     case ROLES.WORKER:
-      return issue.projectId === user.projectId;
+      return inProject(user, issue.projectId);
     case ROLES.SYSTEM_ADMIN:
       return true;
     case ROLES.DEPARTMENT_HEAD: {
@@ -169,6 +197,29 @@ export function canChangeAssignee(user, issue, projects = []) {
     }
     case ROLES.EXTERNAL_USER:
       return false;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Personel Profili: kim kimin profilini görebilir?
+ * - Sistem Yöneticisi: herkes
+ * - Daire Başkanı (daire başkanlığı kapsamı): kendi daire başkanlığının personeli
+ * - Müdür: yönettiği müdürlüklerden birinde görevli personel
+ * Herkes kendi profilini görebilir. Talep sahipleri (Üniversite Personeli / Öğrenci) hariç.
+ */
+export function canViewPersonnel(viewer, target, projects = []) {
+  if (!viewer || !target) return false;
+  if (target.role === ROLES.EXTERNAL_USER) return false;
+  if (viewer.id === target.id) return true;
+  switch (viewer.scope) {
+    case 'all':
+      return true;
+    case 'unit':
+      return !!viewer.unitId && target.unitId === viewer.unitId;
+    case 'manager':
+      return projects.some((p) => p.managerId === viewer.id && inProject(target, p.id));
     default:
       return false;
   }

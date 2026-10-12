@@ -114,7 +114,7 @@ export const ROLE_DEFAULT_ROUTES = {
 
 export const ROLE_NAV_ITEMS = {
   System_Admin:    ['dashboard', 'units', 'projects', 'requests'],
-  Department_Head: ['dashboard', 'units', 'projects', 'requests'],
+  Department_Head: ['dashboard', 'projects', 'requests'],
   Project_Manager: ['dashboard', 'projects', 'requests'],
   Worker:          ['dashboard', 'projects', 'requests'],
   External_User:   ['requests'],

@@ -35,6 +35,11 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
 
   const selectedForm = forms.find((f) => f.id === formId);
   const questions = selectedForm?.questions || [];
+  // A müdürlük with request forms replaces title/description with its form
+  // (the request is named after the chosen talep türü); otherwise the default
+  // title + description fields are used.
+  const usesForm = forms.length > 0;
+  const showDefaultFields = !usesForm && formsState !== 'loading';
 
   useEffect(() => {
     setForms([]);
@@ -88,7 +93,7 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
 
   function validate() {
     const errs = {};
-    if (!title.trim()) errs.title = 'Talep başlığı zorunludur.';
+    if (!usesForm && !title.trim()) errs.title = 'Talep başlığı zorunludur.';
     if (!unitId) errs.unitId = 'Lütfen bir daire başkanlığı seçin.';
     if (!projectId) errs.projectId = 'Lütfen bir müdürlük seçin.';
     if (projectId && forms.length > 0 && !formId) errs.formId = 'Lütfen talep türünü seçin.';
@@ -108,8 +113,8 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
     try {
       const created = await issuesApi.create({
         projectId,
-        title: title.trim(),
-        description: description.trim(),
+        title: usesForm ? '' : title.trim(),
+        description: usesForm ? '' : description.trim(),
         priority,
         isRequest: true,
         ...(formId ? { requestFormId: formId, answers: buildAnswersPayload(questions, answers) } : {}),
@@ -222,7 +227,7 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
       )}
       {forms.length > 0 && (
         <div className="mb-3">
-          <div className="form-label fw-semibold">
+          <div className="form-label fw-medium">
             Talep Türü <span className="text-danger">*</span>
           </div>
           <div className="row g-2" role="radiogroup" aria-label="Talep türü">
@@ -248,12 +253,9 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
         </div>
       )}
 
-      {/* Seçilen talep türünün soruları */}
+      {/* Seçilen talep türünün soruları — diğer alanlarla aynı görünümde */}
       {questions.length > 0 && (
-        <fieldset className="mb-3 p-3 rounded border" style={{ background: '#F8FAFC' }}>
-          <legend className="float-none w-auto px-2 mb-0 small fw-semibold text-primary" style={{ fontSize: '0.8rem' }}>
-            {selectedForm.name} — Talep Bilgileri
-          </legend>
+        <div className="mb-3">
           <DynamicQuestions
             questions={questions}
             answers={answers}
@@ -261,9 +263,11 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
             errors={answerErrors}
             onBusy={(qid, busy) => setUploadingIds((ids) => (busy ? [...ids, qid] : ids.filter((x) => x !== qid)))}
           />
-        </fieldset>
+        </div>
       )}
 
+      {showDefaultFields && (
+      <>
       {/* Başlık */}
       <div className="mb-3">
         <label htmlFor="req-title" className="form-label fw-medium">
@@ -292,6 +296,8 @@ export default function RequestForm({ onClose, defaultUnitId = '' }) {
           placeholder="Talebinizi detaylı açıklayın..."
         />
       </div>
+      </>
+      )}
 
       {/* Öncelik */}
       <div className="mb-4">

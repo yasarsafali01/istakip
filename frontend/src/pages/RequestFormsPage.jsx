@@ -50,7 +50,10 @@ export default function RequestFormsPage() {
     () => (currentUser ? getVisibleProjects(state.projects, currentUser) : []),
     [state.projects, currentUser]
   );
-  const projectId = searchParams.get('project') || (projects.length === 1 ? projects[0].id : '');
+  const urlProjectId = searchParams.get('project') || (projects.length === 1 ? projects[0].id : '');
+  // The müdürlük whose forms are loaded. It trails the URL so that switching
+  // müdürlük from the sidebar with unsaved edits can be confirmed first.
+  const [projectId, setProjectId] = useState(urlProjectId);
   const project = projects.find((p) => p.id === projectId);
 
   const [forms, setForms] = useState([]);          // server copies
@@ -102,6 +105,16 @@ export default function RequestFormsPage() {
     return () => { cancelled = true; };
   }, [projectId]);
 
+  useEffect(() => {
+    if (urlProjectId === projectId) return;
+    if (dirty) {
+      setPendingNav({ project: urlProjectId });
+      setSearchParams(projectId ? { project: projectId } : {}, { replace: true });
+    } else {
+      setProjectId(urlProjectId);
+    }
+  }, [urlProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Browser-level guard against losing unsaved work (tab close / reload).
   useEffect(() => {
     if (!dirty) return undefined;
@@ -110,11 +123,6 @@ export default function RequestFormsPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
-  function selectProject(id) {
-    if (dirty) { setPendingNav({ project: id }); return; }
-    setSearchParams(id ? { project: id } : {});
-  }
-
   function selectForm(form) {
     if (form.id === selectedId) return;
     if (dirty) { setPendingNav({ form }); return; }
@@ -122,8 +130,10 @@ export default function RequestFormsPage() {
   }
 
   function confirmNav() {
-    if (pendingNav.project !== undefined) setSearchParams(pendingNav.project ? { project: pendingNav.project } : {});
-    else openForm(pendingNav.form);
+    if (pendingNav.project !== undefined) {
+      setProjectId(pendingNav.project);
+      setSearchParams(pendingNav.project ? { project: pendingNav.project } : {});
+    } else openForm(pendingNav.form);
   }
 
   // ── form-level actions ────────────────────────────────────────────────
@@ -282,12 +292,6 @@ export default function RequestFormsPage() {
   }
 
   // ── render ────────────────────────────────────────────────────────────
-  const unitsById = Object.fromEntries(state.units.map((u) => [u.id, u]));
-  const projectsByUnit = projects.reduce((acc, p) => {
-    (acc[p.unitId] = acc[p.unitId] || []).push(p);
-    return acc;
-  }, {});
-
   return (
     <div>
       <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
@@ -298,23 +302,14 @@ export default function RequestFormsPage() {
             hazırlayın. Talep sahibi müdürlüğü, ardından talep türünü seçer ve o türün sorularını cevaplar.
           </p>
         </div>
-        {projects.length > 1 && (
-          <select
-            className="form-select"
-            style={{ maxWidth: 300 }}
-            value={projectId}
-            onChange={(e) => selectProject(e.target.value)}
-            aria-label="Müdürlük seçin"
-          >
-            <option value="">— Müdürlük seçin —</option>
-            {Object.entries(projectsByUnit).map(([unitId, list]) => (
-              <optgroup key={unitId} label={unitsById[unitId]?.name || 'Daire Başkanlığı'}>
-                {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </optgroup>
-            ))}
-          </select>
-        )}
       </div>
+
+      {project && projects.length > 1 && (
+        <div className="d-flex align-items-center gap-2 mb-3">
+          <span className="badge bg-primary bg-opacity-10 text-primary">{project.key}</span>
+          <span className="fw-semibold">{project.name}</span>
+        </div>
+      )}
 
       {error && <div className="alert alert-danger py-2 small">{error}</div>}
       {notice && !dirty && <div className="alert alert-success py-2 small">{notice}</div>}
@@ -323,7 +318,7 @@ export default function RequestFormsPage() {
         <EmptyState
           title={projects.length ? 'Bir müdürlük seçin' : 'Yönettiğiniz müdürlük yok'}
           description={projects.length
-            ? 'Talep formlarını düzenlemek istediğiniz müdürlüğü sağ üstten seçin.'
+            ? 'Talep formlarını düzenlemek istediğiniz müdürlüğün altından seçin (sol menü → Müdürlükler).'
             : 'Talep formu hazırlayabilmek için bir müdürlüğün yöneticisi olmalısınız.'}
         />
       ) : loading ? (

@@ -33,8 +33,9 @@ const DEMO_ACCOUNTS = [
   { name: 'Serkan Avcı',         email: 'odb.worker6@example.com',    password: 'pass123',  role: 'Üye',               color: '#FFAB00' },
   { name: 'Pınar Erdoğan',       email: 'odb.worker7@example.com',    password: 'pass123',  role: 'Üye',               color: '#FFAB00' },
   { name: 'Emre Şimşek',         email: 'odb.worker8@example.com',    password: 'pass123',  role: 'Üye',               color: '#FFAB00' },
-  // ── Dış Kullanıcı ─────────────────────────────────────────────────────────
-  { name: 'Dış Kullanıcı',       email: 'dis.kullanici@example.com',  password: 'pass123',  role: 'Dış Kullanıcı',    color: '#36B37E' },
+  // ── Talep sahipleri ───────────────────────────────────────────────────────
+  { name: 'Üniversite Personeli', email: 'dis.kullanici@example.com', password: 'pass123',  role: 'Üniversite Personeli', color: '#36B37E' },
+  { name: 'Öğrenci',             email: 'ogrenci@example.com',        password: 'pass123',  role: 'Öğrenci',          color: '#6554C0' },
 ];
 
 export default function LoginForm() {

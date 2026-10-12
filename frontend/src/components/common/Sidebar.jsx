@@ -16,6 +16,10 @@ import {
   TbForms,
   TbChartBar,
   TbUserCheck,
+  TbChevronDown,
+  TbChevronRight,
+  TbPlus,
+  TbSettings,
 } from 'react-icons/tb';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -36,7 +40,9 @@ const ROLE_LABELS = {
   Department_Head: 'Daire Başkanı',
   Project_Manager: 'Müdür',
   Worker:          'Çalışan',
-  External_User:   'Dış Kullanıcı',
+  External_User:   'Talep Sahibi',
+  University_Staff: 'Üniversite Personeli',
+  Student:         'Öğrenci',
 };
 
 export default function Sidebar() {
@@ -83,6 +89,11 @@ export default function Sidebar() {
         .filter(Boolean)
     : [];
 
+  // Daire Başkanı ve Müdür: "Açtığım Talepler" menünün en altında durur.
+  const requestsAtBottom = [ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser?.role);
+  const bottomNavItems = requestsAtBottom ? navItems.filter((item) => item.to === '/requests') : [];
+  const topNavItems = requestsAtBottom ? navItems.filter((item) => item.to !== '/requests') : navItems;
+
   const primaryRoleName =
     state.roles?.find((r) => r.key === currentUser?.roleKey)?.name ||
     ROLE_LABELS[currentUser?.roleKey || currentUser?.role] ||
@@ -117,6 +128,31 @@ export default function Sidebar() {
     const current = new URLSearchParams(location.search).get('tab') || 'board';
     return subLinkStyle({ isActive: location.pathname === `/projects/${projectId}` && current === tab });
   };
+
+  // Talep formları / ekipler share one path per müdürlük and differ by
+  // ?project=, so the highlighted link comes from the query.
+  const urlProjectId = new URLSearchParams(location.search).get('project');
+  const adminLinkStyle = (path, projectId) => () =>
+    subLinkStyle({ isActive: location.pathname === path && urlProjectId === projectId });
+  const canManageForms = can('request_form.manage');
+  const canManageTeams = can('team.manage') || can('template.manage');
+  const canSeeReports = [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser?.role);
+  // Users with the Müdürlükler section get these links under each müdürlük.
+  const showProjectSection = visibleProjects.length > 0 && currentUser?.role !== ROLES.WORKER;
+
+  // Daire Başkanı: each müdürlük in the Müdürlükler section collapses under an
+  // emphasized header; the one being viewed opens itself.
+  const collapsibleProjects = currentUser?.role === ROLES.DEPARTMENT_HEAD;
+  const activeProjectId = location.pathname.match(/^\/projects\/([^/]+)/)?.[1] || urlProjectId;
+  const [openProjects, setOpenProjects] = useState(() => new Set(activeProjectId ? [activeProjectId] : []));
+  useEffect(() => {
+    if (activeProjectId) setOpenProjects((s) => (s.has(activeProjectId) ? s : new Set(s).add(activeProjectId)));
+  }, [activeProjectId]);
+  const toggleProject = (id) => setOpenProjects((s) => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const sidebarVisible = isMd || isOpen;
 
@@ -175,7 +211,7 @@ export default function Sidebar() {
         <ul className="list-unstyled px-3 mb-0 flex-grow-1" style={{ overflowY: 'auto', minHeight: 0 }}>
           <li><div className="sidebar-section">Ana Menü</div></li>
           {/* Dashboard, Birimler, Talepler */}
-          {navItems.map(({ to, label, Icon }) => (
+          {topNavItems.map(({ to, label, Icon }) => (
             <li key={to}>
               <NavLink
                 to={to}
@@ -190,18 +226,42 @@ export default function Sidebar() {
           ))}
 
           {/* Proje linkleri — Aktif İşler + Backlog (Worker hariç) */}
-          {visibleProjects.length > 0 && currentUser?.role !== ROLES.WORKER && (
+          {showProjectSection && (
             <>
               <li>
                 <div className="sidebar-section">
-                  {visibleProjects.length === 1 ? visibleProjects[0].name : 'Müdürlükler'}
+                  {visibleProjects.length === 1 && !collapsibleProjects ? visibleProjects[0].name : 'Müdürlükler'}
                 </div>
               </li>
 
-              {visibleProjects.map((project) => (
+              {visibleProjects.map((project) => {
+                const open = !collapsibleProjects || openProjects.has(project.id);
+                return (
                 <React.Fragment key={project.id}>
+                  {/* Daire Başkanı: vurgulu, açılır-kapanır müdürlük başlığı */}
+                  {collapsibleProjects && (
+                    <li>
+                      <button
+                        type="button"
+                        className="sidebar-project-toggle w-100 d-flex align-items-center gap-2 px-2 py-2 mt-1 border-0 text-start"
+                        onClick={() => toggleProject(project.id)}
+                        aria-expanded={open}
+                        title={project.name}
+                      >
+                        {open ? <TbChevronDown size={15} aria-hidden="true" /> : <TbChevronRight size={15} aria-hidden="true" />}
+                        <span
+                          className="badge flex-shrink-0"
+                          style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.6rem', padding: '3px 5px' }}
+                        >
+                          {project.key}
+                        </span>
+                        <span className="text-truncate">{project.name}</span>
+                      </button>
+                    </li>
+                  )}
+
                   {/* Birden fazla proje varsa proje adı ayırıcı */}
-                  {visibleProjects.length > 1 && (
+                  {!collapsibleProjects && visibleProjects.length > 1 && (
                     <li>
                       <div
                         className="d-flex align-items-center gap-2 px-3 py-1"
@@ -220,6 +280,8 @@ export default function Sidebar() {
                     </li>
                   )}
 
+                  {open && (
+                  <>
                   {/* Aktif İşler */}
                   <li>
                     <NavLink
@@ -267,47 +329,102 @@ export default function Sidebar() {
                     );
                   })()}
 
+                  {canManageForms && (
+                    <li>
+                      <NavLink
+                        to={`/request-forms?project=${project.id}`}
+                        className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
+                        style={adminLinkStyle('/request-forms', project.id)}
+                        onClick={() => !isMd && setIsOpen(false)}
+                      >
+                        <TbForms size={16} />
+                        Talep Formları
+                      </NavLink>
+                    </li>
+                  )}
+
+                  {canManageTeams && (
+                    <li>
+                      <NavLink
+                        to={`/teams-templates?project=${project.id}`}
+                        className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
+                        style={adminLinkStyle('/teams-templates', project.id)}
+                        onClick={() => !isMd && setIsOpen(false)}
+                      >
+                        <TbUsersGroup size={16} />
+                        Ekipler ve Şablonlar
+                      </NavLink>
+                    </li>
+                  )}
+
+                  {collapsibleProjects && can('project.edit') && (
+                    <li>
+                      <NavLink
+                        to={`/projects/${project.id}/settings`}
+                        className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
+                        style={subLinkStyle}
+                        onClick={() => !isMd && setIsOpen(false)}
+                      >
+                        <TbSettings size={16} />
+                        Müdürlük Bilgileri
+                      </NavLink>
+                    </li>
+                  )}
+
                   {/* Stok Takip — yalnızca hasInventory: true olan projeler */}
                   {project.hasInventory && (
-                    <>
-                      <li>
-                        <div className="sidebar-section">
-                          Stok Takip
-                        </div>
-                      </li>
-                      <li>
-                        <NavLink
-                          to={`/projects/${project.id}/inventory`}
-                          className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
-                          style={subLinkStyle}
-                          onClick={() => !isMd && setIsOpen(false)}
-                        >
-                          <TbPackage size={16} />
-                          Stok Durumu
-                        </NavLink>
-                      </li>
-                    </>
+                    <li>
+                      <NavLink
+                        to={`/projects/${project.id}/inventory`}
+                        className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
+                        style={subLinkStyle}
+                        onClick={() => !isMd && setIsOpen(false)}
+                      >
+                        <TbPackage size={16} />
+                        Stok Takip
+                      </NavLink>
+                    </li>
+                  )}
+
+                  </>
                   )}
                 </React.Fragment>
-              ))}
+                );
+              })}
+
+              {collapsibleProjects && can('project.create') && (
+                <li>
+                  <NavLink
+                    to="/projects/new"
+                    className="sidebar-link d-flex align-items-center gap-2 px-3 py-2 mt-1 text-decoration-none"
+                    style={subLinkStyle}
+                    onClick={() => !isMd && setIsOpen(false)}
+                  >
+                    <TbPlus size={16} />
+                    Yeni Müdürlük
+                  </NavLink>
+                </li>
+              )}
             </>
           )}
 
-          {/* Raporlar — Performansım herkese (dış kullanıcı hariç), İstatistikler yönetim kapsamı olanlara */}
+          {/* Raporlar — Performansım herkese (talep sahipleri ve Daire Başkanı hariç), İstatistikler yönetim kapsamı olanlara */}
           {currentUser && currentUser.role !== ROLES.EXTERNAL_USER && (
             <>
               <li><div className="sidebar-section">Raporlar</div></li>
-              <li>
-                <NavLink
-                  to="/performance"
-                  className={linkClass}
-                  onClick={() => !isMd && setIsOpen(false)}
-                >
-                  <TbUserCheck size={18} aria-hidden="true" />
-                  <span>Performansım</span>
-                </NavLink>
-              </li>
-              {[ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(currentUser.role) && (
+              {currentUser.role !== ROLES.DEPARTMENT_HEAD && (
+                <li>
+                  <NavLink
+                    to="/performance"
+                    className={linkClass}
+                    onClick={() => !isMd && setIsOpen(false)}
+                  >
+                    <TbUserCheck size={18} aria-hidden="true" />
+                    <span>Performansım</span>
+                  </NavLink>
+                </li>
+              )}
+              {canSeeReports && (
                 <li>
                   <NavLink
                     to="/reports"
@@ -322,8 +439,8 @@ export default function Sidebar() {
             </>
           )}
 
-          {(can('role.manage') || can('user.assign_role') || can('request_form.manage')
-            || can('team.manage') || can('template.manage')) && (
+          {(can('role.manage') || can('user.assign_role')
+            || (!showProjectSection && (canManageForms || canManageTeams))) && (
             <>
               <li><div className="sidebar-section">Yönetim</div></li>
               {can('user.assign_role') && (
@@ -338,7 +455,7 @@ export default function Sidebar() {
                   </NavLink>
                 </li>
               )}
-              {can('request_form.manage') && (
+              {!showProjectSection && canManageForms && (
                 <li>
                   <NavLink
                     to="/request-forms"
@@ -350,7 +467,7 @@ export default function Sidebar() {
                   </NavLink>
                 </li>
               )}
-              {(can('team.manage') || can('template.manage')) && (
+              {!showProjectSection && canManageTeams && (
                 <li>
                   <NavLink
                     to="/teams-templates"
@@ -374,6 +491,20 @@ export default function Sidebar() {
                   </NavLink>
                 </li>
               )}
+            </>
+          )}
+
+          {bottomNavItems.length > 0 && (
+            <>
+              <li><div className="sidebar-section">Taleplerim</div></li>
+              {bottomNavItems.map(({ to, label, Icon }) => (
+                <li key={to}>
+                  <NavLink to={to} className={linkClass} onClick={() => !isMd && setIsOpen(false)}>
+                    <Icon size={18} aria-hidden="true" />
+                    <span>{label}</span>
+                  </NavLink>
+                </li>
+              ))}
             </>
           )}
         </ul>

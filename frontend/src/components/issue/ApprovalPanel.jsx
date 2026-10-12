@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { TbShieldCheck, TbCheck, TbX, TbAlertCircle, TbPackage } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
-import { usePermissions } from '../../hooks/usePermissions';
 import { ACTIONS } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
@@ -18,7 +17,6 @@ import Avatar from '../common/Avatar';
  */
 export default function ApprovalPanel({ issue, header = false, onOpen }) {
   const { state, dispatch } = useAppContext();
-  const { can } = usePermissions();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState('');
@@ -29,7 +27,7 @@ export default function ApprovalPanel({ issue, header = false, onOpen }) {
   const pc = issue?.pendingCompletion;
   if (!issue || issue.status !== 'Onay Bekliyor' || !pc) return null;
 
-  const canDecide = can('issue.approve');
+  const canDecide = !!issue.allowedActions?.approve;
   const submitter = state.users.find((u) => u.id === pc.submittedBy);
   const item = pc.equipmentId && (state.inventory || []).find((i) => i.id === pc.equipmentId);
 

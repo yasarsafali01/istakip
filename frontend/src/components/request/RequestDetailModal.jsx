@@ -22,7 +22,7 @@ function RequestDetailModal({ isOpen, onClose, requestId, onCloneSuccess }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={request.number}
+      title="Talep Detayı"
       size="xl"
       id="request-detail-modal-title"
     >

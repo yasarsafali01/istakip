@@ -196,6 +196,24 @@ code {
   font-weight: 600;
 }
 
+/* Daire Başkanı sidebar: collapsible, emphasized müdürlük header */
+.sidebar-project-toggle {
+  background-color: #f1f5f9;
+  color: #1F2855;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.sidebar-project-toggle:hover {
+  background-color: #e2e8f0;
+}
+
+.sidebar-project-toggle[aria-expanded="true"] {
+  background-color: #e0e7ff;
+}
+
 /* Left accent bar marks "you are here" */
 .sidebar-link--active::before {
   content: '';
@@ -380,7 +398,8 @@ mark {
 .rq-row {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 1.25rem 1rem;
+  /* Same vertical rhythm as the plain fields around it (Bootstrap mb-3). */
+  gap: 1rem;
 }
 .rq-cell { grid-column: span 12; min-width: 0; }
 @container (min-width: 480px) {

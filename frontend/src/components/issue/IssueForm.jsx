@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { ACTIONS, PRIORITIES, PRIORITY_LABELS, MANUAL_STATUSES, STATUS_LABELS, ISSUE_TYPES } from '../../constants';
 import { issuesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
+import { inProject } from '../../utils/permissionUtils';
 
 // "Done" always goes through the dedicated completion flow (resolution note
 // + optional inventory usage), not this general edit form.
@@ -38,10 +39,10 @@ function IssueForm({ projectId, issue, onSuccess, onCancel }) {
 
   // Only users who belong to this project
   const project = state.projects.find(p => p.id === projectId);
-  const projectUsers = state.users.filter(u => {
+  const projectUsers = state.users.filter((u) => u.isActive !== false).filter(u => {
     if (u.role === 'System_Admin') return true;
     if (u.role === 'External_User') return false;
-    if (u.role === 'Worker') return u.projectId === projectId;
+    if (u.role === 'Worker') return inProject(u, projectId);
     if (u.role === 'Project_Manager') return project?.managerId === u.id;
     if (u.role === 'Department_Head') return u.unitId === project?.unitId;
     return false;

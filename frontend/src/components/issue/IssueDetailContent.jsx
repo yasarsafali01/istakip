@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   TbCalendar,
   TbClock,
@@ -13,7 +13,6 @@ import {
 } from 'react-icons/tb';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
-import { usePermissions } from '../../hooks/usePermissions';
 import {
   ACTIONS,
   MANUAL_STATUSES,
@@ -23,7 +22,6 @@ import {
   ROLES,
   PRIORITY_LABELS,
 } from '../../constants';
-import { canChangeAssignee } from '../../utils/permissionUtils';
 import { issuesApi, commentsApi, activitiesApi } from '../../api/resources';
 import { buildUnitCodeByProjectId, mapIssue } from '../../api/mappers';
 import { formatDate, timeAgo, formatTimeSpent } from '../../utils/dateUtils';
@@ -48,7 +46,6 @@ import ApprovalPanel from './ApprovalPanel';
 function IssueDetailContent({ issue, onClose, readonly = false }) {
   const { state, dispatch } = useAppContext();
   const { currentUser } = useAuth();
-  const { isExternalUser, can } = usePermissions();
 
   // ── Edit mode ─────────────────────────────────────────────────────────────
   const [editMode, setEditMode] = useState(false);
@@ -88,38 +85,34 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
   const reporter = state.users.find((u) => u.id === issue.reporterId);
   const project = state.projects.find((p) => p.id === issue.projectId);
   const unit = state.units?.find((u) => u.unitCode === issue.unitCode);
-  const externalUsers = state.users.filter((u) => u.role === ROLES.EXTERNAL_USER);
+  const externalUsers = state.users.filter((u) => u.isActive !== false).filter((u) => u.role === ROLES.EXTERNAL_USER);
   const unitProjects = state.projects.filter((p) => {
     const targetUnitId = editMode ? editUnitId : (unit?.id ?? '');
     return targetUnitId ? p.unitId === targetUnitId : false;
   });
 
-  const canAssign = canChangeAssignee(currentUser, issue, state.projects);
-  const canEditDates = !!currentUser && can('issue.dates');
+  // Ne yapılabileceğine backend karar verir (allowedActions); web ve mobil aynı
+  // bayrakları kullanır, kurallar istemcide tekrar yazılmaz.
+  const actions = issue.allowedActions || {};
+  const canAssign = !readonly && !!actions.assign;
+  const canEditDates = !readonly && !!actions.editDates;
+  const canEdit = !readonly && !!actions.edit;
+  const canDelete = !readonly && !!actions.delete;
+  const canReject = !readonly && !!actions.reject;
+  const canChangeStatus = !readonly && !!actions.changeStatus;
+  const canShare = !readonly && !!actions.share;
 
-  const isOwnIssue = issue.reporterId === currentUser?.id;
-  const canEdit = !readonly && can('issue.edit') && (!isExternalUser || isOwnIssue);
-  // Silme ayrı izne bağlı (issue.delete) ve herkes yalnızca kendi açtığı talebi silebilir
-  const canDelete = !readonly && can('issue.delete') && isOwnIssue;
-  // Geri çevirme: PM/DH/Admin tüm talepleri reddedebilir (backlog ve sprint içindeki işler dahil)
-  // Ancak zaten "Geri Çevrildi" durumundaki işler için buton gösterilmez
-  const canReject =
-    !readonly &&
-    currentUser &&
-    can('issue.status') &&
-    [ROLES.SYSTEM_ADMIN, ROLES.DEPARTMENT_HEAD, ROLES.PROJECT_MANAGER].includes(
-      currentUser.role
-    ) &&
-    issue.status !== 'Geri Çevrildi';
-
-  const assignableUsers = state.users.filter((u) => {
-    if (u.role === ROLES.EXTERNAL_USER) return false;
-    if (currentUser?.role === ROLES.SYSTEM_ADMIN) return true;
-    if (u.role === ROLES.WORKER) return u.projectId === issue.projectId;
-    if (u.role === ROLES.PROJECT_MANAGER) return project?.managerId === u.id;
-    if (u.role === ROLES.DEPARTMENT_HEAD) return u.unitId === project?.unitId;
-    return false;
-  });
+  // Atanabilecek kişiler backend'den gelir; düzenlemede müdürlük değişirse yenisine göre.
+  const [assignableUsers, setAssignableUsers] = useState([]);
+  const assigneeProjectId = editMode ? editProjectId : issue.projectId;
+  useEffect(() => {
+    if (!canAssign) return undefined;
+    let cancelled = false;
+    issuesApi.assignees(issue.id, assigneeProjectId !== issue.projectId ? assigneeProjectId : undefined)
+      .then((opts) => { if (!cancelled) setAssignableUsers(opts.users); })
+      .catch(() => { if (!cancelled) setAssignableUsers([]); });
+    return () => { cancelled = true; };
+  }, [issue.id, issue.projectId, assigneeProjectId, canAssign]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const unitCodeByProjectId = buildUnitCodeByProjectId(state.projects, state.units);
@@ -141,7 +134,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
     if (!currentUser) return;
     const projectChanged = issue.projectId !== editProjectId;
     const statusChanged = issue.status !== editStatus;
-    const assigneeChanged = !isExternalUser && issue.assigneeId !== (editAssigneeId || null);
+    const assigneeChanged = canAssign && issue.assigneeId !== (editAssigneeId || null);
 
     try {
       await issuesApi.update(issue.id, {
@@ -339,8 +332,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
       {/* Action toolbar */}
       <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
         {/* Status transition buttons (non-edit-mode, non-readonly, non-external) */}
-        {!readonly && !editMode && !isExternalUser && can('issue.status')
-          && (issue.status !== 'Onay Bekliyor' || can('issue.approve')) && (
+        {!editMode && canChangeStatus && (
           editingStatus ? (
             <select
               className="form-select form-select-sm"
@@ -657,24 +649,14 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
                   <option value="">— Atanmamış —</option>
                   {assignableUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
-              ) : editMode && !isExternalUser ? (
+              ) : editMode && canAssign ? (
                 <select
                   className="form-select form-select-sm"
                   value={editAssigneeId}
                   onChange={(e) => setEditAssigneeId(e.target.value)}
                 >
                   <option value="">— Atanmamış —</option>
-                  {state.users
-                    .filter((u) => {
-                      if (u.role === ROLES.EXTERNAL_USER) return false;
-                      const targetProject = state.projects.find((p) => p.id === editProjectId);
-                      if (u.role === ROLES.WORKER) return u.projectId === editProjectId;
-                      if (u.role === ROLES.PROJECT_MANAGER) return targetProject?.managerId === u.id;
-                      if (u.role === ROLES.DEPARTMENT_HEAD) return u.unitId === targetProject?.unitId;
-                      if (u.role === ROLES.SYSTEM_ADMIN) return true;
-                      return false;
-                    })
-                    .map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  {assignableUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               ) : (
                 <div className="d-flex align-items-center gap-2">
@@ -734,7 +716,7 @@ function IssueDetailContent({ issue, onClose, readonly = false }) {
             </div>
 
             {/* Visible-to (non-external, non-edit-mode) */}
-            {!isExternalUser && !editMode && (
+            {canShare && !editMode && (
               <div className="mt-3">
                 <p className="text-muted mb-1 small fw-semibold">Görünür Kullanıcılar</p>
                 <div className="d-flex gap-2 mb-2">
