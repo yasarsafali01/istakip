@@ -102,9 +102,9 @@ func (h *UserAdminHandler) respondTeamsErr(w http.ResponseWriter, err error) {
 }
 
 type createUserRequest struct {
-	Name      string      `json:"name"`
-	Email     string      `json:"email"`
-	Password  string      `json:"password"`
+	Name       string      `json:"name"`
+	Email      string      `json:"email"`
+	Password   string      `json:"password"`
 	Role       models.Role `json:"role"`
 	ProjectIDs []uuid.UUID `json:"projectIds"` // first = primary müdürlük
 	TeamIDs    []uuid.UUID `json:"teamIds"`
@@ -178,7 +178,7 @@ func (h *UserAdminHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateUserRequest struct {
-	Name      string       `json:"name"`
+	Name       string       `json:"name"`
 	Email      string       `json:"email"`
 	ProjectIDs []uuid.UUID  `json:"projectIds"` // first = primary müdürlük
 	Password   string       `json:"password"`   // empty = unchanged

@@ -45,20 +45,20 @@ type RoleDef struct {
 }
 
 type User struct {
-	ID           uuid.UUID  `json:"id"`
-	Name         string     `json:"name"`
-	Email        string     `json:"email"`
-	PasswordHash string     `json:"-"`
-	Role         Role       `json:"role"`
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"`
+	Role         Role      `json:"role"`
 	// Additional roles on top of Role; effective access is the union.
-	ExtraRoles []Role `json:"extraRoles"`
-	UnitID       *uuid.UUID `json:"unitId,omitempty"`
+	ExtraRoles []Role     `json:"extraRoles"`
+	UnitID     *uuid.UUID `json:"unitId,omitempty"`
 	// Primary müdürlük; ProjectIDs lists every müdürlük the user serves in
 	// (primary first).
-	ProjectID    *uuid.UUID  `json:"projectId,omitempty"`
-	ProjectIDs   []uuid.UUID `json:"projectIds"`
-	AvatarColor  string      `json:"avatarColor"`
-	CreatedAt    time.Time  `json:"createdAt"`
+	ProjectID   *uuid.UUID  `json:"projectId,omitempty"`
+	ProjectIDs  []uuid.UUID `json:"projectIds"`
+	AvatarColor string      `json:"avatarColor"`
+	CreatedAt   time.Time   `json:"createdAt"`
 	// Profile location — where to find this person in the building (helpdesk use).
 	Building *string `json:"building,omitempty"`
 	Floor    *string `json:"floor,omitempty"`
@@ -71,9 +71,9 @@ type User struct {
 	// Deactivated users can't sign in but stay referenced by their history.
 	IsActive bool `json:"isActive"`
 	// Filled in for /auth/login and /users/me only.
-	Scope       Scope    `json:"scope,omitempty"`
-	Level       int      `json:"level,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
+	Scope       Scope            `json:"scope,omitempty"`
+	Level       int              `json:"level,omitempty"`
+	Permissions []string         `json:"permissions,omitempty"`
 	Teams       []TeamMembership `json:"teams,omitempty"`
 }
 

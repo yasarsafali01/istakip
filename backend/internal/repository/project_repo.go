@@ -31,10 +31,10 @@ func scanProject(row pgx.Row) (models.Project, error) {
 // ProjectFilter scopes the project list to what the caller's role is allowed
 // to see. Exactly one of the fields should be set, or none for "all".
 type ProjectFilter struct {
-	UnitID    *uuid.UUID // Department_Head: own unit
-	ManagerID *uuid.UUID // Project_Manager: projects they manage
+	UnitID    *uuid.UUID  // Department_Head: own unit
+	ManagerID *uuid.UUID  // Project_Manager: projects they manage
 	OnlyIDs   []uuid.UUID // Worker: the müdürlükler they serve in
-	None      bool       // External_User: no projects at all
+	None      bool        // External_User: no projects at all
 	// Müdürlükler of the user's teams, returned on top of the filter above.
 	AlsoIDs []uuid.UUID
 }

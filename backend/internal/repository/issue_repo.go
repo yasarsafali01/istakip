@@ -62,10 +62,10 @@ func scanIssue(row pgx.Row) (models.Issue, error) {
 // caller's role should be set.
 type VisibilityScope struct {
 	All          bool
-	UnitID       *uuid.UUID // Department_Head
-	ManagerID    *uuid.UUID // Project_Manager
+	UnitID       *uuid.UUID  // Department_Head
+	ManagerID    *uuid.UUID  // Project_Manager
 	ProjectIDs   []uuid.UUID // Worker: every müdürlük they serve in
-	OwnOrVisible *uuid.UUID // External_User: reporter_id = X OR visible to X
+	OwnOrVisible *uuid.UUID  // External_User: reporter_id = X OR visible to X
 	// Issues assigned to these teams are visible on top of the scope above.
 	TeamIDs []uuid.UUID
 }
@@ -415,9 +415,9 @@ func (r *IssueRepo) AddVisibleUser(ctx context.Context, issueID, userID uuid.UUI
 
 // CompleteResult is what the "Done" transaction needs and returns.
 type CompleteParams struct {
-	IssueID          uuid.UUID
-	ResolutionNote   string
-	ResolverID       uuid.UUID // who did the work: authors the resolution comment
+	IssueID        uuid.UUID
+	ResolutionNote string
+	ResolverID     uuid.UUID // who did the work: authors the resolution comment
 	// Set when a manager approves someone else's pending completion.
 	ApprovedBy       *uuid.UUID
 	InventoryItemID  *uuid.UUID
