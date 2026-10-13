@@ -77,6 +77,8 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Demo credentials only in development; release builds hide them. */}
+          {__DEV__ && (
           <View style={[styles.card, { marginTop: 14, padding: 0, overflow: 'hidden' }]}>
             <TouchableOpacity style={styles.demoHead} onPress={() => setDemoOpen((o) => !o)}>
               <View style={{ flex: 1 }}>
@@ -110,6 +112,7 @@ export default function LoginScreen() {
               </View>
             ))}
           </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

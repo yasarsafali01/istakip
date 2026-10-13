@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_DEFAULT_ROUTES } from '../../constants';
 
+// Demo credentials must not be shown on the deployed server (npm run build).
+const SHOW_DEMO_ACCOUNTS = process.env.NODE_ENV !== 'production';
+
 // All demo accounts — click a row to auto-fill
 const DEMO_ACCOUNTS = [
   // ── Yönetim ──────────────────────────────────────────────────────────────
@@ -116,6 +119,7 @@ export default function LoginForm() {
         </form>
 
         {/* Demo accounts table */}
+        {SHOW_DEMO_ACCOUNTS && (
         <div className="mt-4 p-3 bg-light rounded" style={{ fontSize: '0.78rem' }}>
           <div className="d-flex align-items-center justify-content-between mb-2">
             <p className="fw-semibold mb-0 text-muted text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>
@@ -176,6 +180,7 @@ export default function LoginForm() {
             </table>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

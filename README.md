@@ -32,7 +32,8 @@ istakip/
   frontend/   # React web app (bkz. frontend/README.md)
   backend/    # Go API (bkz. backend/README.md)
   mobile/     # React Native app (bkz. mobile/README.md)
-  docs/       # Windows ve Ubuntu için adım adım kurulum rehberleri
+  docs/       # Windows (geliştirme) ve Ubuntu sunucu (kalıcı yayın) kurulum rehberleri
+  deploy/     # Sunucu dosyaları: nginx ayarı ve güncelleme betiği
 ```
 
 ## Teknolojiler
@@ -60,5 +61,5 @@ cd mobile && npx expo start
 Sıfırdan kurulum (programların kurulumu, veritabanı, backend testleri, web ve mobil) için:
 
 - **Windows:** [docs/KURULUM-WINDOWS.md](docs/KURULUM-WINDOWS.md)
-- **Ubuntu:** [docs/KURULUM-UBUNTU.md](docs/KURULUM-UBUNTU.md)
+- **Ubuntu sunucu (kalıcı yayın, http://<SUNUCU_IP>):** [docs/KURULUM-UBUNTU.md](docs/KURULUM-UBUNTU.md)
 - Kısa özet ve ortam değişkenleri: [INSTALL.md](INSTALL.md)

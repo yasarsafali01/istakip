@@ -1,47 +1,54 @@
-# Ubuntu'da Sıfırdan Kurulum
+# Ubuntu Sunucuya Kalıcı Kurulum
 
-Bu rehber, bilgisayarında hiçbir geliştirme aracı olmayan birinin Mersin Üniversitesi Talep Takip Sistemi'ni (backend + web + mobil) **Ubuntu 22.04 / 24.04** üzerinde kurup çalıştırması için yazıldı. Komutları sırayla Terminal'e (`Ctrl+Alt+T`) yapıştırın; her adımın sonundaki "Kontrol" kısmıyla doğru gidip gitmediğinizi görebilirsiniz.
+Bu rehber, Mersin Üniversitesi Talep Takip Sistemi'ni bir **Ubuntu 22.04 / 24.04** sunucusuna kalıcı olarak kurmak içindir. Kurulum bittiğinde:
 
-> Windows kullanıyorsanız: [KURULUM-WINDOWS.md](KURULUM-WINDOWS.md)
+- Veritabanı, backend ve web **sunucu açıldığında kendiliğinden başlar**; terminal açık tutmak gerekmez.
+- Web uygulaması **http://<SUNUCU_IP>** adresinden, API **http://<SUNUCU_IP>:8080** adresinden erişilir.
+
+Komutları sunucuda (SSH ile bağlanarak) sırayla çalıştırın. Her adımın sonundaki "Kontrol" kısmıyla doğru gidip gitmediğinizi görebilirsiniz.
+
+> Sunucunun IP adresi farklıysa, rehberde geçen `<SUNUCU_IP>` değerlerini kendi adresinizle değiştirin.
+> Kendi bilgisayarınızda geliştirme yapmak için: [KURULUM-WINDOWS.md](KURULUM-WINDOWS.md)
 
 ## İçindekiler
 
 1. [Sistemin parçaları](#1-sistemin-parçaları)
 2. [Gerekli programları kurun](#2-gerekli-programları-kurun)
 3. [Projeyi indirin](#3-projeyi-indirin)
-4. [Veritabanını başlatın](#4-veritabanını-başlatın-postgresql--docker)
-5. [Backend'i kurun ve çalıştırın](#5-backendi-kurun-ve-çalıştırın)
-6. [Backend'i test edin](#6-backendi-test-edin)
-7. [Web uygulamasını kurun ve çalıştırın](#7-web-uygulamasını-kurun-ve-çalıştırın)
-8. [Mobil uygulamayı kurun ve çalıştırın](#8-mobil-uygulamayı-kurun-ve-çalıştırın)
-9. [Günlük kullanım: sistemi açıp kapatmak](#9-günlük-kullanım-sistemi-açıp-kapatmak)
-10. [Sık karşılaşılan sorunlar](#10-sık-karşılaşılan-sorunlar)
+4. [Veritabanını başlatın](#4-veritabanını-başlatın)
+5. [Backend'i kurun ve servis olarak çalıştırın](#5-backendi-kurun-ve-servis-olarak-çalıştırın)
+6. [Web uygulamasını derleyin ve nginx ile yayınlayın](#6-web-uygulamasını-derleyin-ve-nginx-ile-yayınlayın)
+7. [Güvenlik duvarı](#7-güvenlik-duvarı)
+8. [Şifreler ve ilk giriş](#8-şifreler-ve-ilk-giriş)
+9. [Mobil uygulama](#9-mobil-uygulama)
+10. [Günlük işletim: güncelleme, loglar, yedek](#10-günlük-işletim-güncelleme-loglar-yedek)
+11. [Sık karşılaşılan sorunlar](#11-sık-karşılaşılan-sorunlar)
 
 ---
 
 ## 1. Sistemin parçaları
 
-| Parça | Klasör | Ne işe yarar | Adres |
-|---|---|---|---|
-| Veritabanı | `backend/docker-compose.yml` | PostgreSQL 16, Docker içinde çalışır | `localhost:5433` |
-| Backend (API) | `backend/` | Go ile yazılmış REST API; tüm iş kuralları burada | `http://localhost:8080` |
-| Web | `frontend/` | React web uygulaması | `http://localhost:3000` |
-| Mobil | `mobile/` | Expo (React Native) uygulaması; telefonda Expo Go ile açılır | Expo: `8081` |
+| Parça | Nasıl çalışır | Adres |
+|---|---|---|
+| Veritabanı | PostgreSQL 16, Docker container'ı (`restart: unless-stopped`) | `127.0.0.1:5433` (yalnızca sunucunun içinden) |
+| Backend (API) | Derlenmiş Go programı, `istakip-api` adlı systemd servisi | `http://<SUNUCU_IP>:8080` |
+| Web | `npm run build` ile derlenen statik dosyalar, nginx sunar | `http://<SUNUCU_IP>` |
+| Mobil | Telefona kurulan APK; doğrudan backend'e bağlanır | — |
 
-Web ve mobil, verileri sadece backend'den alır. Bu yüzden **önce veritabanı, sonra backend** çalışıyor olmalıdır.
+Web ve mobil, verileri yalnızca backend'den alır. Backend de veritabanına bağlanır.
 
 ## 2. Gerekli programları kurun
 
-### 2.1 Temel araçlar
+### 2.1 Temel araçlar ve nginx
 
 ```bash
 sudo apt update
-sudo apt install -y git curl ca-certificates gnupg build-essential openssl
+sudo apt install -y git curl ca-certificates gnupg build-essential openssl rsync jq nginx
 ```
 
 ### 2.2 Go (1.26 veya üstü)
 
-Ubuntu depolarındaki Go sürümü bu proje için eskidir; resmi paketi kurun. Güncel sürüm numarasını https://go.dev/dl/ adresinden kontrol edip aşağıdaki `GO_VERSION` değerini ona göre değiştirebilirsiniz (1.26 veya üstü olmalı).
+Ubuntu depolarındaki Go sürümü bu proje için eskidir; resmi paketi kurun. Güncel sürümü https://go.dev/dl/ adresinden kontrol edebilirsiniz (1.26 veya üstü olmalı).
 
 ```bash
 GO_VERSION=1.26.0
@@ -53,9 +60,11 @@ echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-> ARM işlemcili bir makinedeyseniz (`uname -m` çıktısı `aarch64`), dosya adındaki `amd64`'ü `arm64` yapın.
+> ARM işlemcili bir sunucudaysanız (`uname -m` çıktısı `aarch64`), dosya adındaki `amd64`'ü `arm64` yapın.
 
 ### 2.3 Node.js 22 LTS
+
+Web uygulamasını derlemek için gerekir.
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
@@ -72,73 +81,71 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
   | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
 ```
 
-Docker'ı her seferinde `sudo` yazmadan kullanabilmek için kullanıcınızı `docker` grubuna ekleyin:
+Docker'ı `sudo` yazmadan kullanabilmek için kullanıcınızı `docker` grubuna ekleyin, sonra **SSH oturumunu kapatıp yeniden bağlanın**:
 
 ```bash
 sudo usermod -aG docker $USER
-newgrp docker
+exit
 ```
 
-> `newgrp` sadece o terminal penceresi için geçerlidir. Kalıcı olması için oturumu kapatıp yeniden açın (ya da bilgisayarı yeniden başlatın).
-
 ### Kontrol
+
+Yeniden bağlandıktan sonra:
 
 ```bash
 git --version          # git version 2.x
 go version             # go version go1.26 veya üstü
 node -v                # v22.x
-npm -v                 # 10.x
-docker --version       # Docker version 2x.x
 docker compose version # Docker Compose version v2.x
 docker run --rm hello-world   # "Hello from Docker!" yazmalı
+nginx -v               # nginx version: nginx/1.x
 ```
 
 ## 3. Projeyi indirin
 
+Proje ev dizininize (`/home/<kullanıcı-adınız>/istakip`) kurulur. Klasörü elle oluşturmanıza gerek yok, `git clone` oluşturur:
+
 ```bash
 cd ~
 git clone https://github.com/yasarsafali01/istakip.git
-cd istakip
+cd ~/istakip
 ```
 
 ### Kontrol
 
 ```bash
 ls
-# backend  docs  frontend  INSTALL.md  mobile  README.md
+# backend  deploy  docs  frontend  INSTALL.md  mobile  README.md
 ```
 
-## 4. Veritabanını başlatın (PostgreSQL + Docker)
+## 4. Veritabanını başlatın
 
 ```bash
 cd ~/istakip/backend
 docker compose up -d
 ```
 
-Bu komut ilk seferde PostgreSQL 16 imajını indirir ve veritabanını arka planda başlatır. Bilgiler:
-
 - Kullanıcı / şifre / veritabanı adı: `istakip` / `istakip` / `istakip`
-- Port: **5433** (5432 değil; makinede kurulu başka bir PostgreSQL ile çakışmasın diye)
-- Veriler `istakip_pg_data` adlı Docker volume'unda saklanır; makine yeniden başlasa da kaybolmaz.
-
-Docker servisi Ubuntu açılışında otomatik başlar. Container'ı yeniden başlatmanız gerekirse `docker compose up -d` komutunu tekrar çalıştırın.
+- Port **5433** yalnızca `127.0.0.1`'e açılır; dışarıdan veritabanına bağlanılamaz.
+- `restart: unless-stopped` sayesinde sunucu yeniden başladığında container da otomatik açılır.
+- Veriler `istakip_pg_data` adlı Docker volume'unda saklanır.
 
 ### Kontrol
 
 ```bash
 docker compose ps
-# backend-postgres-1 ... running   0.0.0.0:5433->5432/tcp
+# backend-postgres-1 ... Up ...   127.0.0.1:5433->5432/tcp
 ```
 
-## 5. Backend'i kurun ve çalıştırın
-
-Bu adımda `~/istakip/backend` klasöründe olmalısınız.
+## 5. Backend'i kurun ve servis olarak çalıştırın
 
 ### 5.1 Ortam dosyasını oluşturun
 
 ```bash
+cd ~/istakip/backend
 cp .env.example .env
 sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
 cat .env
@@ -153,138 +160,238 @@ JWT_ACCESS_TTL=15m
 JWT_REFRESH_TTL=720h
 PORT=8080
 UPLOAD_DIR=uploads
+CORS_ORIGINS=http://<SUNUCU_IP>:3000,http://<SUNUCU_IP>,http://localhost:3000,http://localhost:19006
 ```
 
 | Değişken | Açıklama |
 |---|---|
 | `DATABASE_URL` | Veritabanı bağlantısı. Docker ayarlarını değiştirmediyseniz olduğu gibi bırakın. |
-| `JWT_SECRET` | Giriş token'larını imzalayan gizli anahtar. Paylaşmayın. |
+| `JWT_SECRET` | Giriş token'larını imzalayan gizli anahtar. Paylaşmayın; değiştirirseniz herkesin oturumu kapanır. |
 | `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL` | Oturum süreleri (15 dakika / 30 gün). |
 | `PORT` | Backend'in dinlediği port. |
-| `UPLOAD_DIR` | Talep formlarına yüklenen dosyaların klasörü (`backend/uploads`). |
-| `CORS_ORIGINS` | *(isteğe bağlı)* API'ye tarayıcıdan erişebilecek adresler. Varsayılan: `http://localhost:3000,http://localhost:19006`. Web'i başka bir adresten açacaksanız ekleyin. |
+| `UPLOAD_DIR` | Talep formlarına yüklenen dosyaların klasörü (`backend/uploads`). Yedeklerken bunu da alın. |
+| `CORS_ORIGINS` | Web uygulamasının açıldığı adresler. Web'i başka bir adres/porttan yayınlarsanız buraya ekleyin. |
 
-> `.env` dosyası gizli bilgiler içerir ve `.gitignore` sayesinde Git'e gönderilmez. Asla commit etmeyin. Dosyayı düzenlemek için: `nano .env` (kaydet: `Ctrl+O`, `Enter`; çık: `Ctrl+X`).
+> `.env` dosyası gizli bilgiler içerir ve Git'e gönderilmez. Düzenlemek için: `nano .env` (kaydet: `Ctrl+O`, `Enter`; çık: `Ctrl+X`).
 
-### 5.2 Go bağımlılıklarını indirin
+### 5.2 Bağımlılıklar, tablolar ve başlangıç verileri
 
 ```bash
 go mod download
-```
-
-### 5.3 Veritabanı tablolarını oluşturun (migration)
-
-```bash
 go run ./cmd/migrate up
-```
-
-`backend/migrations/` klasöründeki tüm şema değişikliklerini sırayla uygular. Tekrar çalıştırmak zararsızdır; yalnızca eksik olanları uygular.
-
-> ⚠️ `go run ./cmd/migrate down` migration'ları **geri alır ve verileri siler**. Sadece veritabanını bilerek sıfırlamak istediğinizde kullanın.
-
-### 5.4 Örnek verileri yükleyin (seed)
-
-```bash
 go run ./cmd/seed
 ```
 
-Daire başkanlıkları, müdürlükler, kullanıcılar, roller ve örnek talepleri ekler. Birden çok kez çalıştırılabilir; var olan kayıtları çoğaltmaz.
+- `migrate up` veritabanı tablolarını oluşturur. Tekrar çalıştırmak zararsızdır; yalnızca eksik olanları uygular.
+- `seed` daire başkanlıklarını, müdürlükleri, kullanıcıları ve örnek talepleri ekler. Veritabanı boş değilse hiçbir şey yapmaz.
 
-### 5.5 Backend'i çalıştırın
+> ⚠️ `go run ./cmd/migrate down` migration'ları **geri alır ve verileri siler**. Canlı sunucuda çalıştırmayın.
+
+### 5.3 Backend'i derleyin
 
 ```bash
-go run ./cmd/api
+go build -o bin/istakip-api ./cmd/api
 ```
 
-Konsolda backend'in 8080 portunda dinlediğini gösteren bir log satırı görürsünüz. **Bu terminali kapatmayın**; kapatırsanız backend durur. Sonraki adımlar için yeni bir terminal sekmesi açın (`Ctrl+Shift+T`).
+### 5.4 systemd servisini oluşturun
 
-## 6. Backend'i test edin
-
-Backend çalışırken yeni bir terminalde aşağıdaki adımları uygulayın. JSON çıktılarını okunaklı görmek için `jq` kurun:
+Aşağıdaki komut, kullanıcı adınızı ve klasör yolunu otomatik doldurarak servis dosyasını oluşturur. Olduğu gibi yapıştırın:
 
 ```bash
-sudo apt install -y jq
+sudo tee /etc/systemd/system/istakip-api.service > /dev/null <<EOF
+[Unit]
+Description=Istakip API
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=$USER
+WorkingDirectory=$HOME/istakip/backend
+ExecStart=$HOME/istakip/backend/bin/istakip-api
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now istakip-api
 ```
 
-### 6.1 Sağlık kontrolü
+- `WorkingDirectory` önemlidir: backend `.env` dosyasını ve `uploads` klasörünü bu klasörde arar.
+- `Restart=always`: backend çökerse ya da veritabanı henüz açılmadıysa 5 saniye sonra yeniden denenir.
+- `enable`: sunucu her açıldığında servis otomatik başlar.
+
+### Kontrol
 
 ```bash
+systemctl status istakip-api --no-pager   # "active (running)" yazmalı
 curl -s http://localhost:8080/health | jq
-```
+# { "database": "connected", "status": "ok" }
 
-Beklenen çıktı:
-
-```json
-{ "database": "connected", "status": "ok" }
+curl -s -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"admin123"}' | jq -r .accessToken | cut -c1-30
+# eyJhbGciOiJIUzI1NiIsInR5cCI6... gibi bir değer
 ```
 
 `database` değeri `unreachable` ise veritabanı çalışmıyordur (bkz. adım 4).
 
-### 6.2 Giriş yapıp token alın
+## 6. Web uygulamasını derleyin ve nginx ile yayınlayın
+
+### 6.1 Derleme
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"admin123"}' | jq -r .accessToken)
-echo "$TOKEN" | cut -c1-30    # eyJhbGciOiJIUzI1NiIsInR5cCI6... gibi bir değer
+cd ~/istakip/frontend
+cp .env.example .env
+cat .env      # REACT_APP_API_URL=http://<SUNUCU_IP>:8080
+npm ci
+npm run build
 ```
 
-Yanlış şifreyle denerseniz `401` döner; bu beklenen davranıştır:
+- Backend adresi derleme sırasında koda gömülür. `.env`'i değiştirirseniz `npm run build`'i tekrar çalıştırmanız gerekir.
+- Derleme "The build folder is ready to be deployed" ile bitmelidir.
+
+### 6.2 Dosyaları nginx klasörüne kopyalayın
+
+nginx ev dizinlerini okuyamadığı için derlenen dosyalar `/var/www/istakip`'e kopyalanır:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8080/auth/login \
-  -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"yanlis"}'
-# 401
+sudo mkdir -p /var/www/istakip
+sudo rsync -a --delete build/ /var/www/istakip/
 ```
 
-### 6.3 Yetkili istekler
+### 6.3 nginx'i ayarlayın
+
+Hazır ayar dosyası `deploy/nginx-istakip.conf`'tadır:
 
 ```bash
-AUTH="Authorization: Bearer $TOKEN"
-curl -s http://localhost:8080/users/me    -H "$AUTH" | jq '{name, email, role}'
-curl -s http://localhost:8080/units       -H "$AUTH" | jq length   # daire başkanlığı sayısı
-curl -s http://localhost:8080/projects    -H "$AUTH" | jq length   # müdürlük sayısı
-curl -s http://localhost:8080/issues      -H "$AUTH" | jq length   # talep / iş sayısı
-curl -s http://localhost:8080/permissions -H "$AUTH" | jq          # sistemdeki tüm izinler
+sudo cp ~/istakip/deploy/nginx-istakip.conf /etc/nginx/sites-available/istakip
+sudo ln -sf /etc/nginx/sites-available/istakip /etc/nginx/sites-enabled/istakip
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-Token olmadan istek atarsanız `401` dönmelidir:
+Ayar, sayfa yenilendiğinde (ör. `/requests`) 404 vermemesi için tüm bilinmeyen adresleri `index.html`'e yönlendirir.
+
+### Kontrol
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/issues
-# 401
+sudo nginx -t                                   # "syntax is ok" ve "test is successful"
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost/           # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost/requests   # 200
 ```
 
-### 6.4 Rol bazlı görünürlüğü deneyin
+## 7. Güvenlik duvarı
 
-Farklı rollerdeki kullanıcıların farklı veri gördüğünü kontrol edin:
+Sunucuda `ufw` kullanıyorsanız web (80) ve API (8080) portlarını açın. **Önce SSH'a izin verin**, yoksa sunucuya bağlantınız kopar:
 
 ```bash
-count() {
-  local t=$(curl -s -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" \
-    -d "{\"email\":\"$1\",\"password\":\"$2\"}" | jq -r .accessToken)
-  echo "$1 → $(curl -s http://localhost:8080/issues -H "Authorization: Bearer $t" | jq length) kayıt"
-}
-count admin@example.com admin123          # sistemin tamamı
-count bigd.baskan@example.com pass123     # yalnızca kendi daire başkanlığı
-count bigd.pm@example.com pass123         # yalnızca yönettiği müdürlük
-count dis.kullanici@example.com pass123   # yalnızca kendi açtığı talepler
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 8080/tcp
+sudo ufw enable
+sudo ufw status
 ```
 
-Sayıların yukarıdan aşağıya doğru azalması beklenir.
+Veritabanı portu (5433) zaten yalnızca sunucunun içine açık olduğu için ufw'de açmayın.
 
-### 6.5 Derleme ve statik kontrol
+### Kontrol
 
-`~/istakip/backend` klasöründe:
+Ağdaki **başka bir bilgisayardan** tarayıcıda açın:
+
+- `http://<SUNUCU_IP>:8080/health` → `{"database":"connected","status":"ok"}`
+- `http://<SUNUCU_IP>` → giriş ekranı
+
+## 8. Şifreler ve ilk giriş
+
+Seed, şifreleri herkesçe bilinen örnek hesaplar oluşturur. Canlı sistemde giriş ekranında bu hesaplar **listelenmez**, ama hesaplar veritabanında vardır. Kurulumdan hemen sonra:
+
+1. `http://<SUNUCU_IP>` adresinde `admin@example.com` / `admin123` ile giriş yapın.
+2. Sağ üstten **Profilim → Şifre Değiştir** ile admin şifresini değiştirin.
+3. **Kullanıcılar** sayfasından gerçek kullanıcıları ekleyin. Kullanılmayacak örnek hesapları (`...@example.com`, şifre `pass123`) silin ya da şifrelerini değiştirin.
+
+## 9. Mobil uygulama
+
+Mobil uygulama sunucuda çalışmaz; telefonlara kurulur ve doğrudan `http://<SUNUCU_IP>:8080` adresindeki backend'e bağlanır. Telefonun sunucuyla aynı ağda (ya da VPN ile bu ağa bağlı) olması gerekir.
+
+### 9.1 Android APK üretmek (önerilen)
+
+APK, sunucuda değil **kendi bilgisayarınızda** üretilir. Expo hesabı gerekir (https://expo.dev, ücretsiz). Derleme Expo'nun bulut sunucularında yapılır ve internet gerekir.
 
 ```bash
-go build ./...   # tüm paketler derleniyor mu?
-go vet ./...     # yaygın hataları arar; çıktı vermemesi başarılıdır
-gofmt -l .       # biçim kontrolü; çıktı vermemesi başarılıdır
-go test ./...    # birim testler (henüz test dosyası yoksa "no test files" yazar)
+cd mobile
+npm install --legacy-peer-deps
+npx eas-cli login
+npx eas-cli build -p android --profile preview
 ```
 
-### 6.6 Veritabanına doğrudan bakmak (isteğe bağlı)
+- `mobile/eas.json` içindeki `preview` profili, API adresi `http://<SUNUCU_IP>:8080` olacak şekilde bir APK üretir.
+- İlk derlemede Android paket adı (ör. `tr.edu.mersin.istakip`) ve imzalama anahtarı sorulur; önerilen seçenekleri kabul edebilirsiniz.
+- Derleme bitince verilen bağlantıdan APK'yı indirip telefonlara kurun ("bilinmeyen kaynaklardan yüklemeye" izin vermek gerekebilir).
+- Uygulama sunucuya HTTP ile bağlandığı için `app.json`'da düz HTTP'ye izin verilmiştir. Sunucuya ileride HTTPS eklenirse bu izin kaldırılmalıdır.
+
+### 9.2 Expo Go ile hızlı deneme
+
+Derleme yapmadan denemek için kendi bilgisayarınızda:
+
+```bash
+cd mobile
+echo "EXPO_PUBLIC_API_URL=http://<SUNUCU_IP>:8080" > .env
+npx expo start --clear
+```
+
+Çıkan QR kodu telefondaki Expo Go uygulamasıyla okutun.
+
+## 10. Günlük işletim: güncelleme, loglar, yedek
+
+### Servis komutları
+
+```bash
+systemctl status istakip-api --no-pager      # backend çalışıyor mu?
+sudo systemctl restart istakip-api           # backend'i yeniden başlat
+journalctl -u istakip-api -f                 # backend loglarını canlı izle (çıkış: Ctrl+C)
+journalctl -u istakip-api --since today      # bugünkü loglar
+cd ~/istakip/backend && docker compose ps    # veritabanı çalışıyor mu?
+```
+
+Sunucuyu yeniden başlattığınızda hiçbir şey yapmanız gerekmez; veritabanı, backend ve nginx kendiliğinden açılır.
+
+### Yeni sürümü yüklemek
+
+GitHub'a yeni kod gönderildikten sonra sunucuda tek komut yeterlidir:
+
+```bash
+~/istakip/deploy/guncelle.sh
+```
+
+Betik sırasıyla: kodu çeker (`git pull`), backend'i derler, yeni migration'ları uygular, backend servisini yeniden başlatır, web'i derleyip nginx klasörüne kopyalar.
+
+### Yedek almak
+
+Veritabanı ve yüklenen dosyalar ayrı ayrı yedeklenmelidir:
+
+```bash
+mkdir -p ~/yedek
+docker exec backend-postgres-1 pg_dump -U istakip istakip | gzip > ~/yedek/istakip-$(date +%F).sql.gz
+tar -czf ~/yedek/uploads-$(date +%F).tar.gz -C ~/istakip/backend uploads
+```
+
+Yedekleri sunucu dışında bir yere de kopyalayın.
+
+Yedekten geri dönmek için (⚠️ mevcut verilerin üzerine yazar):
+
+```bash
+sudo systemctl stop istakip-api
+gunzip -c ~/yedek/istakip-2026-10-13.sql.gz | docker exec -i backend-postgres-1 psql -U istakip -d istakip
+sudo systemctl start istakip-api
+```
+
+Geri yükleme boş bir veritabanına yapılmalıdır. Gerekirse önce volume'u sıfırlayın: `docker compose down -v && docker compose up -d` (tüm verileri siler).
+
+### Veritabanına doğrudan bakmak
 
 ```bash
 docker exec -it backend-postgres-1 psql -U istakip -d istakip
@@ -292,170 +399,21 @@ docker exec -it backend-postgres-1 psql -U istakip -d istakip
 
 `psql` içinde örnek komutlar: `\dt` (tablolar), `SELECT email, role FROM users LIMIT 10;`, `\q` (çıkış).
 
-## 7. Web uygulamasını kurun ve çalıştırın
-
-Yeni bir terminalde:
-
-```bash
-cd ~/istakip/frontend
-cp .env.example .env
-npm install
-npm start
-```
-
-- `.env` içinde tek ayar vardır: `REACT_APP_API_URL=http://localhost:8080` (backend adresi).
-- `npm install` ilk seferde birkaç dakika sürer.
-- `npm start` tarayıcıda **http://localhost:3000** adresini açar (açmazsa adresi elle yazın). Bu terminali de açık bırakın.
-
-### Giriş yapın
-
-Giriş ekranındaki **Demo Hesapları** listesinden bir satıra tıklayın; e-posta ve şifre otomatik dolar.
-
-| Rol | E-posta | Şifre |
-|---|---|---|
-| Sistem Yöneticisi | `admin@example.com` | `admin123` |
-| Daire Başkanı (Bilgi İşlem) | `bigd.baskan@example.com` | `pass123` |
-| Müdür (Donanım) | `bigd.pm@example.com` | `pass123` |
-| Çalışan | `bigd.worker1@example.com` | `pass123` |
-| Daire Başkanı (Öğrenci İşleri) | `odb.baskan@example.com` | `pass123` |
-| Üniversite Personeli | `dis.kullanici@example.com` | `pass123` |
-| Öğrenci | `ogrenci@example.com` | `pass123` |
-
-### Üretim derlemesi (isteğe bağlı)
-
-```bash
-CI=true npm run build
-```
-
-Sunucuya konacak statik dosyaları `frontend/build/` klasörüne üretir. `CI=true` ile lint uyarıları da hata sayılır (GitLab CI'daki gibi); derleme "The build folder is ready to be deployed" ile bitmelidir.
-
-### Web birim testleri (isteğe bağlı)
-
-```bash
-CI=true npm test
-```
-
-İki test paketi çalışır: uygulamanın oturum yokken giriş ekranıyla açıldığını doğrulayan duman testi ve talep detayındaki butonların backend'den gelen `allowedActions` bayraklarına göre gösterildiğini doğrulayan testler. Beklenen sonuç: `Tests: 9 passed`.
-
-## 8. Mobil uygulamayı kurun ve çalıştırın
-
-### 8.1 Telefona Expo Go kurun
-
-- Android: Google Play'den **Expo Go**
-- iOS: App Store'dan **Expo Go**
-
-Proje **Expo SDK 57** kullanır; Expo Go'nun güncel sürümünü kurun.
-
-### 8.2 Bilgisayarın yerel IP adresini öğrenin
-
-Telefon `localhost` adresine ulaşamaz; bilgisayarın ağdaki IP adresini kullanmanız gerekir:
-
-```bash
-hostname -I | awk '{print $1}'
-# ör. 192.168.1.42
-```
-
-**Telefon ve bilgisayar aynı Wi-Fi ağında olmalıdır.**
-
-### 8.3 Kurulum ve çalıştırma
-
-```bash
-cd ~/istakip/mobile
-cp .env.example .env
-echo "EXPO_PUBLIC_API_URL=http://$(hostname -I | awk '{print $1}'):8080" > .env
-cat .env      # EXPO_PUBLIC_API_URL=http://192.168.1.42:8080
-npm install --legacy-peer-deps
-npx expo start
-```
-
-- `--legacy-peer-deps` gereklidir; bazı paketlerin React sürüm beyanlarındaki küçük uyuşmazlıklar nedeniyle düz `npm install` hata verir.
-- Terminalde bir **QR kod** çıkar. Android'de Expo Go uygulamasıyla, iOS'ta telefonun kamerasıyla okutun.
-- Uygulama açılınca giriş ekranındaki **Demo Giriş Bilgileri** listesinden bir hesaba dokunun.
-
-> `.env` dosyasını değiştirdikten sonra Expo'yu durdurup (`Ctrl+C`) `npx expo start --clear` ile yeniden başlatın; aksi hâlde eski adres kullanılmaya devam eder.
-
-### 8.4 Telefondan bağlanılamıyorsa
-
-1. Telefonun tarayıcısında `http://192.168.1.42:8080/health` adresini açın (kendi IP'nizle). `{"database":"connected","status":"ok"}` görmelisiniz.
-2. Açılmıyorsa güvenlik duvarı (ufw) portları engelliyor olabilir:
-
-   ```bash
-   sudo ufw status
-   # "Status: active" ise:
-   sudo ufw allow 8080/tcp
-   sudo ufw allow 8081/tcp
-   ```
-
-3. Kurum/okul ağları cihazların birbirini görmesini engelleyebilir. Bu durumda `npx expo start --tunnel` deneyin; backend için ise telefon ve bilgisayarı aynı mobil hotspot'a bağlamak en kolay çözümdür.
-4. Çok sayıda dosya izlenirken `ENOSPC: System limit for number of file watchers reached` hatası alırsanız:
-
-   ```bash
-   echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
-   ```
-
-### 8.5 Mobil kod kontrolü (isteğe bağlı)
-
-```bash
-npx tsc --noEmit                                                  # TypeScript tip kontrolü; çıktı vermemesi başarılıdır
-npx expo-doctor                                                   # bağımlılık uyumu; "21/21 checks passed" beklenir
-npx expo export --platform android --output-dir /tmp/istakip-export   # paket derleniyor mu?
-```
-
-## 9. Günlük kullanım: sistemi açıp kapatmak
-
-Kurulum bir kez yapılır. Sonraki günlerde üç ayrı terminal sekmesinde:
-
-```bash
-# 1. sekme — veritabanı + backend
-cd ~/istakip/backend && docker compose up -d && go run ./cmd/api
-
-# 2. sekme — web
-cd ~/istakip/frontend && npm start
-
-# 3. sekme — mobil (gerekirse)
-cd ~/istakip/mobile && npx expo start
-```
-
-Kapatmak için her sekmede `Ctrl+C`, ardından veritabanını durdurmak isterseniz `cd ~/istakip/backend && docker compose stop`.
-
-### Güncellemeleri almak
-
-```bash
-cd ~/istakip
-git pull
-(cd backend && go mod download && go run ./cmd/migrate up)
-(cd frontend && npm install)
-(cd mobile && npm install --legacy-peer-deps)
-```
-
-`git pull` sonrasında yeni migration geldiyse `migrate up` onu uygular. Bunu backend'i başlatmadan önce yapın.
-
-### Veritabanını tamamen sıfırlamak
-
-> ⚠️ Tüm veriler silinir.
-
-```bash
-cd ~/istakip/backend
-docker compose down -v      # veritabanı ve volume'u siler
-docker compose up -d
-go run ./cmd/migrate up
-go run ./cmd/seed
-```
-
-## 10. Sık karşılaşılan sorunlar
+## 11. Sık karşılaşılan sorunlar
 
 | Belirti | Sebep / Çözüm |
 |---|---|
-| `permission denied while trying to connect to the Docker daemon socket` | Kullanıcınız `docker` grubunda değil ya da oturum yenilenmedi: `sudo usermod -aG docker $USER`, sonra oturumu kapatıp açın. |
-| `Cannot connect to the Docker daemon` | Docker servisi kapalı: `sudo systemctl start docker` (açılışta başlasın: `sudo systemctl enable docker`). |
+| `permission denied while trying to connect to the Docker daemon socket` | Kullanıcınız `docker` grubunda değil ya da oturum yenilenmedi: `sudo usermod -aG docker $USER`, sonra SSH'tan çıkıp yeniden bağlanın. |
 | `port is already allocated` (5433) | Başka bir container o portu kullanıyor: `docker ps` ile bulun, durdurun. |
-| Backend: `loading roles failed (run migrations?)` | Migration'lar uygulanmamış: `go run ./cmd/migrate up`. |
-| Backend: `connection refused` / health'te `unreachable` | Veritabanı çalışmıyor: `cd ~/istakip/backend && docker compose up -d`. |
-| Backend: `address already in use` (8080) | Backend zaten açık: `sudo lsof -i :8080` ile süreci bulup `kill <PID>`. |
-| `go: command not found` | PATH ayarı yüklenmedi: `source ~/.bashrc` ya da yeni terminal açın. |
-| `go: go.mod requires go >= 1.26` | Go sürümünüz eski; adım 2.2'yi yeni sürümle tekrarlayın. |
-| Web'de giriş yapınca "Failed to fetch" / ağ hatası | Backend kapalı ya da `frontend/.env` içindeki adres yanlış. `.env`'i değiştirdiyseniz `npm start`'ı yeniden başlatın. |
-| Tarayıcı konsolunda CORS hatası | Web'i `localhost:3000` dışında bir adresten açıyorsunuz: backend `.env`'ine `CORS_ORIGINS=http://localhost:3000,http://<adres>` ekleyip backend'i yeniden başlatın. |
-| `npm install` (mobile) `ERESOLVE` hatası | `npm install --legacy-peer-deps` kullanın. |
-| Mobilde "Network request failed" | `mobile/.env` içinde `localhost` kalmış ya da IP yanlış; bkz. 8.4. |
-| Expo Go "incompatible SDK version" | Expo Go uygulamasını mağazadan güncelleyin. |
+| `systemctl status istakip-api` → `failed` | Nedenini görmek için: `journalctl -u istakip-api -n 50 --no-pager`. |
+| Backend logunda `loading roles failed (run migrations?)` | Migration'lar uygulanmamış: `cd ~/istakip/backend && go run ./cmd/migrate up`, sonra `sudo systemctl restart istakip-api`. |
+| Backend logunda `connection refused` / health'te `unreachable` | Veritabanı çalışmıyor: `cd ~/istakip/backend && docker compose up -d`. |
+| Backend logunda `address already in use` (8080) | 8080'i başka bir süreç kullanıyor: `sudo lsof -i :8080` ile bulup durdurun. |
+| `go: command not found` | PATH ayarı yüklenmedi: `source ~/.bashrc` ya da yeniden bağlanın. |
+| Tarayıcıda `http://<SUNUCU_IP>` açılmıyor | nginx kapalı (`sudo systemctl status nginx`) ya da ufw 80'i engelliyor (adım 7). |
+| Sayfa açılıyor ama girişte "Failed to fetch" / ağ hatası | Backend kapalı ya da 8080 dışarıya kapalı. Başka bir bilgisayardan `http://<SUNUCU_IP>:8080/health` açılıyor mu bakın. |
+| Tarayıcı konsolunda CORS hatası | Web'i `CORS_ORIGINS`'te olmayan bir adresten açıyorsunuz. Adresi `backend/.env`'e ekleyip `sudo systemctl restart istakip-api`. |
+| Sayfayı yenileyince nginx 404 | nginx ayarı uygulanmamış: adım 6.3'ü tekrarlayın. |
+| Güncelleme sonrası eski arayüz görünüyor | Tarayıcıda `Ctrl+F5` ile önbelleği atlayarak yenileyin. |
+| `guncelle.sh: Permission denied` | `chmod +x ~/istakip/deploy/guncelle.sh` |
+| Mobilde "Network request failed" | Telefon sunucuyla aynı ağda değil ya da 8080 kapalı. Telefonun tarayıcısında `http://<SUNUCU_IP>:8080/health` açılıyor mu bakın. |
