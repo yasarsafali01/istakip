@@ -1,4 +1,6 @@
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://<SUNUCU_IP>:8080';
+// Backend address comes only from frontend/.env and is baked in at build time.
+const BASE_URL = process.env.REACT_APP_API_URL || '';
+if (!BASE_URL) console.error('REACT_APP_API_URL is not set (frontend/.env) — API requests will fail.');
 const REFRESH_TOKEN_KEY = 'istakip_refresh_token';
 
 // Access token lives only in memory (module-level) — never persisted, so a

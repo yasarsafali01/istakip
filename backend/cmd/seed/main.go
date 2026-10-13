@@ -1,11 +1,15 @@
 // Command seed loads the demo unit/project/user/issue dataset used by the
 // original frontend (src/data/seedData.js) into PostgreSQL. It is idempotent:
 // if the units table already has rows, it does nothing.
+//
+// SEED_ADMIN_PASSWORD / SEED_USER_PASSWORD override the well-known demo
+// passwords (admin123 / pass123); set them when seeding a real server.
 package main
 
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -277,8 +281,20 @@ func main() {
 		unitIDs[u.key] = id
 	}
 
+	adminPassword := os.Getenv("SEED_ADMIN_PASSWORD")
+	userPassword := os.Getenv("SEED_USER_PASSWORD")
+	if adminPassword == "" || userPassword == "" {
+		log.Println("WARNING: SEED_ADMIN_PASSWORD / SEED_USER_PASSWORD not set — using public demo passwords")
+	}
+
 	// users (project_id filled in after projects are inserted)
 	for _, u := range users {
+		password := u.password
+		if u.role == "System_Admin" && adminPassword != "" {
+			password = adminPassword
+		} else if u.role != "System_Admin" && userPassword != "" {
+			password = userPassword
+		}
 		var unitID *uuid.UUID
 		if u.unitKey != "" {
 			id := unitIDs[u.unitKey]
@@ -288,7 +304,7 @@ func main() {
 		err := tx.QueryRow(ctx,
 			`INSERT INTO users (name, email, password_hash, role, unit_id, avatar_color)
 			 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			u.name, u.email, hashPassword(u.password), u.role, unitID, u.avatarColor,
+			u.name, u.email, hashPassword(password), u.role, unitID, u.avatarColor,
 		).Scan(&id)
 		if err != nil {
 			log.Fatalf("insert user %s: %v", u.key, err)

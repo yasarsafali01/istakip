@@ -21,6 +21,12 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if cfg.Port == "" {
+		log.Fatal("PORT is not set (backend/.env)")
+	}
+	if len(cfg.CORSOrigins) == 0 {
+		log.Fatal("CORS_ORIGINS is not set (backend/.env)")
+	}
 
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {

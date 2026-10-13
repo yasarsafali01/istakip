@@ -4,12 +4,10 @@
   },
   "build": {
     "preview": {
+      "environment": "preview",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "http://<SUNUCU_IP>:8080"
       }
     }
   }

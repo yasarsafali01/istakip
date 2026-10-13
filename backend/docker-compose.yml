@@ -1,16 +1,17 @@
+# Değerler backend/.env dosyasından okunur (docker compose bu dosyayı otomatik yükler).
 services:
   postgres:
     image: postgres:16-alpine
     # Sunucu yeniden başladığında veritabanı da otomatik açılır.
     restart: unless-stopped
     environment:
-      POSTGRES_USER: istakip
-      POSTGRES_PASSWORD: istakip
-      POSTGRES_DB: istakip
+      POSTGRES_USER: ${DB_USER:?backend/.env içinde DB_USER tanımlı değil}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?backend/.env içinde DB_PASSWORD tanımlı değil}
+      POSTGRES_DB: ${DB_NAME:?backend/.env içinde DB_NAME tanımlı değil}
     # Yalnızca makinenin kendisinden erişilebilir. Docker, ufw kurallarını
     # atladığı için 0.0.0.0'a açmak veritabanını tüm ağa açardı.
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:${DB_PORT:?backend/.env içinde DB_PORT tanımlı değil}:5432"
     volumes:
       - istakip_pg_data:/var/lib/postgresql/data
 

@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import LoginForm from '../components/auth/LoginForm';
 import { useAuth } from '../hooks/useAuth';
 
+// Demo credentials must not be shown on the deployed server (npm run build).
+const SHOW_DEMO_ACCOUNTS = process.env.NODE_ENV !== 'production';
+
 const DEMO_ACCOUNTS = [
   {
     group: 'Yönetim',
@@ -88,11 +91,12 @@ export default function LoginPage() {
       style={{ background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)' }}
     >
       <div style={{ width: '100%', maxWidth: 920 }}>
-        <div className="row g-4 align-items-start">
+        <div className="row g-4 align-items-start justify-content-center">
           {/* Login form */}
           <div className="col-12 col-md-5">
             <div className="position-sticky" style={{ top: '1rem' }}>
               <LoginForm />
+              {SHOW_DEMO_ACCOUNTS && (
               <div className="text-center mt-3">
                 <button
                   className="btn btn-link btn-sm text-muted"
@@ -102,10 +106,12 @@ export default function LoginPage() {
                   🔄 Veriyi Sıfırla (Demo)
                 </button>
               </div>
+              )}
             </div>
           </div>
 
           {/* Demo accounts panel */}
+          {SHOW_DEMO_ACCOUNTS && (
           <div className="col-12 col-md-7">
             <div className="card border-0 shadow-sm">
               <div className="card-header bg-white border-bottom py-3">
@@ -169,6 +175,7 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

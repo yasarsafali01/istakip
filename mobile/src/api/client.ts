@@ -1,6 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://<SUNUCU_IP>:8080';
+// Backend address comes only from mobile/.env (or EAS env for builds).
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
+if (!BASE_URL) console.error('EXPO_PUBLIC_API_URL is not set (mobile/.env) — API requests will fail.');
 const REFRESH_TOKEN_KEY = 'istakip_refresh_token';
 
 // Access token lives only in memory — lost on app restart, re-derived from

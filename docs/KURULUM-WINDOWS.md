@@ -9,7 +9,7 @@ Bu rehber, bilgisayarında hiçbir geliştirme aracı olmayan birinin Mersin Ün
 1. [Sistemin parçaları](#1-sistemin-parçaları)
 2. [Gerekli programları kurun](#2-gerekli-programları-kurun)
 3. [Projeyi indirin](#3-projeyi-indirin)
-4. [Veritabanını başlatın](#4-veritabanını-başlatın-postgresql--docker)
+4. [Ortam dosyasını oluşturun ve veritabanını başlatın](#4-ortam-dosyasını-oluşturun-ve-veritabanını-başlatın)
 5. [Backend'i kurun ve çalıştırın](#5-backendi-kurun-ve-çalıştırın)
 6. [Backend'i test edin](#6-backendi-test-edin)
 7. [Web uygulamasını kurun ve çalıştırın](#7-web-uygulamasını-kurun-ve-çalıştırın)
@@ -90,57 +90,44 @@ dir
 # backend, frontend, mobile, docs klasörlerini ve README.md dosyasını görmelisiniz
 ```
 
-## 4. Veritabanını başlatın (PostgreSQL + Docker)
+## 4. Ortam dosyasını oluşturun ve veritabanını başlatın
 
-Docker Desktop'ın açık olduğundan emin olun, ardından:
+Adresler, portlar ve şifreler kodda değil, Git'e gönderilmeyen `.env` dosyalarında tutulur. Veritabanı da ayarlarını bu dosyadan okuduğu için önce `.env` oluşturulur.
+
+### 4.1 Ortam dosyasını oluşturun
 
 ```powershell
 cd backend
-docker compose up -d
-```
-
-Bu komut ilk seferde PostgreSQL 16 imajını indirir (birkaç dakika sürebilir) ve veritabanını arka planda başlatır. Bilgiler:
-
-- Kullanıcı / şifre / veritabanı adı: `istakip` / `istakip` / `istakip`
-- Port: **5433** (5432 değil; bilgisayarda kurulu başka bir PostgreSQL ile çakışmasın diye)
-- Veriler `istakip_pg_data` adlı Docker volume'unda saklanır; bilgisayarı kapatıp açtığınızda kaybolmaz.
-
-### Kontrol
-
-```powershell
-docker compose ps
-# backend-postgres-1 ... running   0.0.0.0:5433->5432/tcp
-```
-
-## 5. Backend'i kurun ve çalıştırın
-
-Bu adımda hâlâ `backend` klasöründe olmalısınız.
-
-### 5.1 Ortam dosyasını oluşturun
-
-```powershell
 Copy-Item .env.example .env
 ```
 
 `.env` dosyasını Not Defteri ile açın (`notepad .env`). İçeriği şöyle olmalı:
 
 ```env
-DATABASE_URL=postgres://istakip:istakip@localhost:5433/istakip?sslmode=disable
+DB_USER=istakip
+DB_PASSWORD=istakip
+DB_NAME=istakip
+DB_PORT=5433
+DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable
+
 JWT_SECRET=değiştir-bu-gizli-anahtarı
 JWT_ACCESS_TTL=15m
 JWT_REFRESH_TTL=720h
 PORT=8080
 UPLOAD_DIR=uploads
+CORS_ORIGINS=http://localhost:3000,http://localhost:19006
 ```
 
 | Değişken | Açıklama |
 |---|---|
-| `DATABASE_URL` | Veritabanı bağlantısı. Docker ayarlarını değiştirmediyseniz olduğu gibi bırakın. |
+| `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Veritabanı kullanıcısı, şifresi ve adı. Docker veritabanını ilk açılışta bu değerlerle oluşturur. |
+| `DB_PORT` | Veritabanı portu (5432 değil; bilgisayarda kurulu başka bir PostgreSQL ile çakışmasın diye). |
+| `DATABASE_URL` | Backend'in bağlantı adresi. Yukarıdaki değerlerden otomatik oluşur; elle değiştirmeyin. |
 | `JWT_SECRET` | Giriş token'larını imzalayan gizli anahtar. **Mutlaka değiştirin** (aşağıya bakın). |
 | `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL` | Oturum süreleri (15 dakika / 30 gün). |
-| `PORT` | Backend'in dinlediği port. |
+| `PORT` | Backend'in dinlediği port. Boşsa backend başlamaz. |
 | `UPLOAD_DIR` | Talep formlarına yüklenen dosyaların klasörü (`backend/uploads`). |
-| `CORS_ORIGINS` | *(isteğe bağlı)* API'ye tarayıcıdan erişebilecek adresler. Varsayılan: `http://localhost:3000,http://localhost:19006`. Web'i başka bir adresten açacaksanız ekleyin. |
+| `CORS_ORIGINS` | API'ye tarayıcıdan erişebilecek adresler (virgülle ayrılmış). Boşsa backend başlamaz. Web'i başka bir adresten açacaksanız ekleyin. |
 
 Rastgele bir `JWT_SECRET` üretmek için:
 
@@ -152,13 +139,34 @@ Rastgele bir `JWT_SECRET` üretmek için:
 
 > `.env` dosyası gizli bilgiler içerir ve `.gitignore` sayesinde Git'e gönderilmez. Asla commit etmeyin.
 
-### 5.2 Go bağımlılıklarını indirin
+### 4.2 Veritabanını başlatın (PostgreSQL + Docker)
+
+Docker Desktop'ın açık olduğundan emin olun, ardından `backend` klasöründe:
+
+```powershell
+docker compose up -d
+```
+
+Bu komut ilk seferde PostgreSQL 16 imajını indirir (birkaç dakika sürebilir) ve veritabanını `.env`'deki kullanıcı, şifre ve portla arka planda başlatır. Veriler `istakip_pg_data` adlı Docker volume'unda saklanır; bilgisayarı kapatıp açtığınızda kaybolmaz.
+
+### Kontrol
+
+```powershell
+docker compose ps
+# backend-postgres-1 ... running   127.0.0.1:5433->5432/tcp
+```
+
+## 5. Backend'i kurun ve çalıştırın
+
+Bu adımda hâlâ `backend` klasöründe olmalısınız.
+
+### 5.1 Go bağımlılıklarını indirin
 
 ```powershell
 go mod download
 ```
 
-### 5.3 Veritabanı tablolarını oluşturun (migration)
+### 5.2 Veritabanı tablolarını oluşturun (migration)
 
 ```powershell
 go run ./cmd/migrate up
@@ -168,7 +176,7 @@ go run ./cmd/migrate up
 
 > ⚠️ `go run ./cmd/migrate down` migration'ları **geri alır ve verileri siler**. Sadece veritabanını bilerek sıfırlamak istediğinizde kullanın.
 
-### 5.4 Örnek verileri yükleyin (seed)
+### 5.3 Örnek verileri yükleyin (seed)
 
 ```powershell
 go run ./cmd/seed
@@ -176,7 +184,7 @@ go run ./cmd/seed
 
 Daire başkanlıkları, müdürlükler, kullanıcılar, roller ve örnek talepleri ekler. Birden çok kez çalıştırılabilir; var olan kayıtları çoğaltmaz.
 
-### 5.5 Backend'i çalıştırın
+### 5.4 Backend'i çalıştırın
 
 ```powershell
 go run ./cmd/api
@@ -204,7 +212,7 @@ database  status
 connected ok
 ```
 
-`database` değeri `unreachable` ise veritabanı çalışmıyordur (bkz. adım 4). `curl.exe http://localhost:8080/health` komutu da aynı sonucu JSON olarak verir: `{"database":"connected","status":"ok"}`.
+`database` değeri `unreachable` ise veritabanı çalışmıyordur (bkz. adım 4.2). `curl.exe http://localhost:8080/health` komutu da aynı sonucu JSON olarak verir: `{"database":"connected","status":"ok"}`.
 
 ### 6.2 Giriş yapıp token alın
 

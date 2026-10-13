@@ -7,7 +7,7 @@ Bu rehber, Mersin Üniversitesi Talep Takip Sistemi'ni bir **Ubuntu 22.04 / 24.0
 
 Komutları sunucuda (SSH ile bağlanarak) sırayla çalıştırın. Her adımın sonundaki "Kontrol" kısmıyla doğru gidip gitmediğinizi görebilirsiniz.
 
-> Sunucunun IP adresi farklıysa, rehberde geçen `<SUNUCU_IP>` değerlerini kendi adresinizle değiştirin.
+> Rehberde geçen `<SUNUCU_IP>` ifadelerini sunucunuzun IP adresiyle değiştirin.
 > Kendi bilgisayarınızda geliştirme yapmak için: [KURULUM-WINDOWS.md](KURULUM-WINDOWS.md)
 
 ## İçindekiler
@@ -15,7 +15,7 @@ Komutları sunucuda (SSH ile bağlanarak) sırayla çalıştırın. Her adımın
 1. [Sistemin parçaları](#1-sistemin-parçaları)
 2. [Gerekli programları kurun](#2-gerekli-programları-kurun)
 3. [Projeyi indirin](#3-projeyi-indirin)
-4. [Veritabanını başlatın](#4-veritabanını-başlatın)
+4. [Ortam dosyasını oluşturun ve veritabanını başlatın](#4-ortam-dosyasını-oluşturun-ve-veritabanını-başlatın)
 5. [Backend'i kurun ve servis olarak çalıştırın](#5-backendi-kurun-ve-servis-olarak-çalıştırın)
 6. [Web uygulamasını derleyin ve nginx ile yayınlayın](#6-web-uygulamasını-derleyin-ve-nginx-ile-yayınlayın)
 7. [Güvenlik duvarı](#7-güvenlik-duvarı)
@@ -121,15 +121,63 @@ ls
 # backend  deploy  docs  frontend  INSTALL.md  mobile  README.md
 ```
 
-## 4. Veritabanını başlatın
+## 4. Ortam dosyasını oluşturun ve veritabanını başlatın
+
+Sunucuya özel tüm ayarlar (IP, portlar, şifreler) Git'e gönderilmeyen `.env` dosyalarında tutulur; kodda hiçbiri yazmaz. Bu dosyaları **sunucuda**, repodaki `.env.example` şablonlarından oluşturursunuz. `git pull` bu dosyalara dokunmaz.
+
+### 4.1 Backend ortam dosyası
+
+İlk satırdaki `<SUNUCU_IP>` yerine sunucunuzun IP adresini yazın, sonra hepsini birlikte yapıştırın:
 
 ```bash
+SUNUCU_IP=<SUNUCU_IP>
 cd ~/istakip/backend
+cp .env.example .env
+sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
+sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$(openssl rand -hex 16)|" .env
+sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=http://$SUNUCU_IP|" .env
+cat .env
+```
+
+Komutlar `JWT_SECRET` ve `DB_PASSWORD` için rastgele, güçlü değerler üretir ve `CORS_ORIGINS`'e sunucu adresini yazar. Dosya şöyle görünmelidir:
+
+```env
+DB_USER=istakip
+DB_PASSWORD=<32 karakterlik rastgele değer>
+DB_NAME=istakip
+DB_PORT=5433
+DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable
+
+JWT_SECRET=<64 karakterlik rastgele değer>
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=720h
+PORT=8080
+UPLOAD_DIR=uploads
+CORS_ORIGINS=http://<SUNUCU_IP>
+```
+
+| Değişken | Açıklama |
+|---|---|
+| `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Veritabanı kullanıcısı, şifresi ve adı. Docker veritabanını **ilk açılışta** bu değerlerle oluşturur; sonradan `DB_PASSWORD`'ü değiştirmek mevcut veritabanının şifresini değiştirmez. |
+| `DB_PORT` | Veritabanının sunucu içinde dinlediği port. Yalnızca `127.0.0.1`'e açılır. |
+| `DATABASE_URL` | Backend'in bağlantı adresi. Yukarıdaki değerlerden otomatik oluşur; elle değiştirmeyin. |
+| `JWT_SECRET` | Giriş token'larını imzalayan gizli anahtar. Paylaşmayın; değiştirirseniz herkesin oturumu kapanır. |
+| `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL` | Oturum süreleri (15 dakika / 30 gün). |
+| `PORT` | Backend'in (API) dinlediği port. Değiştirirseniz web, mobil ve güvenlik duvarı adımlarında da aynı portu kullanın. |
+| `UPLOAD_DIR` | Talep formlarına yüklenen dosyaların klasörü (`backend/uploads`). Yedeklerken bunu da alın. |
+| `CORS_ORIGINS` | Web uygulamasının açıldığı adresler (virgülle ayrılmış). Web'i başka bir adres/porttan yayınlarsanız buraya ekleyin. |
+
+`PORT` ya da `CORS_ORIGINS` boşsa backend başlamaz ve logda hangisinin eksik olduğunu yazar.
+
+> `.env` dosyası gizli bilgiler içerir ve Git'e gönderilmez. Düzenlemek için: `nano .env` (kaydet: `Ctrl+O`, `Enter`; çık: `Ctrl+X`).
+
+### 4.2 Veritabanını başlatın
+
+```bash
 docker compose up -d
 ```
 
-- Kullanıcı / şifre / veritabanı adı: `istakip` / `istakip` / `istakip`
-- Port **5433** yalnızca `127.0.0.1`'e açılır; dışarıdan veritabanına bağlanılamaz.
+- Docker kullanıcı adını, şifreyi, veritabanı adını ve portu `.env`'den okur. `.env` yoksa ya da bir değer eksikse hangisinin eksik olduğunu söyleyen bir hata verir.
 - `restart: unless-stopped` sayesinde sunucu yeniden başladığında container da otomatik açılır.
 - Veriler `istakip_pg_data` adlı Docker volume'unda saklanır.
 
@@ -142,58 +190,33 @@ docker compose ps
 
 ## 5. Backend'i kurun ve servis olarak çalıştırın
 
-### 5.1 Ortam dosyasını oluşturun
+### 5.1 Bağımlılıklar, tablolar ve başlangıç verileri
 
 ```bash
 cd ~/istakip/backend
-cp .env.example .env
-sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
-cat .env
-```
-
-İkinci komut `JWT_SECRET` değerini rastgele, güvenli bir anahtarla değiştirir. Dosya şöyle görünmelidir:
-
-```env
-DATABASE_URL=postgres://istakip:istakip@localhost:5433/istakip?sslmode=disable
-JWT_SECRET=<64 karakterlik rastgele değer>
-JWT_ACCESS_TTL=15m
-JWT_REFRESH_TTL=720h
-PORT=8080
-UPLOAD_DIR=uploads
-CORS_ORIGINS=http://<SUNUCU_IP>:3000,http://<SUNUCU_IP>,http://localhost:3000,http://localhost:19006
-```
-
-| Değişken | Açıklama |
-|---|---|
-| `DATABASE_URL` | Veritabanı bağlantısı. Docker ayarlarını değiştirmediyseniz olduğu gibi bırakın. |
-| `JWT_SECRET` | Giriş token'larını imzalayan gizli anahtar. Paylaşmayın; değiştirirseniz herkesin oturumu kapanır. |
-| `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL` | Oturum süreleri (15 dakika / 30 gün). |
-| `PORT` | Backend'in dinlediği port. |
-| `UPLOAD_DIR` | Talep formlarına yüklenen dosyaların klasörü (`backend/uploads`). Yedeklerken bunu da alın. |
-| `CORS_ORIGINS` | Web uygulamasının açıldığı adresler. Web'i başka bir adres/porttan yayınlarsanız buraya ekleyin. |
-
-> `.env` dosyası gizli bilgiler içerir ve Git'e gönderilmez. Düzenlemek için: `nano .env` (kaydet: `Ctrl+O`, `Enter`; çık: `Ctrl+X`).
-
-### 5.2 Bağımlılıklar, tablolar ve başlangıç verileri
-
-```bash
 go mod download
 go run ./cmd/migrate up
-go run ./cmd/seed
+
+ADMIN_SIFRE=$(openssl rand -hex 8)
+KULLANICI_SIFRE=$(openssl rand -hex 8)
+SEED_ADMIN_PASSWORD=$ADMIN_SIFRE SEED_USER_PASSWORD=$KULLANICI_SIFRE go run ./cmd/seed
+echo "admin@example.com şifresi: $ADMIN_SIFRE"
+echo "Diğer örnek hesapların şifresi: $KULLANICI_SIFRE"
 ```
 
 - `migrate up` veritabanı tablolarını oluşturur. Tekrar çalıştırmak zararsızdır; yalnızca eksik olanları uygular.
 - `seed` daire başkanlıklarını, müdürlükleri, kullanıcıları ve örnek talepleri ekler. Veritabanı boş değilse hiçbir şey yapmaz.
+- **Ekrana yazılan iki şifreyi bir yere not edin.** Repodaki dokümanlarda geçen demo şifreleri (`admin123` / `pass123`) yalnızca geliştirme içindir. Sunucuda bu şifrelerle hesap oluşturulmaz, çünkü repoyu gören herkes onları bilir. Şifreler hiçbir dosyaya kaydedilmez.
 
 > ⚠️ `go run ./cmd/migrate down` migration'ları **geri alır ve verileri siler**. Canlı sunucuda çalıştırmayın.
 
-### 5.3 Backend'i derleyin
+### 5.2 Backend'i derleyin
 
 ```bash
 go build -o bin/istakip-api ./cmd/api
 ```
 
-### 5.4 systemd servisini oluşturun
+### 5.3 systemd servisini oluşturun
 
 Aşağıdaki komut, kullanıcı adınızı ve klasör yolunu otomatik doldurarak servis dosyasını oluşturur. Olduğu gibi yapıştırın:
 
@@ -232,24 +255,26 @@ curl -s http://localhost:8080/health | jq
 
 curl -s -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"admin123"}' | jq -r .accessToken | cut -c1-30
+  -d "{\"email\":\"admin@example.com\",\"password\":\"$ADMIN_SIFRE\"}" | jq -r .accessToken | cut -c1-30
 # eyJhbGciOiJIUzI1NiIsInR5cCI6... gibi bir değer
 ```
 
-`database` değeri `unreachable` ise veritabanı çalışmıyordur (bkz. adım 4).
+`database` değeri `unreachable` ise veritabanı çalışmıyordur (bkz. adım 4.2).
 
 ## 6. Web uygulamasını derleyin ve nginx ile yayınlayın
 
 ### 6.1 Derleme
 
 ```bash
+SUNUCU_IP=<SUNUCU_IP>
 cd ~/istakip/frontend
-cp .env.example .env
-cat .env      # REACT_APP_API_URL=http://<SUNUCU_IP>:8080
+echo "REACT_APP_API_URL=http://$SUNUCU_IP:8080" > .env
+cat .env
 npm ci
 npm run build
 ```
 
+- `frontend/.env` yalnızca backend adresini içerir. Port, `backend/.env`'deki `PORT` ile aynı olmalıdır.
 - Backend adresi derleme sırasında koda gömülür. `.env`'i değiştirirseniz `npm run build`'i tekrar çalıştırmanız gerekir.
 - Derleme "The build folder is ready to be deployed" ile bitmelidir.
 
@@ -307,11 +332,11 @@ Ağdaki **başka bir bilgisayardan** tarayıcıda açın:
 
 ## 8. Şifreler ve ilk giriş
 
-Seed, şifreleri herkesçe bilinen örnek hesaplar oluşturur. Canlı sistemde giriş ekranında bu hesaplar **listelenmez**, ama hesaplar veritabanında vardır. Kurulumdan hemen sonra:
+Canlı sistemde giriş ekranında demo hesap listesi **gösterilmez**. Seed'in oluşturduğu örnek hesaplar ise adım 5.1'de üretilen rastgele şifrelerle veritabanında durur. Kurulumdan hemen sonra:
 
-1. `http://<SUNUCU_IP>` adresinde `admin@example.com` / `admin123` ile giriş yapın.
-2. Sağ üstten **Profilim → Şifre Değiştir** ile admin şifresini değiştirin.
-3. **Kullanıcılar** sayfasından gerçek kullanıcıları ekleyin. Kullanılmayacak örnek hesapları (`...@example.com`, şifre `pass123`) silin ya da şifrelerini değiştirin.
+1. `http://<SUNUCU_IP>` adresinde `admin@example.com` ve 5.1'de not ettiğiniz admin şifresiyle giriş yapın.
+2. Sağ üstten **Profilim → Şifre Değiştir** ile kendi belirleyeceğiniz bir şifreye geçin.
+3. **Kullanıcılar** sayfasından gerçek kullanıcıları ekleyin. Kullanılmayacak örnek hesapları (`...@example.com`) silin.
 
 ## 9. Mobil uygulama
 
@@ -325,10 +350,12 @@ APK, sunucuda değil **kendi bilgisayarınızda** üretilir. Expo hesabı gereki
 cd mobile
 npm install --legacy-peer-deps
 npx eas-cli login
+npx eas-cli env:create --name EXPO_PUBLIC_API_URL --value http://<SUNUCU_IP>:8080 --environment preview --visibility plaintext
 npx eas-cli build -p android --profile preview
 ```
 
-- `mobile/eas.json` içindeki `preview` profili, API adresi `http://<SUNUCU_IP>:8080` olacak şekilde bir APK üretir.
+- `env:create` backend adresini Expo hesabınıza kaydeder; repoda yazmaz. Yalnızca ilk seferde (ya da adres değişince) gerekir. Değiştirmek için: `npx eas-cli env:update`.
+- `mobile/eas.json` içindeki `preview` profili bu adresi kullanarak bir APK üretir.
 - İlk derlemede Android paket adı (ör. `tr.edu.mersin.istakip`) ve imzalama anahtarı sorulur; önerilen seçenekleri kabul edebilirsiniz.
 - Derleme bitince verilen bağlantıdan APK'yı indirip telefonlara kurun ("bilinmeyen kaynaklardan yüklemeye" izin vermek gerekebilir).
 - Uygulama sunucuya HTTP ile bağlandığı için `app.json`'da düz HTTP'ye izin verilmiştir. Sunucuya ileride HTTPS eklenirse bu izin kaldırılmalıdır.

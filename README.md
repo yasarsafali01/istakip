@@ -61,5 +61,5 @@ cd mobile && npx expo start
 Sıfırdan kurulum (programların kurulumu, veritabanı, backend testleri, web ve mobil) için:
 
 - **Windows:** [docs/KURULUM-WINDOWS.md](docs/KURULUM-WINDOWS.md)
-- **Ubuntu sunucu (kalıcı yayın, http://<SUNUCU_IP>):** [docs/KURULUM-UBUNTU.md](docs/KURULUM-UBUNTU.md)
+- **Ubuntu sunucu (kalıcı yayın):** [docs/KURULUM-UBUNTU.md](docs/KURULUM-UBUNTU.md)
 - Kısa özet ve ortam değişkenleri: [INSTALL.md](INSTALL.md)

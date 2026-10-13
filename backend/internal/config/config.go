@@ -24,12 +24,12 @@ func Load() Config {
 	_ = godotenv.Load()
 
 	return Config{
-		Port:          getEnv("PORT", "8080"),
+		Port:          getEnv("PORT", ""),
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 		JWTAccessTTL:  getDuration("JWT_ACCESS_TTL", 15*time.Minute),
 		JWTRefreshTTL: getDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
-		CORSOrigins:   strings.Split(getEnv("CORS_ORIGINS", "http://<SUNUCU_IP>:3000,http://<SUNUCU_IP>,http://localhost:3000,http://localhost:19006"), ","),
+		CORSOrigins:   getList("CORS_ORIGINS"),
 		UploadDir:     getEnv("UPLOAD_DIR", "uploads"),
 	}
 }
@@ -39,6 +39,16 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getList(key string) []string {
+	var out []string
+	for _, v := range strings.Split(os.Getenv(key), ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func getDuration(key string, fallback time.Duration) time.Duration {
