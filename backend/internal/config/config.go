@@ -29,7 +29,7 @@ func Load() Config {
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 		JWTAccessTTL:  getDuration("JWT_ACCESS_TTL", 15*time.Minute),
 		JWTRefreshTTL: getDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
-		CORSOrigins:   strings.Split(getEnv("CORS_ORIGINS", "http://localhost:3000,http://localhost:19006"), ","),
+		CORSOrigins:   strings.Split(getEnv("CORS_ORIGINS", "http://<SUNUCU_IP>:3000,http://<SUNUCU_IP>,http://localhost:3000,http://localhost:19006"), ","),
 		UploadDir:     getEnv("UPLOAD_DIR", "uploads"),
 	}
 }

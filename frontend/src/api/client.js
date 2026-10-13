@@ -1,4 +1,4 @@
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://<SUNUCU_IP>:8080';
 const REFRESH_TOKEN_KEY = 'istakip_refresh_token';
 
 // Access token lives only in memory (module-level) — never persisted, so a

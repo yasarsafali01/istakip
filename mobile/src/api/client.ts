@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://<SUNUCU_IP>:8080';
 const REFRESH_TOKEN_KEY = 'istakip_refresh_token';
 
 // Access token lives only in memory — lost on app restart, re-derived from
